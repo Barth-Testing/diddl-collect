@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "postbuild": "node scripts/build-sw.mjs",
     "start": "next start",
     "lint": "eslint",
     "fetch:katalog": "node scripts/fetch-katalog.mjs"
