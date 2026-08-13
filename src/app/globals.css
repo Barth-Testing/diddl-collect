@@ -1,0 +1,113 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-nunito), ui-rounded, system-ui, sans-serif;
+  --font-display: var(--font-quicksand), var(--font-nunito), sans-serif;
+
+  --color-candy-50: #fff7f9;
+  --color-candy-100: #ffedf2;
+  --color-candy-200: #ffd9e5;
+  --color-candy-300: #ffb9d0;
+  --color-candy-400: #ff8fb6;
+  --color-candy-500: #f9679c;
+  --color-candy-600: #e0497f;
+  --color-candy-700: #c03066;
+  --color-candy-800: #9c2552;
+  --color-candy-900: #7e1a41;
+
+  --color-peach-50: #fff9f3;
+  --color-peach-100: #fff1e4;
+  --color-peach-200: #ffe0c6;
+  --color-peach-300: #ffc499;
+  --color-peach-400: #ffa366;
+  --color-peach-500: #fb7f3e;
+  --color-peach-600: #e46227;
+
+  --color-cream-50: #fffdf9;
+  --color-cream-100: #fff8ef;
+  --color-cream-200: #fdecda;
+  --color-cream-300: #f5d9bd;
+
+  --color-berry-50: #faf6ff;
+  --color-berry-100: #f2e9fd;
+  --color-berry-200: #e6d4fa;
+  --color-berry-300: #d0b2f2;
+  --color-berry-400: #b48ae6;
+
+  --color-mint-50: #f2fbf7;
+  --color-mint-100: #e0f5ee;
+  --color-mint-200: #c3eadb;
+  --color-mint-300: #92d7bf;
+
+  --color-ink-600: #7a6a72;
+  --color-ink-700: #5a4a55;
+  --color-ink-800: #483a44;
+  --color-ink-900: #332830;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-cream-50 text-ink-800 antialiased;
+  }
+  ::selection {
+    @apply bg-candy-200 text-ink-800;
+  }
+}
+
+@utility blob {
+  position: relative;
+  isolation: isolate;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: -40%;
+    z-index: -1;
+    background:
+      radial-gradient(40% 40% at 28% 30%, #ffd9e5 0%, transparent 68%),
+      radial-gradient(40% 40% at 72% 22%, #ffe0c6 0%, transparent 68%),
+      radial-gradient(38% 38% at 60% 78%, #e6d4fa 0%, transparent 70%),
+      radial-gradient(34% 34% at 30% 72%, #ffc9a3 0%, transparent 70%);
+    filter: blur(14px);
+    border-radius: 9999px;
+  }
+}
+
+@utility card-soft {
+  @apply rounded-3xl border border-candy-100 bg-white/85 shadow-[0_10px_30px_-12px_rgba(249,103,156,0.28)] backdrop-blur;
+}
+
+@utility chip {
+  @apply inline-flex items-center gap-1 rounded-full text-xs font-bold;
+}
+
+@keyframes floaty {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(2deg);
+  }
+}
+
+@utility animate-floaty {
+  animation: floaty 5s ease-in-out infinite;
+}
+
+@keyframes pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@utility animate-pop {
+  animation: pop-in 0.22s ease-out both;
+}
