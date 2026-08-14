@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Camera, Heart, LayoutGrid, Repeat2, Sparkles, Trophy } from "lucide-react";
+import { Camera, Heart, LayoutGrid, MessagesSquare, Repeat2, Sparkles, Trophy } from "lucide-react";
 import { MausMotto } from "@/components/MausMotto";
 import { BLAETTER } from "@/lib/blaetter";
 
@@ -79,6 +79,29 @@ export default function Startseite() {
             linkText="Zur Rangliste"
             farbe="bg-mint-100 text-emerald-600"
           />
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 py-8">
+        <div className="card-soft flex flex-col items-center gap-4 p-6 text-center sm:flex-row sm:text-left">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-berry-100 text-berry-400">
+            <MessagesSquare className="h-7 w-7" />
+          </div>
+          <div className="flex-1">
+            <h3 className="font-display text-lg font-bold text-ink-800">
+              Plaudern mit anderen Sammlern
+            </h3>
+            <p className="text-sm text-ink-600">
+              Tauschangebote, Fundstücke oder einfach Hallo sagen – im Knuddel-Chätsch
+              trifft sich die Sammel-Gemeinde.
+            </p>
+          </div>
+          <Link
+            href="/forum"
+            className="shrink-0 rounded-full bg-candy-500 px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-candy-300/50 transition hover:-translate-y-0.5 hover:bg-candy-600"
+          >
+            Zum Forum
+          </Link>
         </div>
       </section>
 

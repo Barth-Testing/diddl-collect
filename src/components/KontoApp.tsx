@@ -140,9 +140,6 @@ export function KontoApp() {
           <button className="mt-4 w-full rounded-full bg-peach-400 px-5 py-2.5 font-bold text-white shadow-md shadow-peach-300/50 hover:bg-peach-500">
             Anmelden
           </button>
-          <p className="mt-3 text-xs text-ink-600">
-            Demo? Probiere z. B. <em>MiaWunschliste</em> mit Passwort <em>demo</em>.
-          </p>
         </form>
       </div>
     );
@@ -180,7 +177,7 @@ export function KontoApp() {
           <div>
             <p className="font-display text-xl font-bold text-ink-800">{benutzer.name}</p>
             <p className="text-xs font-semibold text-ink-600">
-              {benutzer.demo ? "Demo-Sammler" : "Sammler"} seit{" "}
+              Sammler seit{" "}
               {new Date(benutzer.createdAt).toLocaleDateString("de-DE")}
             </p>
           </div>
@@ -257,7 +254,7 @@ export function KontoApp() {
               <li>Jedes Blatt in deiner Sammlung gibt dir genau einen Punkt.</li>
               <li>Ranglisten-Plätze bis Rang 100 sind ohne Beweise möglich.</li>
               <li>Ab mehr als 100 eigenen Blättern zählst du für bessere Plätze nur noch mit, wenn mindestens 100 Blätter per Foto belegt sind.</li>
-              <li>Ein Klick auf die Kamera lädt das Foto – es bleibt nur in deinem Browser (Demo).</li>
+              <li>Ein Klick auf die Kamera lädt das Foto – es bleibt nur in deinem Browser.</li>
             </ul>
           </div>
           <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">

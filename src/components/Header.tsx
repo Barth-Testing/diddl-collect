@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { HeartHandshake, LayoutGrid, PawPrint, Trophy } from "lucide-react";
+import { HeartHandshake, LayoutGrid, MessagesSquare, PawPrint, Trophy } from "lucide-react";
 import { MausKlein } from "./MausMotto";
 import { HeaderBenutzer } from "./HeaderBenutzer";
 
@@ -27,6 +27,13 @@ export function Header() {
           >
             <Trophy className="h-4 w-4" />
             <span className="hidden sm:inline">Rangliste</span>
+          </Link>
+          <Link
+            href="/forum"
+            className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-bold text-ink-700 hover:bg-candy-100"
+          >
+            <MessagesSquare className="h-4 w-4" />
+            <span className="hidden sm:inline">Forum</span>
           </Link>
           <Link
             href="/konto"
@@ -65,7 +72,7 @@ export function Footer() {
         <p>
           Alle abgebildeten Motive gehören ihren Rechteinhabern (Diddl&nbsp;Studios / Thomas
           Goletz) und werden hier ausschließlich als Verlinkung zu Katalog-Zwecken angezeigt.
-          Diese Demo speichert alle Angaben nur lokal im Browser.
+          Alle Angaben werden nur lokal in deinem Browser gespeichert.
         </p>
       </div>
     </footer>

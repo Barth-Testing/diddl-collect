@@ -35,7 +35,6 @@ export type Benutzer = {
   name: string;
   passwort: string;
   createdAt: number;
-  demo?: boolean;
   statuses: Record<string, Status>;
   beweise: Record<string, string>;
 };

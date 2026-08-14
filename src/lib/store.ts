@@ -1,4 +1,3 @@
-import { BLAETTER } from "./blaetter";
 import type { Benutzer, Status } from "./types";
 
 const USERS_KEY = "diddlcollect:benutzer";
@@ -38,12 +37,11 @@ function loadUsers(): Benutzer[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = window.localStorage.getItem(USERS_KEY);
-    if (!raw) {
-      const seeded = seedDemoBenutzer();
-      window.localStorage.setItem(USERS_KEY, JSON.stringify(seeded));
-      return seeded;
-    }
-    return JSON.parse(raw) as Benutzer[];
+    if (!raw) return [];
+    const users = JSON.parse(raw) as Array<Benutzer & { demo?: boolean }>;
+    const ohneDemo = users.filter((u) => !u.demo);
+    if (ohneDemo.length !== users.length) saveUsers(ohneDemo);
+    return ohneDemo as Benutzer[];
   } catch {
     return [];
   }
@@ -52,52 +50,6 @@ function loadUsers(): Benutzer[] {
 function saveUsers(users: Benutzer[]) {
   window.localStorage.setItem(USERS_KEY, JSON.stringify(users));
   emitChange();
-}
-
-function hashName(name: string): number {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
-  return h;
-}
-
-/** Deterministische Demo-Sammler, damit die Rangliste lebt. */
-function seedDemoBenutzer(): Benutzer[] {
-  const demos: Array<{ name: string; ziel: number; beweise: number }> = [
-    { name: "KnuddelmausMel", ziel: 248, beweise: 231 },
-    { name: "BlattLotte", ziel: 176, beweise: 158 },
-    { name: "SammelSvenja", ziel: 241, beweise: 61 },
-    { name: "MiaWunschliste", ziel: 143, beweise: 143 },
-    { name: "OhrwurmOtto", ziel: 128, beweise: 30 },
-    { name: "PfotenPaul", ziel: 96, beweise: 96 },
-    { name: "KlecksKathi", ziel: 74, beweise: 74 },
-    { name: "HerzchenHanna", ziel: 52, beweise: 52 },
-  ];
-  return demos.map((d, di) => {
-    const h = hashName(d.name);
-    const statuses: Record<string, Status> = {};
-    let count = 0;
-    for (let i = 0; i < BLAETTER.length && count < d.ziel; i++) {
-      if ((h * (i + 7) + di * 13) % 53 < 19) {
-        statuses[BLAETTER[i].id] = "own";
-        count++;
-      }
-    }
-    const beweise: Record<string, string> = {};
-    const owned = Object.keys(statuses);
-    const versatz = h % Math.max(1, owned.length);
-    for (let i = 0; i < Math.min(d.beweise, owned.length); i++) {
-      beweise[owned[(i + versatz) % owned.length]] = "demo";
-    }
-    return {
-      id: `demo-${di}`,
-      name: d.name,
-      passwort: "demo",
-      createdAt: Date.now() - di * 86_400_000,
-      demo: true,
-      statuses,
-      beweise,
-    };
-  });
 }
 
 export function listBenutzer(): Benutzer[] {

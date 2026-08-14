@@ -87,7 +87,6 @@ export function RangApp() {
                   <td className="px-4 py-2.5 font-bold text-ink-800">
                     {e.benutzer.name}
                     {istIch && <span className="chip ml-2 bg-candy-500 px-1.5 py-0.5 text-white">Du</span>}
-                    {e.benutzer.demo && <span className="chip ml-1.5 bg-cream-200 px-1.5 py-0.5 text-ink-600">Demo</span>}
                   </td>
                   <td className="px-4 py-2.5 text-center">
                     <span className="font-display font-bold text-candy-600">{e.own}</span>
@@ -126,8 +125,7 @@ export function RangApp() {
       )}
 
       <p className="text-center text-xs text-ink-600">
-        Diese Demo zeigt neben deinem Konto acht Beispiel-Sammler. Alle Daten liegen nur in diesem
-        Browser.
+        Hier zählt nur dein eigenes Konto – alle Daten liegen sicher in deinem Browser.
       </p>
     </div>
   );
