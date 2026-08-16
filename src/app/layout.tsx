@@ -34,6 +34,9 @@ export const metadata: Metadata = {
     title: "Knuddelblätter",
     statusBarStyle: "default",
   },
+  other: {
+    "google-adsense-account": "ca-pub-9547389888021360",
+  },
 };
 
 export const viewport: Viewport = {
