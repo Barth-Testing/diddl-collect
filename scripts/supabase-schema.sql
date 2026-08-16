@@ -1,5 +1,58 @@
--- Knuddelblätter – Chat/Foren-Einrichtung
+-- Knuddelblätter – Chat/Foren- und Konten-Einrichtung
 -- Einmalig im Supabase SQL Editor ausführen (Dashboard → SQL Editor → New query → Run).
+
+-- ============ Konten (Sammlernamen, Häkchen, Beweise) ============
+
+create table if not exists public.profile (
+  id text primary key,
+  name text not null,
+  passwort text not null,
+  created_at timestamptz not null default now(),
+  statuses jsonb not null default '{}'::jsonb,
+  beweise jsonb not null default '{}'::jsonb
+);
+
+create unique index if not exists profile_name_lower_idx on public.profile (lower(name));
+
+alter table public.profile enable row level security;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'profile' and policyname = 'Jeder darf Profile lesen'
+  ) then
+    create policy "Jeder darf Profile lesen"
+      on public.profile for select
+      using (true);
+  end if;
+end $$;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'profile' and policyname = 'Jeder darf Profile anlegen'
+  ) then
+    create policy "Jeder darf Profile anlegen"
+      on public.profile for insert
+      with check (true);
+  end if;
+end $$;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'profile' and policyname = 'Jeder darf Profile aktualisieren'
+  ) then
+    create policy "Jeder darf Profile aktualisieren"
+      on public.profile for update
+      using (true);
+  end if;
+end $$;
+
+-- ============ Chat ============
 
 create table if not exists public.nachrichten (
   id bigint generated always as identity primary key,
@@ -13,13 +66,29 @@ create index if not exists nachrichten_raum_idx on public.nachrichten (raum, id 
 
 alter table public.nachrichten enable row level security;
 
-create policy "Jeder darf lesen"
-  on public.nachrichten for select
-  using (true);
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'nachrichten' and policyname = 'Jeder darf lesen'
+  ) then
+    create policy "Jeder darf lesen"
+      on public.nachrichten for select
+      using (true);
+  end if;
+end $$;
 
-create policy "Jeder darf schreiben"
-  on public.nachrichten for insert
-  with check (true);
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'nachrichten' and policyname = 'Jeder darf schreiben'
+  ) then
+    create policy "Jeder darf schreiben"
+      on public.nachrichten for insert
+      with check (true);
+  end if;
+end $$;
 
 -- Echtzeit aktivieren, damit neue Nachrichten sofort ankommen.
 do $$

@@ -1,14 +1,15 @@
 "use client";
 
-import { useMemo } from "react";
 import Link from "next/link";
 import { Medal, ShieldAlert, ShieldCheck } from "lucide-react";
 import { berechneRangliste, getSession } from "@/lib/store";
+import { useStoreVersion } from "@/lib/useStoreVersion";
 import { cn } from "@/lib/utils";
 
 export function RangApp() {
-  const benutzer = useMemo(() => getSession(), []);
-  const eintraege = useMemo(() => berechneRangliste(), []);
+  useStoreVersion();
+  const benutzer = getSession();
+  const eintraege = berechneRangliste();
 
   const meinEintrag = benutzer ? eintraege.find((e) => e.benutzer.id === benutzer.id) : null;
   const ersteBlockadeIndex = eintraege.findIndex((e) => !e.freigeschaltet);
@@ -125,7 +126,7 @@ export function RangApp() {
       )}
 
       <p className="text-center text-xs text-ink-600">
-        Hier zählt nur dein eigenes Konto – alle Daten liegen sicher in deinem Browser.
+        Hier zählt nur dein eigenes Konto – deine Daten sind sicher gespeichert und auf jedem Gerät da.
       </p>
     </div>
   );

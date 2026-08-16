@@ -1,4 +1,5 @@
-import { createClient, type RealtimeChannel } from "@supabase/supabase-js";
+import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
+import { getSupabase, supabaseKonfiguriert } from "./supabase";
 
 export const RAUME = [
   { id: "allgemein", label: "Allgemein", beschreibung: "Erzähl von deinen Schätzen, stell dich vor." },
@@ -17,9 +18,6 @@ export type ChatNachricht = {
 
 const CHAT_KEY = "diddlcollect:chat";
 const MAX_NACHRICHTEN = 300;
-
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 type NachrichtReihe = {
   id: number;
@@ -45,18 +43,7 @@ type Db = {
 };
 
 export function chatKonfiguriert() {
-  return Boolean(url && anonKey);
-}
-
-let client: ReturnType<typeof createClient<Db>> | null = null;
-function getClient() {
-  if (!chatKonfiguriert()) return null;
-  if (!client) {
-    client = createClient<Db>(url!, anonKey!, {
-      realtime: { params: { eventsPerSecond: 2 } },
-    });
-  }
-  return client;
+  return supabaseKonfiguriert();
 }
 
 let version = 0;
@@ -153,7 +140,7 @@ function istOfflineDuplikat(reihe: { raum: string; autor: string; text: string }
 }
 
 async function syncQueue() {
-  const supabase = getClient();
+  const supabase = getSupabase<Db>();
   if (!supabase) return;
   const cache = ladeCache();
   const wartend = [...cache.offen];
@@ -179,7 +166,7 @@ export function istVerbunden() {
 }
 
 async function ladeRaeume(
-  supabase: ReturnType<typeof createClient<Db>>,
+  supabase: SupabaseClient<Db>,
   raum: string,
   onNachricht: () => void,
 ) {
@@ -192,7 +179,7 @@ async function ladeRaeume(
 }
 
 export function verbinde(raum: string, onNachricht: () => void) {
-  const supabase = getClient();
+  const supabase = getSupabase<Db>();
   if (!supabase) return () => {};
 
   if (!raeumeGestartet) {
@@ -230,7 +217,7 @@ export function verbinde(raum: string, onNachricht: () => void) {
 }
 
 async function ladeRaum(
-  supabase: ReturnType<typeof createClient<Db>>,
+  supabase: SupabaseClient<Db>,
   raum: string,
 ): Promise<boolean> {
   const { data, error } = await supabase
@@ -265,7 +252,7 @@ export function senden(raum: string, autor: string, text: string): boolean {
   cache.offen.push(temp);
   speichereCache(cache);
 
-  const supabase = getClient();
+  const supabase = getSupabase<Db>();
   if (!supabase) return true;
   supabase
     .from("nachrichten")

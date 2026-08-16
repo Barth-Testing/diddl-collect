@@ -43,12 +43,14 @@ export function KontoApp() {
     const name = form.querySelector<HTMLInputElement>("input[data-name]")?.value ?? "";
     const pw = form.querySelector<HTMLInputElement>("input[data-passwort]")?.value ?? "";
     setFehler({});
-    const ergebnis = modus === "login" ? login(name, pw) : register(name, pw);
-    if (!ergebnis.ok) {
-      setFehler({ [modus]: ergebnis.fehler ?? "Das hat nicht geklappt." });
-      return;
-    }
-    setInfos(modus === "login" ? `Willkommen zurück, ${name.trim()}!` : `Willkommen in der Sammelstube, ${name.trim()}!`);
+    void (async () => {
+      const ergebnis = modus === "login" ? await login(name, pw) : await register(name, pw);
+      if (!ergebnis.ok) {
+        setFehler({ [modus]: ergebnis.fehler ?? "Das hat nicht geklappt." });
+        return;
+      }
+      setInfos(modus === "login" ? `Willkommen zurück, ${name.trim()}!` : `Willkommen in der Sammelstube, ${name.trim()}!`);
+    })();
     /* Store event räumt auf */
   }
 
@@ -101,7 +103,7 @@ export function KontoApp() {
             <UserPlus className="h-5 w-5 text-candy-500" /> Neu hier? Sammlerkonto anlegen
           </h2>
           <p className="mt-1 text-sm text-ink-600">
-            Nur Name und Passwort – alles bleibt in deinem Browser gespeichert.
+            Nur Name und Passwort – dein Konto wird sicher gespeichert und ist auf jedem Gerät da.
           </p>
           <div className="mt-4 space-y-3">
             <Feld id="k-name-reg" label="Sammlername" placeholder="z. B. BlattLotte" autoComplete="username" />
@@ -254,7 +256,7 @@ export function KontoApp() {
               <li>Jedes Blatt in deiner Sammlung gibt dir genau einen Punkt.</li>
               <li>Ranglisten-Plätze bis Rang 100 sind ohne Beweise möglich.</li>
               <li>Ab mehr als 100 eigenen Blättern zählst du für bessere Plätze nur noch mit, wenn mindestens 100 Blätter per Foto belegt sind.</li>
-              <li>Ein Klick auf die Kamera lädt das Foto – es bleibt nur in deinem Browser.</li>
+              <li>Ein Klick auf die Kamera lädt das Foto – es wird sicher auf deinem Konto gespeichert.</li>
             </ul>
           </div>
           <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">
