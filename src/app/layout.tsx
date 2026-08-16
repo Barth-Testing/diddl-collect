@@ -48,11 +48,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {children}
         <Footer />
         <PwaRegistrierung />
-        <Script
+        <script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9547389888021360"
           crossOrigin="anonymous"
-          strategy="afterInteractive"
         />
         <Script async src="https://www.googletagmanager.com/gtag/js?id=G-D0RQYZ4M49" strategy="afterInteractive" />
         <Script id="gtag-init" strategy="afterInteractive">
