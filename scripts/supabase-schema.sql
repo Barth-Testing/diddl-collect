@@ -52,6 +52,18 @@ begin
   end if;
 end $$;
 
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'profile' and policyname = 'Jeder darf Profile löschen'
+  ) then
+    create policy "Jeder darf Profile löschen"
+      on public.profile for delete
+      using (true);
+  end if;
+end $$;
+
 -- ============ Chat ============
 
 create table if not exists public.nachrichten (

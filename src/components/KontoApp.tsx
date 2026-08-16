@@ -49,7 +49,15 @@ export function KontoApp() {
         setFehler({ [modus]: ergebnis.fehler ?? "Das hat nicht geklappt." });
         return;
       }
-      setInfos(modus === "login" ? `Willkommen zurück, ${name.trim()}!` : `Willkommen in der Sammelstube, ${name.trim()}!`);
+      const nurLokal = "nurLokal" in ergebnis ? ergebnis.nurLokal : false;
+      setInfos(
+        modus === "login"
+          ? `Willkommen zurück, ${name.trim()}!`
+          : `Willkommen in der Sammelstube, ${name.trim()}!` +
+              (nurLokal
+                ? " Hinweis: Keine Verbindung zur Cloud – dein Konto ist vorerst nur auf diesem Gerät gespeichert."
+                : ""),
+      );
     })();
     /* Store event räumt auf */
   }

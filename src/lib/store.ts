@@ -212,7 +212,7 @@ export function getSession(): Benutzer | null {
 export async function register(
   name: string,
   passwort: string,
-): Promise<{ ok: boolean; fehler?: string }> {
+): Promise<{ ok: boolean; fehler?: string; nurLokal?: boolean }> {
   const trimmed = name.trim();
   if (trimmed.length < 2) return { ok: false, fehler: "Der Sammlername braucht mindestens 2 Zeichen." };
   if (passwort.length < 4) return { ok: false, fehler: "Das Passwort braucht mindestens 4 Zeichen." };
@@ -240,7 +240,12 @@ export async function register(
     if (error) {
       if (error.code === "23505")
         return { ok: false, fehler: "Diesen Sammlernamen gibt es schon – versuch einen anderen." };
-      /* Kein Netz o. Ä.: Konto bleibt vorerst lokal und wird beim nächsten Sync hochgeladen. */
+      /* Kein Netz oder Serverproblem: Konto vorerst nur lokal – der nächste Sync holt es hoch. */
+      users.push(user);
+      saveUsers(users);
+      window.localStorage.setItem(SESSION_KEY, user.id);
+      emitChange();
+      return { ok: true, nurLokal: true };
     }
   } else {
     user.passwort = passwort;
