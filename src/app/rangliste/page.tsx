@@ -1,8 +1,10 @@
 import { RangApp } from "@/components/RangApp";
 
 export const metadata = {
-  title: "Rangliste – Knuddelblätter",
-  description: "Wer sammelt die meisten Diddl-Blätter? Die große Sammler-Rangliste.",
+  title: "Rangliste der Diddl-Sammler – Diddl Collect | Knuddelblätter",
+  description:
+    "Wer sammelt die meisten Diddl-Blätter? Punkte sammeln, Plätze erklimmen und mit Foto-Beweisen in die Top-100 der Diddl-Sammler aufsteigen.",
+  alternates: { canonical: "/rangliste" },
 };
 
 export default function RanglisteSeite() {

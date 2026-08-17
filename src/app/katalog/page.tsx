@@ -1,8 +1,10 @@
 import { KatalogApp } from "@/components/KatalogApp";
 
 export const metadata = {
-  title: "Katalog – Knuddelblätter Sammelalbum",
-  description: "Alle Diddl-Blätter im Überblick: sortieren, filtern und sammeln.",
+  title: "Katalog aller Diddl-Blätter – Diddl Collect | Knuddelblätter",
+  description:
+    "Alle Diddl-Blätter im Katalog: nach Jahr, Größe oder Farbe sortieren und filtern, Häkchen setzen, Wunschliste pflegen und Doppelte tauschen.",
+  alternates: { canonical: "/katalog" },
 };
 
 export default function KatalogSeite() {

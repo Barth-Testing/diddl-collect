@@ -14,12 +14,12 @@ export default function Startseite() {
           <MausMotto className="animate-floaty h-36 w-36 sm:h-44 sm:w-44" />
         </div>
         <h1 className="font-display mx-auto mt-4 max-w-2xl text-4xl font-bold tracking-tight text-ink-800 sm:text-6xl">
-          Sammel alle <span className="text-candy-500">Knuddelblätter</span>!
+          Sammel alle <span className="text-candy-500">Diddl-Blätter</span>!
         </h1>
         <p className="mx-auto mt-4 max-w-xl text-ink-600 sm:text-lg">
-          Pippo, Diddlina &amp; Co. zum Greifen nah: Durchstöbere den großen Katalog,
-          setze Häkchen, träume auf deiner Wunschliste und tausche Doppelte mit anderen
-          Sammlern.
+          Das inoffizielle Knuddelblätter-Sammelalbum: Pippo, Diddlina &amp; Co. zum Greifen
+          nah. Durchstöbere den großen Katalog aller Diddl-Blätter, setze Häkchen, träume auf
+          deiner Wunschliste und tausche Doppelte mit anderen Sammlern.
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Link

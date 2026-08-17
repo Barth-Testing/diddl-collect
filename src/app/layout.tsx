@@ -17,14 +17,44 @@ const quicksand = Quicksand({
   display: "swap",
 });
 
+const SEITEN_URL = "https://diddl-collect.pages.dev";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SEITEN_URL),
   title: {
-    default: "Knuddelblätter – Diddl-Blätter Sammelalbum",
+    default: "Diddl Collect – Sammelalbum & Katalog für Diddl-Blätter",
     template: "%s",
   },
   description:
-    "Das süße Sammelalbum für Diddl-Blätter: Katalog stöbern, sammeln, Wünsche träumen und Doppelte tauschen.",
+    "Diddl Collect: Das kostenlose inoffizielle Sammelalbum für Diddl-Blätter. Katalog mit allen Motiven durchstöbern, Häkchen setzen, Wunschliste pflegen, Doppelte tauschen und in der Sammler-Rangliste punkten.",
   manifest: "/manifest.webmanifest",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    locale: "de_DE",
+    url: SEITEN_URL,
+    siteName: "Knuddelblätter – Diddl Collect",
+    title: "Diddl Collect – Sammelalbum & Katalog für Diddl-Blätter",
+    description:
+      "Alle Diddl-Blätter sammeln: Katalog stöbern, Häkchen setzen, Wünsche träumen und Doppelte mit anderen Sammlern tauschen.",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Knuddelblätter – das Sammelalbum für Diddl-Blätter",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Diddl Collect – Sammelalbum & Katalog für Diddl-Blätter",
+    description:
+      "Alle Diddl-Blätter sammeln: Katalog stöbern, Häkchen setzen, Wünsche träumen und Doppelte tauschen.",
+    images: ["/og-image.png"],
+  },
   icons: {
     icon: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }, { url: "/icon-512.png", sizes: "512x512", type: "image/png" }],
     apple: "/apple-touch-icon.png",
@@ -51,6 +81,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {children}
         <Footer />
         <PwaRegistrierung />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              name: "Knuddelblätter – Diddl Collect",
+              alternateName: "Diddl Collect",
+              url: SEITEN_URL,
+              inLanguage: "de-DE",
+              description:
+                "Kostenloses inoffizielles Sammelalbum für Diddl-Blätter: Katalog, Wunschliste, Tauschbörse und Sammler-Rangliste.",
+            }),
+          }}
+        />
         <script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9547389888021360"

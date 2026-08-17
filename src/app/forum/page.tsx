@@ -1,8 +1,10 @@
 import { ForumApp } from "@/components/ForumApp";
 
 export const metadata = {
-  title: "Forum – Knuddelblätter",
-  description: "Das Knuddel-Chätsch: Austauschen, Tauschgesuche posten und Fragen stellen.",
+  title: "Forum & Chat für Diddl-Sammler – Diddl Collect | Knuddelblätter",
+  description:
+    "Das Knuddel-Chätsch für Diddl-Sammler: Tauschangebote posten, verlorene Blätter finden und mit der Sammel-Gemeinde plaudern.",
+  alternates: { canonical: "/forum" },
 };
 
 export default function ForumSeite() {
