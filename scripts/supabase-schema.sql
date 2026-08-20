@@ -114,7 +114,7 @@ begin
 end $$;
 
 -- ============ Neuigkeiten (Startseite) ============
--- Einträge fügt der Seitenbetreiber direkt per SQL ein, z. B.:
+-- Weitere Einträge fügt der Seitenbetreiber direkt per SQL ein, z. B.:
 --   insert into public.news (titel, text) values ('Neue Blätter', 'Der Katalog hat Zuwachs bekommen!');
 
 create table if not exists public.news (
@@ -137,3 +137,8 @@ begin
       using (true);
   end if;
 end $$;
+
+insert into public.news (titel, text)
+select 'Diddl ist zurück!',
+       'Sonderkollektionen in verschiedenen Expert-Märkten entdeckt! Aktuell häufen sich Meldungen, dass verschiedene Expert-Märkte einen neuen Aufsteller im Laden haben – der kleine Knuddelkater ist also tatsächlich zurück, und mit ihm frische Sonderkollektionen zum Sammeln. Wie immer gilt: Schnell vergriffen! Wenn ihr eine Filiale in der Nähe habt, lohnt sich ein Blick auf jeden Fall. Und wer etwas entdeckt: Teilt eure Funde im Forum und zeigt der Gemeinde, wo die neuen Blätter warten.'
+where not exists (select 1 from public.news where titel = 'Diddl ist zurück!');
