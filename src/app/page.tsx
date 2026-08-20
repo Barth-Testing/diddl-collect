@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Camera, Heart, LayoutGrid, MessagesSquare, Repeat2, Sparkles, Trophy } from "lucide-react";
 import { MausMotto } from "@/components/MausMotto";
+import { Neuigkeiten } from "@/components/Neuigkeiten";
 import { BLAETTER } from "@/lib/blaetter";
 
 export default function Startseite() {
@@ -40,6 +41,10 @@ export default function Startseite() {
           <Stat wert={String(einzigartigeFarben)} label="Motiv-Farben" />
           <Stat wert={jahre} label="Jahrgänge" />
         </dl>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 py-8">
+        <Neuigkeiten />
       </section>
 
       <section className="mx-auto max-w-6xl px-4 py-10">

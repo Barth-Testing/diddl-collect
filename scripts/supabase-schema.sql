@@ -112,3 +112,28 @@ begin
     alter publication supabase_realtime add table public.nachrichten;
   end if;
 end $$;
+
+-- ============ Neuigkeiten (Startseite) ============
+-- Einträge fügt der Seitenbetreiber direkt per SQL ein, z. B.:
+--   insert into public.news (titel, text) values ('Neue Blätter', 'Der Katalog hat Zuwachs bekommen!');
+
+create table if not exists public.news (
+  id bigint generated always as identity primary key,
+  titel text not null,
+  text text not null check (char_length(text) between 1 and 1000),
+  erstellt_am timestamptz not null default now()
+);
+
+alter table public.news enable row level security;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'news' and policyname = 'Jeder darf News lesen'
+  ) then
+    create policy "Jeder darf News lesen"
+      on public.news for select
+      using (true);
+  end if;
+end $$;

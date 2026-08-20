@@ -161,17 +161,17 @@ async function syncMitServer() {
   for (const [id, lok] of lokalById) {
     if (serverIds.has(id)) continue;
     ergebnis.set(id, lok);
-    pushProfil(lok);
     geaendert = true;
+    if ((await pushProfil(lok)) === false) ergebnis.delete(id);
   }
 
   if (geaendert) saveUsers([...ergebnis.values()]);
 }
 
 /** Ein Konto (komplett) auf den Server schreiben – Klartext-Passwörter werden vorher gehasht. */
-async function pushProfil(benutzer: Benutzer) {
+async function pushProfil(benutzer: Benutzer): Promise<boolean> {
   const supabase = getSupabase<ProfileDb>();
-  if (!supabase) return;
+  if (!supabase) return true;
   const passwort = istHash(benutzer.passwort)
     ? benutzer.passwort
     : await hashPasswort(benutzer.passwort);
@@ -185,7 +185,16 @@ async function pushProfil(benutzer: Benutzer) {
     },
     { onConflict: "id" },
   );
-  if (error) return;
+  if (error) {
+    if (error.code === "23505") {
+      const sessionId = window.localStorage.getItem(SESSION_KEY);
+      const users = loadUsers().filter((u) => u.id !== benutzer.id);
+      saveUsers(users);
+      if (sessionId === benutzer.id) window.localStorage.removeItem(SESSION_KEY);
+      return false;
+    }
+    return true;
+  }
   if (passwort !== benutzer.passwort) {
     const users = loadUsers();
     const gefunden = users.find((u) => u.id === benutzer.id);
@@ -194,6 +203,7 @@ async function pushProfil(benutzer: Benutzer) {
       saveUsers(users);
     }
   }
+  return true;
 }
 
 export function listBenutzer(): Benutzer[] {
