@@ -1,0 +1,67 @@
+{
+  "marketplace": "www.amazon.de",
+  "tag": "gamerparktv-21",
+  "generatedAt": "2026-08-21T12:00:00.000Z",
+  "products": [
+    {
+      "asin": "383323346X",
+      "title": "Diddl: Meine Freunde",
+      "price": 9.99,
+      "currency": "EUR",
+      "imageUrl": "https://m.media-amazon.com/images/I/51W1cKh+mtL._AC_SL500_.jpg",
+      "rating": 4.7,
+      "reviews": 352,
+      "affiliateUrl": "https://www.amazon.de/dp/383323346X?tag=gamerparktv-21"
+    },
+    {
+      "asin": "3735883583",
+      "title": "DIDDL – Das Backbuch: 30 süße Rezepte für Zuckermäuse (Diddl is back!)",
+      "price": 12.99,
+      "currency": "EUR",
+      "imageUrl": "https://m.media-amazon.com/images/I/71qvInwC-0L._AC_SL500_.jpg",
+      "rating": 4.8,
+      "reviews": 39,
+      "affiliateUrl": "https://www.amazon.de/dp/3735883583?tag=gamerparktv-21"
+    },
+    {
+      "asin": "3735883265",
+      "title": "DIDDL – Malen nach Zahlen: 30 Motive zum Ausmalen (Diddl is back!)",
+      "price": 14.99,
+      "currency": "EUR",
+      "imageUrl": "https://m.media-amazon.com/images/I/81mtlVjU18L._AC_SL500_.jpg",
+      "rating": 5.0,
+      "reviews": 3,
+      "affiliateUrl": "https://www.amazon.de/dp/3735883265?tag=gamerparktv-21"
+    },
+    {
+      "asin": "3735883303",
+      "title": "DIDDL – Das offizielle Zeichenbuch: Schritt für Schritt zeichnen lernen mit 80 einfachen Motiven (Diddl is back!)",
+      "price": 12.99,
+      "currency": "EUR",
+      "imageUrl": "https://m.media-amazon.com/images/I/81wKrBRGslL._AC_SL500_.jpg",
+      "rating": 5.0,
+      "reviews": 13,
+      "affiliateUrl": "https://www.amazon.de/dp/3735883303?tag=gamerparktv-21"
+    },
+    {
+      "asin": "3735883575",
+      "title": "DIDDL – Cartoon Ausmalbuch: Original-Illustrationen zum Ausmalen für große und kleine Fans (Diddl is back!)",
+      "price": 12.99,
+      "currency": "EUR",
+      "imageUrl": "https://m.media-amazon.com/images/I/715oFrYurGL._AC_SL500_.jpg",
+      "rating": 5.0,
+      "reviews": 1,
+      "affiliateUrl": "https://www.amazon.de/dp/3735883575?tag=gamerparktv-21"
+    },
+    {
+      "asin": "3735883389",
+      "title": "DIDDL – Malen nach Zahlen – Lieblingstag: 30 Motive zum Ausmalen (Diddl is back!)",
+      "price": 14.99,
+      "currency": "EUR",
+      "imageUrl": "https://m.media-amazon.com/images/I/71Zjox6+W2L._AC_SL500_.jpg",
+      "rating": 4.5,
+      "reviews": 12,
+      "affiliateUrl": "https://www.amazon.de/dp/3735883389?tag=gamerparktv-21"
+    }
+  ]
+}

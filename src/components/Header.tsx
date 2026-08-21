@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { HeartHandshake, LayoutGrid, MessagesSquare, PawPrint, Trophy } from "lucide-react";
+import { HeartHandshake, LayoutGrid, MessagesSquare, PawPrint, ShoppingBag, Trophy } from "lucide-react";
 import { MausKlein } from "./MausMotto";
 import { HeaderBenutzer } from "./HeaderBenutzer";
 
@@ -41,6 +41,13 @@ export function Header() {
           >
             <HeartHandshake className="h-4 w-4" />
             <span className="hidden sm:inline">Meine Sammlung</span>
+          </Link>
+          <Link
+            href="/shop"
+            className="flex items-center gap-1.5 rounded-full bg-peach-100 px-3 py-2 text-sm font-bold text-peach-500 hover:bg-peach-200"
+          >
+            <ShoppingBag className="h-4 w-4" />
+            <span className="hidden sm:inline">Shop</span>
           </Link>
           <HeaderBenutzer />
         </nav>

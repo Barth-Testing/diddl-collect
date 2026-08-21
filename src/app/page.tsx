@@ -1,8 +1,10 @@
 import Link from "next/link";
-import { Camera, Heart, LayoutGrid, MessagesSquare, Repeat2, Sparkles, Trophy } from "lucide-react";
+import { ArrowRight, Camera, Heart, LayoutGrid, MessagesSquare, Repeat2, ShoppingBag, Sparkles, Trophy } from "lucide-react";
 import { MausMotto } from "@/components/MausMotto";
 import { Neuigkeiten } from "@/components/Neuigkeiten";
+import { ShopKarusell } from "@/components/ShopKarusell";
 import { BLAETTER } from "@/lib/blaetter";
+import { getProdukte } from "@/lib/shop";
 
 export default function Startseite() {
   const einzigartigeFarben = new Set(BLAETTER.map((b) => b.farbe)).size;
@@ -45,6 +47,10 @@ export default function Startseite() {
 
       <section className="mx-auto max-w-6xl px-4 py-8">
         <Neuigkeiten />
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 py-8">
+        <ShopSektion />
       </section>
 
       <section className="mx-auto max-w-6xl px-4 py-10">
@@ -161,6 +167,41 @@ function FeatureKarte({
       <Link href={link} className="text-sm font-bold text-candy-600 hover:text-candy-700">
         {linkText} →
       </Link>
+    </div>
+  );
+}
+
+function ShopSektion() {
+  const produkte = getProdukte();
+  return (
+    <div className="card-soft p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-peach-100 text-peach-500">
+            <ShoppingBag className="h-6 w-6" />
+          </div>
+          <div>
+            <h2 className="font-display text-xl font-bold text-ink-800">Diddl-Funde bei Amazon</h2>
+            <p className="text-xs font-semibold text-ink-600">
+              Schöne Sachen für echte Knuddelblätter-Fans – von uns ausgesucht
+            </p>
+          </div>
+        </div>
+        <Link
+          href="/shop"
+          className="chip gap-1.5 bg-white px-4 py-2 text-candy-600 ring-2 ring-candy-200 transition hover:bg-candy-100"
+        >
+          Alle Produkte
+          <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
+      </div>
+      <div className="mt-5">
+        <ShopKarusell produkte={produkte} />
+      </div>
+      <p className="mt-3 text-[11px] font-semibold text-ink-600/70">
+        Affiliate-Hinweis: Über die Links gelangst du zu Amazon. Wir erhalten bei einem Kauf eine
+        kleine Provision – für dich ändert sich am Preis nichts.
+      </p>
     </div>
   );
 }

@@ -83,6 +83,14 @@
   @apply inline-flex items-center gap-1 rounded-full text-xs font-bold;
 }
 
+@utility no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @keyframes floaty {
   0%,
   100% {

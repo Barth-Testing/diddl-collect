@@ -44,3 +44,21 @@ export const STATUS_LABEL: Record<Status, string> = {
   wish: "Wunsch",
   offer: "Zum Tauschen",
 };
+
+export type Produkt = {
+  asin: string;
+  title: string;
+  price: number;
+  currency: string;
+  imageUrl: string;
+  rating: number | null;
+  reviews: number | null;
+  affiliateUrl: string;
+};
+
+export type ShopDaten = {
+  marketplace: string;
+  tag: string;
+  generatedAt: string;
+  products: Produkt[];
+};
