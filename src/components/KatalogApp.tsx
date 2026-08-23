@@ -15,7 +15,7 @@ type Sortierung = "jahr-auf" | "jahr-ab" | "groesse" | "farbe" | "nummer" | "nam
 type StatusFilter = "Alle" | "own" | "wish" | "offer" | "none";
 
 const GROESSEN_FILTER = ["Alle Größen", "Din A4", "Din A5", "Din A6"] as const;
-const JAHRE = Array.from({ length: 11 }, (_, i) => 1996 + i);
+const JAHRE = Array.from({ length: 31 }, (_, i) => 1996 + i);
 
 export function KatalogApp() {
   useStoreVersion();
@@ -26,7 +26,7 @@ export function KatalogApp() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("Alle");
   const [suche, setSuche] = useState("");
   const [jahrVon, setJahrVon] = useState(1996);
-  const [jahrBis, setJahrBis] = useState(2006);
+  const [jahrBis, setJahrBis] = useState(2026);
   const [toast, setToast] = useState<string | null>(null);
   const [lupe, setLupe] = useState<string | null>(null);
 

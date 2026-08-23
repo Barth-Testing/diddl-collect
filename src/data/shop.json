@@ -62,6 +62,16 @@
       "rating": 4.5,
       "reviews": 12,
       "affiliateUrl": "https://www.amazon.de/dp/3735883389?tag=gamerparktv-21"
+    },
+    {
+      "asin": "B0cnk3JHR",
+      "title": "30 Pack 120 Taschen A4 Foto Hüllen für A4",
+      "price": 11.99,
+      "currency": "EUR",
+      "imageUrl": "https://m.media-amazon.com/images/I/617apB8Y09L._AC_SL1500_.jpg",
+      "rating": null,
+      "reviews": null,
+      "affiliateUrl": "https://www.amazon.de/dp/B0cnk3JHR?tag=gamerparktv-21"
     }
   ]
 }

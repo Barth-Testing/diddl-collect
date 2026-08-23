@@ -1,7 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { PNG } from "pngjs";
 
-const JAHR = 2023;
+const JAHR = 2026;
 const QUELLE_BASIS = "https://www.diddl-sammelverzeichnis.de/diddl-is-back";
 const PAGES = [
   { url: `${QUELLE_BASIS}/a5-blaetter-1`, cache: "/tmp/opencode/sv/a5.html", groesse: "Din A5", start: 463 },
