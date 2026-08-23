@@ -24,11 +24,12 @@ export const FARBREIHENFOLGE = [
   "Blau",
   "Türkis",
   "Grün",
+  "Braun",
+  "Grau",
   "Bunt",
 ] as const;
 
 export type Status = "own" | "wish" | "offer";
-export type StatusKey = "own" | "wish" | "offer";
 
 export type Benutzer = {
   id: string;
@@ -37,12 +38,7 @@ export type Benutzer = {
   createdAt: number;
   statuses: Record<string, Status>;
   beweise: Record<string, string>;
-};
-
-export const STATUS_LABEL: Record<Status, string> = {
-  own: "Hab ich",
-  wish: "Wunsch",
-  offer: "Zum Tauschen",
+  favoriten: Record<string, boolean>;
 };
 
 export type Produkt = {

@@ -19,6 +19,7 @@ type ProfileRow = {
   created_at: string;
   statuses: Record<string, Status> | null;
   beweise: Record<string, string> | null;
+  favoriten?: Record<string, boolean> | null;
 };
 
 type ProfileDb = {
@@ -32,6 +33,7 @@ type ProfileDb = {
           passwort: string;
           statuses: Record<string, Status>;
           beweise: Record<string, string>;
+          favoriten?: Record<string, boolean>;
         };
         Update: Partial<ProfileRow>;
         Relationships: [];
@@ -80,7 +82,7 @@ function loadUsers(): Benutzer[] {
     const users = JSON.parse(raw) as Array<Benutzer & { demo?: boolean }>;
     const ohneDemo = users.filter((u) => !u.demo);
     if (ohneDemo.length !== users.length) saveUsers(ohneDemo);
-    return ohneDemo as Benutzer[];
+    return ohneDemo.map((u) => ({ ...u, favoriten: u.favoriten ?? {} })) as Benutzer[];
   } catch {
     return [];
   }
@@ -99,12 +101,14 @@ function zeileZuBenutzer(zeile: ProfileRow): Benutzer {
     createdAt: new Date(zeile.created_at).getTime(),
     statuses: zeile.statuses ?? {},
     beweise: zeile.beweise ?? {},
+    favoriten: zeile.favoriten ?? {},
   };
 }
 
 let synchronisiert = false;
 let syncLaeuft = false;
 let syncErneut = false;
+let favoritenUnterstuetzt = true;
 
 function starteSync() {
   if (typeof window === "undefined") return;
@@ -125,10 +129,22 @@ function starteSync() {
 async function syncMitServer() {
   const supabase = getSupabase<ProfileDb>();
   if (!supabase) return;
-  const { data, error } = await supabase
+  let data: ProfileRow[];
+  const erste = await supabase
     .from("profile")
-    .select("id, name, passwort, created_at, statuses, beweise");
-  if (error || !data) return;
+    .select("id, name, passwort, created_at, statuses, beweise, favoriten");
+  if (!erste.error && erste.data) {
+    data = erste.data;
+  } else if (erste.error && (erste.error.code === "PGRST204" || erste.error.code === "42703")) {
+    favoritenUnterstuetzt = false;
+    const zweite = await supabase
+      .from("profile")
+      .select("id, name, passwort, created_at, statuses, beweise");
+    if (zweite.error || !zweite.data) return;
+    data = zweite.data;
+  } else {
+    return;
+  }
   synchronisiert = true;
 
   const lokal = loadUsers();
@@ -148,11 +164,13 @@ async function syncMitServer() {
     }
     const statuses = { ...lok.statuses, ...server.statuses };
     const beweise = { ...lok.beweise, ...server.beweise };
-    const gemergt: Benutzer = { ...server, statuses, beweise };
+    const favoriten = { ...lok.favoriten, ...server.favoriten };
+    const gemergt: Benutzer = { ...server, statuses, beweise, favoriten };
     ergebnis.set(zeile.id, gemergt);
     if (
       JSON.stringify(statuses) !== JSON.stringify(lok.statuses) ||
-      JSON.stringify(beweise) !== JSON.stringify(lok.beweise)
+      JSON.stringify(beweise) !== JSON.stringify(lok.beweise) ||
+      JSON.stringify(favoriten) !== JSON.stringify(lok.favoriten)
     ) {
       pushProfil(gemergt);
     }
@@ -175,16 +193,28 @@ async function pushProfil(benutzer: Benutzer): Promise<boolean> {
   const passwort = istHash(benutzer.passwort)
     ? benutzer.passwort
     : await hashPasswort(benutzer.passwort);
-  const { error } = await supabase.from("profile").upsert(
-    {
-      id: benutzer.id,
-      name: benutzer.name,
-      passwort,
-      statuses: benutzer.statuses,
-      beweise: benutzer.beweise,
-    },
-    { onConflict: "id" },
-  );
+  const basis = {
+    id: benutzer.id,
+    name: benutzer.name,
+    passwort,
+    statuses: benutzer.statuses,
+    beweise: benutzer.beweise,
+  };
+  let ergebnis = favoritenUnterstuetzt
+    ? await supabase.from("profile").upsert(
+        { ...basis, favoriten: benutzer.favoriten ?? {} },
+        { onConflict: "id" },
+      )
+    : await supabase.from("profile").upsert(basis, { onConflict: "id" });
+  if (
+    ergebnis.error &&
+    (ergebnis.error.code === "PGRST204" || ergebnis.error.code === "42703") &&
+    favoritenUnterstuetzt
+  ) {
+    favoritenUnterstuetzt = false;
+    ergebnis = await supabase.from("profile").upsert(basis, { onConflict: "id" });
+  }
+  const { error } = ergebnis;
   if (error) {
     if (error.code === "23505") {
       const sessionId = window.localStorage.getItem(SESSION_KEY);
@@ -236,17 +266,24 @@ export async function register(
     createdAt: Date.now(),
     statuses: {},
     beweise: {},
+    favoriten: {},
   };
   if (supabaseKonfiguriert()) {
     user.passwort = await hashPasswort(passwort);
     const supabase = getSupabase<ProfileDb>();
-    const { error } = await supabase!.from("profile").insert({
-      id: user.id,
-      name: user.name,
-      passwort: user.passwort,
-      statuses: {},
-      beweise: {},
-    });
+    const basis = { id: user.id, name: user.name, passwort: user.passwort, statuses: {}, beweise: {} };
+    let ergebnis = favoritenUnterstuetzt
+      ? await supabase!.from("profile").insert({ ...basis, favoriten: {} })
+      : await supabase!.from("profile").insert(basis);
+    if (
+      ergebnis.error &&
+      (ergebnis.error.code === "PGRST204" || ergebnis.error.code === "42703") &&
+      favoritenUnterstuetzt
+    ) {
+      favoritenUnterstuetzt = false;
+      ergebnis = await supabase!.from("profile").insert(basis);
+    }
+    const error = ergebnis.error;
     if (error) {
       if (error.code === "23505")
         return { ok: false, fehler: "Diesen Sammlernamen gibt es schon – versuch einen anderen." };
@@ -329,6 +366,17 @@ export function setBeweis(blattId: string, dataUrl: string | null) {
   if (!user) return;
   if (dataUrl === null) delete user.beweise[blattId];
   else user.beweise[blattId] = dataUrl;
+  saveUsers(users);
+  pushProfil(user);
+}
+
+export function setFavorit(blattId: string, istFavorit: boolean) {
+  const users = loadUsers();
+  const id = window.localStorage.getItem(SESSION_KEY);
+  const user = users.find((u) => u.id === id);
+  if (!user) return;
+  if (istFavorit) user.favoriten[blattId] = true;
+  else delete user.favoriten[blattId];
   saveUsers(users);
   pushProfil(user);
 }

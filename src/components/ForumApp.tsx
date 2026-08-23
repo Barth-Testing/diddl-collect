@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 
 export function ForumApp() {
   const [raum, setRaum] = useState<string>(RAUME[0].id);
-  const [version, setVersion] = useState(getChatVersion);
+  const [, setVersion] = useState(getChatVersion);
 
   useStoreVersion();
   const benutzer = getSession();
@@ -219,5 +219,12 @@ export function ForumApp() {
 }
 
 function formatiereZeit(zeit: number) {
-  return new Date(zeit).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+  const datum = new Date(zeit);
+  const uhrzeit = datum.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+  const jetzt = new Date();
+  const gleicherTag =
+    datum.getFullYear() === jetzt.getFullYear() &&
+    datum.getMonth() === jetzt.getMonth() &&
+    datum.getDate() === jetzt.getDate();
+  return gleicherTag ? uhrzeit : `${datum.toLocaleDateString("de-DE")} · ${uhrzeit}`;
 }

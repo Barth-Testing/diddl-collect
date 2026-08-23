@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Heart, Repeat2, Camera } from "lucide-react";
+import { Check, Heart, Repeat2, Camera, Star } from "lucide-react";
 import type { Blatt, Status } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { farbBadge, nameOderNummer } from "@/lib/blaetter";
@@ -11,16 +11,30 @@ type Props = {
   blatt: Blatt;
   status: Status | null;
   bewiesen?: boolean;
+  bildOverride?: string;
+  favorit?: boolean;
   aufToggle: (status: BlattAktion) => void;
   aufBild: () => void;
   aufBeweis?: () => void;
+  aufFavorit?: () => void;
 };
 
-export function BlattKarte({ blatt, status, bewiesen, aufToggle, aufBild, aufBeweis }: Props) {
+export function BlattKarte({
+  blatt,
+  status,
+  bewiesen,
+  bildOverride,
+  favorit,
+  aufToggle,
+  aufBild,
+  aufBeweis,
+  aufFavorit,
+}: Props) {
   return (
     <div
       className={cn(
-        "card-soft animate-pop flex flex-col overflow-hidden transition-transform hover:-translate-y-0.5",
+        "card-soft animate-pop relative flex flex-col overflow-hidden transition-transform hover:-translate-y-0.5",
+        favorit && "outline outline-[3px] outline-offset-2 outline-yellow-400",
         status === "own" && "ring-2 ring-candy-400",
         status === "wish" && "ring-2 ring-berry-300",
         status === "offer" && "ring-2 ring-peach-300",
@@ -32,7 +46,7 @@ export function BlattKarte({ blatt, status, bewiesen, aufToggle, aufBild, aufBew
         aria-label={`Motiv von ${nameOderNummer(blatt)} vergrößern`}
       >
         <img
-          src={blatt.bild}
+          src={bildOverride ?? blatt.bild}
           alt={nameOderNummer(blatt)}
           loading="lazy"
           className="absolute inset-0 h-full w-full object-contain p-2 transition-transform duration-300 group-hover:scale-105"
@@ -50,6 +64,11 @@ export function BlattKarte({ blatt, status, bewiesen, aufToggle, aufBild, aufBew
         {status === "offer" && (
           <span className="chip absolute left-2 top-2 bg-peach-400 px-2 py-0.5 text-white shadow-sm">
             <Repeat2 className="h-3 w-3" /> Tausch
+          </span>
+        )}
+        {favorit && (
+          <span className="chip absolute right-2 top-2 bg-yellow-400 px-1.5 py-0.5 text-white shadow-sm">
+            <Star className="h-3 w-3 fill-current" /> Top
           </span>
         )}
       </button>
@@ -99,17 +118,30 @@ export function BlattKarte({ blatt, status, bewiesen, aufToggle, aufBild, aufBew
               <Repeat2 className="h-3.5 w-3.5" />
             </Button>
           </div>
-          {aufBeweis && (
-            <Button
-              aktiv={!!bewiesen}
-              aktivCls="bg-mint-300 text-emerald-900 shadow-sm"
-              titel={bewiesen ? "Beweis vorhanden" : "Foto als Besitz-Beweis hochladen"}
-              aria="Besitz-Beweis hochladen"
-              onClick={aufBeweis}
-            >
-              <Camera className="h-3.5 w-3.5" />
-            </Button>
-          )}
+          <div className="flex gap-1">
+            {aufBeweis && (
+              <Button
+                aktiv={!!bewiesen}
+                aktivCls="bg-mint-300 text-emerald-900 shadow-sm"
+                titel={bewiesen ? "Beweis vorhanden" : "Foto als Besitz-Beweis hochladen"}
+                aria="Besitz-Beweis hochladen"
+                onClick={aufBeweis}
+              >
+                <Camera className="h-3.5 w-3.5" />
+              </Button>
+            )}
+            {aufFavorit && (
+              <Button
+                aktiv={!!favorit}
+                aktivCls="bg-yellow-400 text-white shadow-sm"
+                titel={favorit ? "Von den Top-Favoriten entfernen" : "Zu den Top-Favoriten hinzufügen"}
+                aria={`${nameOderNummer(blatt)}: Als Top-Favorit markieren oder entfernen`}
+                onClick={aufFavorit}
+              >
+                <Star className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </div>

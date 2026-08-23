@@ -86,7 +86,12 @@ export function RangApp() {
                     )}
                   </td>
                   <td className="px-4 py-2.5 font-bold text-ink-800">
-                    {e.benutzer.name}
+                    <Link
+                      href={`/sammler?name=${encodeURIComponent(e.benutzer.name)}`}
+                      className="hover:text-candy-600 hover:underline"
+                    >
+                      {e.benutzer.name}
+                    </Link>
                     {istIch && <span className="chip ml-2 bg-candy-500 px-1.5 py-0.5 text-white">Du</span>}
                   </td>
                   <td className="px-4 py-2.5 text-center">

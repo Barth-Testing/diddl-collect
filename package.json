@@ -8,7 +8,8 @@
     "postbuild": "node scripts/build-sw.mjs",
     "start": "next start",
     "lint": "eslint",
-    "fetch:katalog": "node scripts/fetch-katalog.mjs"
+    "fetch:katalog": "node scripts/fetch-katalog.mjs",
+    "fetch:sammelverzeichnis": "node scripts/fetch-sammelverzeichnis.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",
@@ -22,11 +23,13 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/pngjs": "^6.0.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.0",
     "jpeg-js": "^0.4.4",
+    "pngjs": "^7.0.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

@@ -32,3 +32,52 @@ export function farbBadge(farbe: string) {
 export function nameOderNummer(blatt: Blatt) {
   return blatt.name ?? `Blatt Nr. ${blatt.nummer}`;
 }
+
+export type SammlungSortierung =
+  | "id"
+  | "nummer"
+  | "name"
+  | "jahr-auf"
+  | "jahr-ab"
+  | "groesse"
+  | "farbe"
+  | "zuletzt";
+
+export function sortiereSammlung<T extends { blatt: Blatt }>(liste: T[], modus: SammlungSortierung): T[] {
+  const sortiert = [...liste];
+  const nachId = (a: T, b: T) => a.blatt.id.localeCompare(b.blatt.id);
+  switch (modus) {
+    case "zuletzt":
+      return sortiert;
+    case "nummer":
+      sortiert.sort((a, b) => a.blatt.nummer - b.blatt.nummer || nachId(a, b));
+      break;
+    case "name":
+      sortiert.sort((a, b) =>
+        (a.blatt.name ?? `zzz${a.blatt.nummer}`).localeCompare(b.blatt.name ?? `zzz${b.blatt.nummer}`),
+      );
+      break;
+    case "jahr-auf":
+      sortiert.sort((a, b) => a.blatt.jahr - b.blatt.jahr || a.blatt.nummer - b.blatt.nummer || nachId(a, b));
+      break;
+    case "jahr-ab":
+      sortiert.sort((a, b) => b.blatt.jahr - a.blatt.jahr || a.blatt.nummer - b.blatt.nummer || nachId(a, b));
+      break;
+    case "groesse": {
+      const groesseIndex = (g: string) => (g === "Din A4" ? 0 : g === "Din A5" ? 1 : 2);
+      sortiert.sort((a, b) => groesseIndex(a.blatt.groesse) - groesseIndex(b.blatt.groesse) || nachId(a, b));
+      break;
+    }
+    case "farbe": {
+      const farbIndex = (f: string) => {
+        const i = FARBREIHENFOLGE.indexOf(f as (typeof FARBREIHENFOLGE)[number]);
+        return i === -1 ? 99 : i;
+      };
+      sortiert.sort((a, b) => farbIndex(a.blatt.farbe) - farbIndex(b.blatt.farbe) || nachId(a, b));
+      break;
+    }
+    default:
+      sortiert.sort(nachId);
+  }
+  return sortiert;
+}

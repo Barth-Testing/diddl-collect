@@ -1,13 +1,16 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { Check, Egg, Heart, LogIn, PartyPopper, Repeat2, ShieldCheck, Trash2, UserPlus } from "lucide-react";
-import { BLAETTER_NACH_ID, nameOderNummer } from "@/lib/blaetter";
-import { getSession, login, logout, register, setBeweis, setStatus, zaehle } from "@/lib/store";
-import type { Benutzer } from "@/lib/types";
+import { ArrowDownUp, Check, Camera, Egg, Heart, Images, LogIn, PartyPopper, Repeat2, ShieldCheck, Trash2, UserPlus } from "lucide-react";
+import { BLAETTER_NACH_ID, nameOderNummer, sortiereSammlung, type SammlungSortierung } from "@/lib/blaetter";
+import { getSession, login, logout, register, setBeweis, setFavorit, setStatus, zaehle } from "@/lib/store";
+import type { Blatt } from "@/lib/types";
 import { useStoreVersion } from "@/lib/useStoreVersion";
 import { BlattKarte } from "./BlattKarte";
 import { Lupe } from "./Lupe";
+import { Punkte } from "./Punkte";
+import { SammlerKarussell } from "./SammlerKarussell";
+import { SelectBasis } from "./SelectBasis";
 import { cn } from "@/lib/utils";
 
 type Tab = "sammlung" | "wunsch" | "tausch" | "beweise";
@@ -20,6 +23,9 @@ export function KontoApp() {
   const [fehler, setFehler] = useState<{ login?: string; register?: string }>({});
   const [lupe, setLupe] = useState<string | null>(null);
   const [nurUnbewiesen, setNurUnbewiesen] = useState(false);
+  const [sortierung, setSortierung] = useState<SammlungSortierung>("id");
+  const [bilderQuelle, setBilderQuelle] = useState<"vorlagen" | "beweise">("vorlagen");
+  const [karussellAn, setKarussellAn] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const pendingBeweis = useRef<string | null>(null);
 
@@ -27,17 +33,22 @@ export function KontoApp() {
 
   const listeAb: Array<{ id: string; status: "own" | "wish" | "offer" }> = useMemo(() => {
     if (!benutzer) return [];
-    const ids = Object.keys(benutzer.statuses).filter((id) => {
-      const s = benutzer.statuses[id];
-      const gewuenscht = tab === "sammlung" ? s === "own" : tab === "wunsch" ? s === "wish" : s === "offer";
-      if (!gewuenscht) return false;
-      if (nurUnbewiesen && tab === "sammlung" && benutzer.beweise[id]) return false;
-      return true;
-    });
-    return ids.map((id) => ({ id, status: benutzer.statuses[id] }));
-  }, [benutzer, tab, nurUnbewiesen]);
-
-  const blattZuId = (id: string) => BLAETTER_NACH_ID.get(id);
+    const eintraege = Object.keys(benutzer.statuses)
+      .filter((id) => {
+        const s = benutzer.statuses[id];
+        const gewuenscht = tab === "sammlung" ? s === "own" : tab === "wunsch" ? s === "wish" : s === "offer";
+        if (!gewuenscht) return false;
+        if (nurUnbewiesen && tab === "sammlung" && benutzer.beweise[id]) return false;
+        return true;
+      })
+      .map((id) => ({ id, status: benutzer.statuses[id], blatt: BLAETTER_NACH_ID.get(id) }))
+      .filter((e): e is { id: string; status: "own" | "wish" | "offer"; blatt: Blatt } => e.blatt !== undefined);
+    const gefiltert =
+      bilderQuelle === "beweise" && tab === "sammlung"
+        ? eintraege.filter((e) => benutzer.beweise[e.id])
+        : eintraege;
+    return sortiereSammlung(gefiltert, sortierung).map(({ id, status }) => ({ id, status }));
+  }, [benutzer, tab, nurUnbewiesen, sortierung, bilderQuelle]);
 
   function anmeldenOderRegistrieren(modus: "login" | "register", form: HTMLFormElement) {
     const name = form.querySelector<HTMLInputElement>("input[data-name]")?.value ?? "";
@@ -156,6 +167,7 @@ export function KontoApp() {
   }
 
   const lupeBlatt = lupe ? BLAETTER_NACH_ID.get(lupe) : undefined;
+  const hatBeweise = Object.keys(benutzer.beweise).length > 0;
 
   return (
     <div className="mt-6 space-y-5">
@@ -287,6 +299,82 @@ export function KontoApp() {
         </div>
       ) : (
         <>
+          <div className="card-soft flex flex-wrap items-center gap-x-5 gap-y-3 p-4">
+            <div className="flex items-center gap-2">
+              <span className="flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-ink-600">
+                <ArrowDownUp className="h-3.5 w-3.5" /> Sortieren
+              </span>
+              <SelectBasis
+                value={sortierung}
+                onChange={(v) => setSortierung(v as SammlungSortierung)}
+                optionen={[
+                  ["id", "Nummer (A4–A6)"],
+                  ["nummer", "Blattnummer"],
+                  ["name", "Motiv (A–Z)"],
+                  ["jahr-auf", "Jahr (alt → neu)"],
+                  ["jahr-ab", "Jahr (neu → alt)"],
+                  ["groesse", "Größe"],
+                  ["farbe", "Farbe"],
+                  ["zuletzt", "Zuletzt hinzugefügt"],
+                ]}
+              />
+            </div>
+            {tab === "sammlung" && (
+              <>
+                <div className="flex items-center gap-2">
+                  <span className="flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-ink-600">
+                    <Camera className="h-3.5 w-3.5" /> Bilder
+                  </span>
+                  <div className="flex overflow-hidden rounded-full ring-1 ring-cream-300">
+                    <button
+                      type="button"
+                      onClick={() => setBilderQuelle("vorlagen")}
+                      aria-pressed={bilderQuelle === "vorlagen"}
+                      className={cn(
+                        "px-3 py-1.5 text-sm font-bold transition-colors",
+                        bilderQuelle === "vorlagen"
+                          ? "bg-emerald-600 text-white shadow-sm"
+                          : "bg-white text-ink-600 hover:bg-mint-100",
+                      )}
+                    >
+                      Vorlagen
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBilderQuelle("beweise")}
+                      disabled={!hatBeweise}
+                      title={hatBeweise ? undefined : "Erst Foto-Beweise hochladen"}
+                      aria-pressed={bilderQuelle === "beweise"}
+                      className={cn(
+                        "px-3 py-1.5 text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+                        bilderQuelle === "beweise"
+                          ? "bg-emerald-600 text-white shadow-sm"
+                          : "bg-white text-ink-600 hover:bg-mint-100",
+                      )}
+                    >
+                      Beweisfotos
+                    </button>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setKarussellAn(!karussellAn)}
+                  aria-pressed={karussellAn}
+                  className={cn(
+                    "ml-auto flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold transition-all",
+                    karussellAn
+                      ? "bg-candy-500 text-white shadow-md shadow-candy-300/50"
+                      : "bg-white text-ink-700 ring-1 ring-cream-300 hover:ring-candy-300",
+                  )}
+                >
+                  <Images className="h-4 w-4" /> Karussell
+                </button>
+              </>
+            )}
+          </div>
+          {karussellAn && tab === "sammlung" && (
+            <SammlerKarussell benutzer={benutzer} titel="Deine Lieblingsblätter" />
+          )}
           {listeAb.length === 0 && (
             <div className="card-soft flex flex-col items-center gap-2 p-10 text-center text-ink-600">
               <Egg className="h-8 w-8 text-candy-300" />
@@ -299,7 +387,7 @@ export function KontoApp() {
           )}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5">
             {listeAb.map(({ id, status }) => {
-              const b = blattZuId(id);
+              const b = BLAETTER_NACH_ID.get(id);
               if (!b) return null;
               return (
                 <BlattKarte
@@ -307,11 +395,13 @@ export function KontoApp() {
                   blatt={b}
                   status={status}
                   bewiesen={!!benutzer.beweise[id]}
+                  favorit={!!benutzer.favoriten?.[id]}
                   aufToggle={(s) => {
                     setStatus(id, s);
                   }}
                   aufBild={() => setLupe(id)}
                   aufBeweis={() => hochladenStarten(id)}
+                  aufFavorit={() => setFavorit(id, !benutzer.favoriten?.[id])}
                 />
               );
             })}
@@ -342,15 +432,6 @@ export function KontoApp() {
           }}
         />
       )}
-    </div>
-  );
-}
-
-function Punkte({ label, wert, farbe }: { label: string; wert: number; farbe: string }) {
-  return (
-    <div className="rounded-2xl bg-cream-50 px-3 py-2 text-center ring-1 ring-cream-200">
-      <p className={cn("font-display text-xl font-bold", farbe)}>{wert}</p>
-      <p className="text-[10px] font-bold uppercase tracking-wide text-ink-600">{label}</p>
     </div>
   );
 }
