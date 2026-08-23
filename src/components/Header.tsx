@@ -2,53 +2,55 @@ import Link from "next/link";
 import { HeartHandshake, LayoutGrid, MessagesSquare, PawPrint, ShoppingBag, Trophy } from "lucide-react";
 import { MausKlein } from "./MausMotto";
 import { HeaderBenutzer } from "./HeaderBenutzer";
+import { AppInstallieren } from "./AppInstallieren";
 
 export function Header() {
   return (
     <header className="sticky top-0 z-40 border-b border-candy-100 bg-white/80 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4">
-        <Link href="/" className="flex items-center gap-2 text-ink-800 hover:opacity-80">
-          <MausKlein className="h-10 w-10" />
-          <span className="font-display text-xl font-bold tracking-tight">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-2 px-3 sm:px-4">
+        <Link href="/" className="flex shrink-0 items-center gap-2 text-ink-800 hover:opacity-80">
+          <MausKlein className="h-9 w-9 sm:h-10 sm:w-10" />
+          <span className="font-display hidden text-xl font-bold tracking-tight sm:inline">
             Knuddel<span className="text-candy-500">blätter</span>
           </span>
         </Link>
-        <nav className="flex items-center gap-1 sm:gap-2">
+        <nav className="flex items-center gap-0.5 sm:gap-2">
           <Link
             href="/katalog"
-            className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-bold text-ink-700 hover:bg-candy-100"
+            className="flex items-center gap-1.5 rounded-full px-2 py-2 text-sm font-bold text-ink-700 hover:bg-candy-100 sm:px-3"
           >
             <LayoutGrid className="h-4 w-4" />
             <span className="hidden sm:inline">Katalog</span>
           </Link>
           <Link
             href="/rangliste"
-            className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-bold text-ink-700 hover:bg-candy-100"
+            className="flex items-center gap-1.5 rounded-full px-2 py-2 text-sm font-bold text-ink-700 hover:bg-candy-100 sm:px-3"
           >
             <Trophy className="h-4 w-4" />
             <span className="hidden sm:inline">Rangliste</span>
           </Link>
           <Link
             href="/forum"
-            className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-bold text-ink-700 hover:bg-candy-100"
+            className="flex items-center gap-1.5 rounded-full px-2 py-2 text-sm font-bold text-ink-700 hover:bg-candy-100 sm:px-3"
           >
             <MessagesSquare className="h-4 w-4" />
             <span className="hidden sm:inline">Forum</span>
           </Link>
           <Link
             href="/konto"
-            className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-bold text-candy-600 hover:bg-candy-100"
+            className="flex items-center gap-1.5 rounded-full px-2 py-2 text-sm font-bold text-candy-600 hover:bg-candy-100 sm:px-3"
           >
             <HeartHandshake className="h-4 w-4" />
             <span className="hidden sm:inline">Meine Sammlung</span>
           </Link>
           <Link
             href="/shop"
-            className="flex items-center gap-1.5 rounded-full bg-peach-100 px-3 py-2 text-sm font-bold text-peach-500 hover:bg-peach-200"
+            className="flex items-center gap-1.5 rounded-full bg-peach-100 px-2 py-2 text-sm font-bold text-peach-500 hover:bg-peach-200 sm:px-3"
           >
             <ShoppingBag className="h-4 w-4" />
             <span className="hidden sm:inline">Shop</span>
           </Link>
+          <AppInstallieren className="flex items-center gap-1.5 rounded-full bg-mint-200 px-2 py-2 text-sm font-bold text-emerald-800 hover:bg-mint-300 sm:px-3" />
           <HeaderBenutzer />
         </nav>
       </div>

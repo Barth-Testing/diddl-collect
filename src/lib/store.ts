@@ -399,30 +399,32 @@ export type RangEintrag = {
   wish: number;
   offer: number;
   beweise: number;
+  punkte: number;
   freigeschaltet: boolean;
   rang: number;
 };
 
 /**
- * Rangliste: Wer mehr als 100 eigene Blätter hat, braucht dafür bewiesene
- * Stücke (Foto-Upload), sonst bleibt der Platz hinter Rang 100.
+ * Rangliste: Wer mehr als 100 eigene Blätter hat, aber weniger als 100 davon
+ * per Foto belegt, wird vorläufig mit 100 Punkten gewertet und normal im
+ * Feld mitgereiht. Erst ab 100 Beweisen zählen alle Punkte.
  */
 export function berechneRangliste(): RangEintrag[] {
   starteSync();
   const users = loadUsers()
     .map((u) => ({ benutzer: u, ...zaehle(u) }))
-    .sort((a, b) => b.own - a.own || a.benutzer.name.localeCompare(b.benutzer.name));
-  const freigeschaltet: RangEintrag[] = [];
-  const blockiert: RangEintrag[] = [];
-  users.forEach((u) => {
-    const frei = u.own <= 100 || u.beweise >= 100;
-    const eintrag: RangEintrag = {
-      ...u,
-      freigeschaltet: frei,
+    .map((u) => ({ ...u, punkte: u.own > 100 && u.beweise < 100 ? 100 : u.own }))
+    .sort((a, b) => b.punkte - a.punkte || a.benutzer.name.localeCompare(b.benutzer.name));
+  return users
+    .map((u) => ({
+      benutzer: u.benutzer,
+      own: u.own,
+      wish: u.wish,
+      offer: u.offer,
+      beweise: u.beweise,
+      punkte: u.punkte,
+      freigeschaltet: u.own <= 100 || u.beweise >= 100,
       rang: 0,
-    };
-    if (frei) freigeschaltet.push(eintrag);
-    else blockiert.push(eintrag);
-  });
-  return [...freigeschaltet, ...blockiert].map((e, i) => ({ ...e, rang: i + 1 }));
+    }))
+    .map((e, i) => ({ ...e, rang: i + 1 }));
 }

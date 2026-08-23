@@ -227,8 +227,9 @@ export function KontoApp() {
         <div className="animate-pop card-soft flex items-center gap-3 border-peach-300 bg-peach-50 px-4 py-3 text-sm font-semibold text-ink-800">
           <ShieldCheck className="h-5 w-5 shrink-0 text-peach-500" />
           <span>
-            Du hast {z.own} Blätter angesetzt, aber nur {z.beweise} Foto-Beweise hochgeladen. Für
-            Plätze über Rang 100 brauchst du mindestens 100 bewiesene Blätter.
+            Du hast {z.own} Blätter angesetzt, aber nur {z.beweise} Foto-Beweise hochgeladen.
+            Aktuell wirst du mit 100 Punkten gewertet – ab 100 Beweisen zählen alle deine Blätter
+            für die Rangliste.
           </span>
           <label className="ml-auto flex shrink-0 items-center gap-1.5 text-xs font-bold text-candy-600">
             <input

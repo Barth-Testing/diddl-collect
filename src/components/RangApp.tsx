@@ -12,7 +12,6 @@ export function RangApp() {
   const eintraege = berechneRangliste();
 
   const meinEintrag = benutzer ? eintraege.find((e) => e.benutzer.id === benutzer.id) : null;
-  const ersteBlockadeIndex = eintraege.findIndex((e) => !e.freigeschaltet);
 
   return (
     <div className="mt-6 space-y-4">
@@ -27,8 +26,9 @@ export function RangApp() {
             </span>
           ) : (
             <span>
-              Du hast {meinEintrag.own} Punkte, aber nur {meinEintrag.beweise} Beweise – für Plätze
-              über Rang 100 brauchst du 100 bewiesene Blätter.
+              Du hast {meinEintrag.own} Blätter und wirst vorläufig mit{" "}
+              <span className="text-candy-600">100 Punkten</span> auf Platz {meinEintrag.rang}
+              gewertet – ab {100 - meinEintrag.beweise} weiteren Beweisen zählen alle deine Punkte.
             </span>
           )}
           <Link href="/konto" className="ml-auto shrink-0 rounded-full bg-candy-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-candy-600">
@@ -95,7 +95,19 @@ export function RangApp() {
                     {istIch && <span className="chip ml-2 bg-candy-500 px-1.5 py-0.5 text-white">Du</span>}
                   </td>
                   <td className="px-4 py-2.5 text-center">
-                    <span className="font-display font-bold text-candy-600">{e.own}</span>
+                    <span
+                      className={cn(
+                        "font-display font-bold",
+                        e.freigeschaltet ? "text-candy-600" : "text-peach-500",
+                      )}
+                      title={
+                        e.freigeschaltet
+                          ? undefined
+                          : "Vorläufig auf 100 Punkte begrenzt – 100 Beweise nötig"
+                      }
+                    >
+                      {e.punkte}
+                    </span>
                   </td>
                   <td className="px-4 py-2.5 text-center">{e.wish}</td>
                   <td className="px-4 py-2.5 text-center">{e.offer}</td>
@@ -119,16 +131,14 @@ export function RangApp() {
         </table>
       </div>
 
-      {ersteBlockadeIndex > -1 && (
-        <div className="card-soft flex items-center gap-3 border-peach-300 bg-peach-50 px-4 py-3 text-sm font-semibold text-ink-800">
-          <ShieldAlert className="h-5 w-5 shrink-0 text-peach-500" />
-          <span>
-            Ab hier (Rang {ersteBlockadeIndex + 1}) warten Sammler mit über 100 Blättern, die ihre
-            Beweise noch nicht beigebracht haben. Sobald sie 100 Blätter per Foto belegen, rücken
-            sie nach oben – ohne Schummel-Ehren.
-          </span>
-        </div>
-      )}
+      <div className="card-soft flex items-center gap-3 border-peach-300 bg-peach-50 px-4 py-3 text-sm font-semibold text-ink-800">
+        <ShieldAlert className="h-5 w-5 shrink-0 text-peach-500" />
+        <span>
+          Mehr als 100 Blätter ohne Nachweis? Diese Sammlungen zählen vorläufig mit genau 100
+          Punkten und stehen ganz normal im Feld. Ab 100 hochgeladenen Foto-Beweisen zählen alle
+          Punkte – so bleiben die Plätze ehrlich.
+        </span>
+      </div>
 
       <p className="text-center text-xs text-ink-600">
         Hier zählt nur dein eigenes Konto – deine Daten sind sicher gespeichert und auf jedem Gerät da.
