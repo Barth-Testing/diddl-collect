@@ -10,6 +10,7 @@ type NewsReihe = {
   text: string;
   erstellt_am: string;
   bild?: string | null;
+  bild2?: string | null;
 };
 
 type ProfilReihe = {
@@ -67,16 +68,22 @@ export function Neuigkeiten() {
       const ladeNews = async () => {
         const erste = await supabase
           .from("news")
-          .select("id, titel, text, erstellt_am, bild")
+          .select("id, titel, text, erstellt_am, bild, bild2")
           .order("erstellt_am", { ascending: false })
           .limit(5);
         if (!erste.error && erste.data) return erste.data;
         const zweite = await supabase
           .from("news")
-          .select("id, titel, text, erstellt_am")
+          .select("id, titel, text, erstellt_am, bild")
           .order("erstellt_am", { ascending: false })
           .limit(5);
         if (!zweite.error && zweite.data) return zweite.data;
+        const dritte = await supabase
+          .from("news")
+          .select("id, titel, text, erstellt_am")
+          .order("erstellt_am", { ascending: false })
+          .limit(5);
+        if (!dritte.error && dritte.data) return dritte.data;
         return [];
       };
       const [newsListe, profilErgebnis] = await Promise.all([
@@ -172,13 +179,25 @@ export function Neuigkeiten() {
                 <p className="text-xs font-semibold text-ink-600">{formatiereDatum(n.erstellt_am)}</p>
               </div>
               <p className="mt-1 whitespace-pre-wrap text-sm text-ink-600">{n.text}</p>
-              {n.bild && (
-                <img
-                  src={n.bild}
-                  alt={n.titel}
-                  loading="lazy"
-                  className="mt-3 max-h-96 w-full rounded-xl object-contain ring-1 ring-cream-200"
-                />
+              {(n.bild || n.bild2) && (
+                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {n.bild && (
+                    <img
+                      src={n.bild}
+                      alt={n.titel}
+                      loading="lazy"
+                      className="max-h-96 w-full rounded-xl object-contain ring-1 ring-cream-200"
+                    />
+                  )}
+                  {n.bild2 && (
+                    <img
+                      src={n.bild2}
+                      alt={`${n.titel} (2)`}
+                      loading="lazy"
+                      className="max-h-96 w-full rounded-xl object-contain ring-1 ring-cream-200"
+                    />
+                  )}
+                </div>
               )}
             </div>
           ))
