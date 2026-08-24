@@ -4,6 +4,26 @@
   "generatedAt": "2026-08-21T12:00:00.000Z",
   "products": [
     {
+      "asin": "B0cnk3JHR",
+      "title": "30 Pack 120 Taschen A4 Foto Hüllen für A4",
+      "price": 11.99,
+      "currency": "EUR",
+      "imageUrl": "https://m.media-amazon.com/images/I/617apB8Y09L._AC_SL1500_.jpg",
+      "rating": null,
+      "reviews": null,
+      "affiliateUrl": "https://www.amazon.de/dp/B0cnk3JHR?tag=gamerparktv-21"
+    },
+    {
+      "asin": "B04Wd54Ci",
+      "title": "120 Pack 960 Taschen A5 Blätter",
+      "price": 25.99,
+      "currency": "EUR",
+      "imageUrl": "",
+      "rating": null,
+      "reviews": null,
+      "affiliateUrl": "https://www.amazon.de/dp/B04Wd54Ci?tag=gamerparktv-21"
+    },
+    {
       "asin": "383323346X",
       "title": "Diddl: Meine Freunde",
       "price": 9.99,
@@ -29,7 +49,7 @@
       "price": 14.99,
       "currency": "EUR",
       "imageUrl": "https://m.media-amazon.com/images/I/81mtlVjU18L._AC_SL500_.jpg",
-      "rating": 5.0,
+      "rating": 5,
       "reviews": 3,
       "affiliateUrl": "https://www.amazon.de/dp/3735883265?tag=gamerparktv-21"
     },
@@ -39,7 +59,7 @@
       "price": 12.99,
       "currency": "EUR",
       "imageUrl": "https://m.media-amazon.com/images/I/81wKrBRGslL._AC_SL500_.jpg",
-      "rating": 5.0,
+      "rating": 5,
       "reviews": 13,
       "affiliateUrl": "https://www.amazon.de/dp/3735883303?tag=gamerparktv-21"
     },
@@ -49,7 +69,7 @@
       "price": 12.99,
       "currency": "EUR",
       "imageUrl": "https://m.media-amazon.com/images/I/715oFrYurGL._AC_SL500_.jpg",
-      "rating": 5.0,
+      "rating": 5,
       "reviews": 1,
       "affiliateUrl": "https://www.amazon.de/dp/3735883575?tag=gamerparktv-21"
     },
@@ -62,16 +82,6 @@
       "rating": 4.5,
       "reviews": 12,
       "affiliateUrl": "https://www.amazon.de/dp/3735883389?tag=gamerparktv-21"
-    },
-    {
-      "asin": "B0cnk3JHR",
-      "title": "30 Pack 120 Taschen A4 Foto Hüllen für A4",
-      "price": 11.99,
-      "currency": "EUR",
-      "imageUrl": "https://m.media-amazon.com/images/I/617apB8Y09L._AC_SL1500_.jpg",
-      "rating": null,
-      "reviews": null,
-      "affiliateUrl": "https://www.amazon.de/dp/B0cnk3JHR?tag=gamerparktv-21"
     }
   ]
 }

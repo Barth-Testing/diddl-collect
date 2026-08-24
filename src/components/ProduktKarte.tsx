@@ -13,12 +13,18 @@ export function ProduktKarte({ produkt }: { produkt: Produkt }) {
       >
         <div className="relative aspect-square overflow-hidden bg-white p-4">
           {/* eslint-disable-next-line @next/next/no-img-element -- static export: remote Amazon images, no next/image loader */}
-          <img
-            src={produkt.imageUrl}
-            alt={produkt.title}
-            loading="lazy"
-            className="size-full object-contain transition-transform duration-300 group-hover:scale-105"
-          />
+          {produkt.imageUrl ? (
+            <img
+              src={produkt.imageUrl}
+              alt={produkt.title}
+              loading="lazy"
+              className="size-full object-contain transition-transform duration-300 group-hover:scale-105"
+            />
+          ) : (
+            <div className="flex size-full items-center justify-center rounded-2xl bg-cream-100 text-cream-400">
+              <ShoppingBag className="size-14" strokeWidth={1.5} />
+            </div>
+          )}
         </div>
         <div className="flex flex-1 flex-col gap-2 p-4">
           <h3 className="font-display line-clamp-2 min-h-[2.5rem] text-sm font-bold text-ink-800">
