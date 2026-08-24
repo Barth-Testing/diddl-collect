@@ -21,42 +21,42 @@ export function Header() {
             className="flex shrink-0 items-center gap-1.5 rounded-full px-2 py-2 text-sm font-bold text-ink-700 hover:bg-candy-100 sm:px-3"
           >
             <LayoutGrid className="h-4 w-4" />
-            <<span className="hidden lg:inline">Katalog</span>
+            <span className="hidden lg:inline">Katalog</span>
           </Link>
           <Link
             href="/rangliste"
             className="flex shrink-0 items-center gap-1.5 rounded-full px-2 py-2 text-sm font-bold text-ink-700 hover:bg-candy-100 sm:px-3"
           >
             <Trophy className="h-4 w-4" />
-            <<span className="hidden lg:inline">Rangliste</span>
+            <span className="hidden lg:inline">Rangliste</span>
           </Link>
           <Link
             href="/forum"
             className="flex shrink-0 items-center gap-1.5 rounded-full px-1.5 py-2 text-sm font-bold text-ink-700 hover:bg-candy-100 sm:px-3"
           >
             <MessagesSquare className="h-4 w-4" />
-            <<span className="hidden lg:inline">Forum</span>
+            <span className="hidden lg:inline">Forum</span>
           </Link>
           <Link
             href="/tausch"
             className="flex shrink-0 items-center gap-1.5 rounded-full px-1.5 py-2 text-sm font-bold text-ink-700 hover:bg-candy-100 sm:px-3"
           >
             <ArrowLeftRight className="h-4 w-4" />
-            <<span className="hidden lg:inline">Tauschbörse</span>
+            <span className="hidden lg:inline">Tauschbörse</span>
           </Link>
           <Link
             href="/konto"
             className="flex shrink-0 items-center gap-1.5 rounded-full px-1.5 py-2 text-sm font-bold text-candy-600 hover:bg-candy-100 sm:px-3"
           >
             <HeartHandshake className="h-4 w-4" />
-            <<span className="hidden lg:inline">Meine Sammlung</span>
+            <span className="hidden lg:inline">Meine Sammlung</span>
           </Link>
           <Link
             href="/shop"
             className="flex shrink-0 items-center gap-1.5 rounded-full bg-peach-100 px-1.5 py-2 text-sm font-bold text-peach-500 hover:bg-peach-200 sm:px-3"
           >
             <ShoppingBag className="h-4 w-4" />
-            <<span className="hidden lg:inline">Shop</span>
+            <span className="hidden lg:inline">Shop</span>
           </Link>
           <AppInstallieren className="flex shrink-0 items-center gap-1.5 rounded-full bg-mint-200 px-1.5 py-2 text-sm font-bold text-emerald-800 hover:bg-mint-300 sm:px-3" />
           <PostfachLink />
