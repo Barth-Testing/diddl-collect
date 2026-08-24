@@ -6,7 +6,7 @@ import { ArrowLeftRight, Lock } from "lucide-react";
 import { BLAETTER_NACH_ID, nameOderNummer } from "@/lib/blaetter";
 import { getSession } from "@/lib/store";
 import { useStoreVersion } from "@/lib/useStoreVersion";
-import { alleAngebote, subscribeTausch, tauschBereit, tauschKonfiguriert, verbindeTausch } from "@/lib/tausch";
+import { alleAngebote, subscribeTausch, tauschBereit, tauschFehlt, tauschKonfiguriert, verbindeTausch } from "@/lib/tausch";
 import { TauschDialog } from "./TauschDialog";
 
 function formatBetrag(wert: number | null) {
@@ -58,6 +58,13 @@ export function TauschboerseApp() {
   }
   if (!tauschKonfiguriert()) {
     return <p className="card-soft p-5 text-sm font-semibold text-ink-600">Die Tauschbörse ist noch nicht eingerichtet.</p>;
+  }
+  if (tauschFehlt()) {
+    return (
+      <p className="card-soft p-5 text-sm font-semibold text-ink-600">
+        Die Tauschbörse startet in Kürze – sobald die neue Datenbank-Struktur angelegt ist.
+      </p>
+    );
   }
   if (!tauschBereit()) {
     return (

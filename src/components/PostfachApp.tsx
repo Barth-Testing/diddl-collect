@@ -14,6 +14,7 @@ import {
   setzeAngebotStatus,
   subscribeTausch,
   tauschBereit,
+  tauschFehlt,
   tauschKonfiguriert,
   verbindeTausch,
   type TauschAngebot,
@@ -97,6 +98,13 @@ export function PostfachApp() {
   }
   if (!tauschKonfiguriert()) {
     return <p className="card-soft p-5 text-sm font-semibold text-ink-600">Das Tausch-Postfach ist noch nicht eingerichtet.</p>;
+  }
+  if (tauschFehlt()) {
+    return (
+      <p className="card-soft p-5 text-sm font-semibold text-ink-600">
+        Das Tausch-Postfach startet in Kürze – sobald die neue Datenbank-Struktur angelegt ist.
+      </p>
+    );
   }
   if (!tauschBereit()) {
     return (

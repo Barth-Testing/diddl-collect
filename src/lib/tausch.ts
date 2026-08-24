@@ -97,9 +97,14 @@ export function tauschKonfiguriert() {
 }
 
 let tabellenBereit = false;
+let tabellenFehlend = false;
 
 export function tauschBereit() {
   return tabellenBereit;
+}
+
+export function tauschFehlt() {
+  return tabellenFehlend;
 }
 
 let version = 0;
@@ -213,8 +218,15 @@ async function ladeAlles(supabase: ReturnType<typeof getSupabase<Db>>): Promise<
       .order("id", { ascending: false })
       .limit(MAX_POST),
   ]);
-  if ((a.error || !a.data) && (p.error || !p.data)) return false;
+  if ((a.error || !a.data) && (p.error || !p.data)) {
+    const schemaFehlend =
+      (a.error?.code === "PGRST205" || a.error?.code === "42703") &&
+      (p.error?.code === "PGRST205" || p.error?.code === "42703");
+    if (schemaFehlend) tabellenFehlend = true;
+    return false;
+  }
   tabellenBereit = true;
+  tabellenFehlend = false;
   const cache = ladeCache();
   if (!a.error && a.data) {
     const bekannt = new Map(cache.angebote.map((x) => [x.id, x]));
