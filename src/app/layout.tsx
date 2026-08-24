@@ -3,6 +3,7 @@ import { Nunito, Quicksand } from "next/font/google";
 import Script from "next/script";
 import { Header, Footer } from "@/components/Header";
 import { PwaRegistrierung } from "@/components/PwaRegistrierung";
+import { SpendeButton } from "@/components/SpendeButton";
 import "./globals.css";
 
 const nunito = Nunito({
@@ -80,6 +81,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Header />
         {children}
         <Footer />
+        <SpendeButton />
         <PwaRegistrierung />
         <script
           type="application/ld+json"
