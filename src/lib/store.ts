@@ -1,4 +1,4 @@
-import type { Benutzer, Status } from "./types";
+import type { Benutzer, Status, TauschInfo } from "./types";
 import { getSupabase, hashPasswort, istHash, supabaseKonfiguriert } from "./supabase";
 
 const USERS_KEY = "diddlcollect:benutzer";
@@ -20,6 +20,7 @@ type ProfileRow = {
   statuses: Record<string, Status> | null;
   beweise: Record<string, string> | null;
   favoriten?: Record<string, boolean> | null;
+  tausch?: Record<string, TauschInfo> | null;
 };
 
 type ProfileDb = {
@@ -34,6 +35,7 @@ type ProfileDb = {
           statuses: Record<string, Status>;
           beweise: Record<string, string>;
           favoriten?: Record<string, boolean>;
+          tausch?: Record<string, TauschInfo>;
         };
         Update: Partial<ProfileRow>;
         Relationships: [];
@@ -82,7 +84,7 @@ function loadUsers(): Benutzer[] {
     const users = JSON.parse(raw) as Array<Benutzer & { demo?: boolean }>;
     const ohneDemo = users.filter((u) => !u.demo);
     if (ohneDemo.length !== users.length) saveUsers(ohneDemo);
-    return ohneDemo.map((u) => ({ ...u, favoriten: u.favoriten ?? {} })) as Benutzer[];
+    return ohneDemo.map((u) => ({ ...u, favoriten: u.favoriten ?? {}, tausch: u.tausch ?? {} })) as Benutzer[];
   } catch {
     return [];
   }
@@ -102,6 +104,7 @@ function zeileZuBenutzer(zeile: ProfileRow): Benutzer {
     statuses: zeile.statuses ?? {},
     beweise: zeile.beweise ?? {},
     favoriten: zeile.favoriten ?? {},
+    tausch: zeile.tausch ?? {},
   };
 }
 
@@ -109,6 +112,37 @@ let synchronisiert = false;
 let syncLaeuft = false;
 let syncErneut = false;
 let favoritenUnterstuetzt = true;
+let tauschUnterstuetzt = true;
+
+function istSchemaFehler(error: { code?: string } | null | undefined) {
+  return error?.code === "PGRST204" || error?.code === "42703";
+}
+
+/** Spaltenliste ohne die optionalen Spalten, die (noch) nicht in der DB existieren. */
+function profilSpalten(): string {
+  const spalten = ["id", "name", "passwort", "created_at", "statuses", "beweise"];
+  if (favoritenUnterstuetzt) spalten.push("favoriten");
+  if (tauschUnterstuetzt) spalten.push("tausch");
+  return spalten.join(", ");
+}
+
+async function ladeProfileZeilen(): Promise<ProfileRow[] | null> {
+  const supabase = getSupabase<ProfileDb>();
+  if (!supabase) return null;
+  const erste = await supabase.from("profile").select(profilSpalten());
+  if (!erste.error && erste.data) return erste.data as unknown as ProfileRow[];
+  if (istSchemaFehler(erste.error)) {
+    if (tauschUnterstuetzt) {
+      tauschUnterstuetzt = false;
+      return ladeProfileZeilen();
+    }
+    if (favoritenUnterstuetzt) {
+      favoritenUnterstuetzt = false;
+      return ladeProfileZeilen();
+    }
+  }
+  return null;
+}
 
 function starteSync() {
   if (typeof window === "undefined") return;
@@ -127,24 +161,8 @@ function starteSync() {
 
 /** Server-Konten in den Cache laden, lokale Änderungen hochladen. */
 async function syncMitServer() {
-  const supabase = getSupabase<ProfileDb>();
-  if (!supabase) return;
-  let data: ProfileRow[];
-  const erste = await supabase
-    .from("profile")
-    .select("id, name, passwort, created_at, statuses, beweise, favoriten");
-  if (!erste.error && erste.data) {
-    data = erste.data;
-  } else if (erste.error && (erste.error.code === "PGRST204" || erste.error.code === "42703")) {
-    favoritenUnterstuetzt = false;
-    const zweite = await supabase
-      .from("profile")
-      .select("id, name, passwort, created_at, statuses, beweise");
-    if (zweite.error || !zweite.data) return;
-    data = zweite.data;
-  } else {
-    return;
-  }
+  const data = await ladeProfileZeilen();
+  if (!data) return;
   synchronisiert = true;
 
   const lokal = loadUsers();
@@ -165,12 +183,14 @@ async function syncMitServer() {
     const statuses = { ...lok.statuses, ...server.statuses };
     const beweise = { ...lok.beweise, ...server.beweise };
     const favoriten = { ...lok.favoriten, ...server.favoriten };
-    const gemergt: Benutzer = { ...server, statuses, beweise, favoriten };
+    const tausch = { ...lok.tausch, ...server.tausch };
+    const gemergt: Benutzer = { ...server, statuses, beweise, favoriten, tausch };
     ergebnis.set(zeile.id, gemergt);
     if (
       JSON.stringify(statuses) !== JSON.stringify(lok.statuses) ||
       JSON.stringify(beweise) !== JSON.stringify(lok.beweise) ||
-      JSON.stringify(favoriten) !== JSON.stringify(lok.favoriten)
+      JSON.stringify(favoriten) !== JSON.stringify(lok.favoriten) ||
+      JSON.stringify(tausch) !== JSON.stringify(lok.tausch)
     ) {
       pushProfil(gemergt);
     }
@@ -193,26 +213,26 @@ async function pushProfil(benutzer: Benutzer): Promise<boolean> {
   const passwort = istHash(benutzer.passwort)
     ? benutzer.passwort
     : await hashPasswort(benutzer.passwort);
-  const basis = {
-    id: benutzer.id,
-    name: benutzer.name,
-    passwort,
-    statuses: benutzer.statuses,
-    beweise: benutzer.beweise,
-  };
-  let ergebnis = favoritenUnterstuetzt
-    ? await supabase.from("profile").upsert(
-        { ...basis, favoriten: benutzer.favoriten ?? {} },
-        { onConflict: "id" },
-      )
-    : await supabase.from("profile").upsert(basis, { onConflict: "id" });
-  if (
-    ergebnis.error &&
-    (ergebnis.error.code === "PGRST204" || ergebnis.error.code === "42703") &&
-    favoritenUnterstuetzt
-  ) {
-    favoritenUnterstuetzt = false;
-    ergebnis = await supabase.from("profile").upsert(basis, { onConflict: "id" });
+  function daten(): ProfileDb["public"]["Tables"]["profile"]["Insert"] {
+    return {
+      id: benutzer.id,
+      name: benutzer.name,
+      passwort,
+      statuses: benutzer.statuses,
+      beweise: benutzer.beweise,
+      ...(favoritenUnterstuetzt ? { favoriten: benutzer.favoriten ?? {} } : {}),
+      ...(tauschUnterstuetzt ? { tausch: benutzer.tausch ?? {} } : {}),
+    };
+  }
+  let ergebnis = await supabase.from("profile").upsert(daten(), { onConflict: "id" });
+  if (ergebnis.error && istSchemaFehler(ergebnis.error)) {
+    if (tauschUnterstuetzt) {
+      tauschUnterstuetzt = false;
+      ergebnis = await supabase.from("profile").upsert(daten(), { onConflict: "id" });
+    } else if (favoritenUnterstuetzt) {
+      favoritenUnterstuetzt = false;
+      ergebnis = await supabase.from("profile").upsert(daten(), { onConflict: "id" });
+    }
   }
   const { error } = ergebnis;
   if (error) {
@@ -267,21 +287,31 @@ export async function register(
     statuses: {},
     beweise: {},
     favoriten: {},
+    tausch: {},
   };
   if (supabaseKonfiguriert()) {
     user.passwort = await hashPasswort(passwort);
     const supabase = getSupabase<ProfileDb>();
-    const basis = { id: user.id, name: user.name, passwort: user.passwort, statuses: {}, beweise: {} };
-    let ergebnis = favoritenUnterstuetzt
-      ? await supabase!.from("profile").insert({ ...basis, favoriten: {} })
-      : await supabase!.from("profile").insert(basis);
-    if (
-      ergebnis.error &&
-      (ergebnis.error.code === "PGRST204" || ergebnis.error.code === "42703") &&
-      favoritenUnterstuetzt
-    ) {
-      favoritenUnterstuetzt = false;
-      ergebnis = await supabase!.from("profile").insert(basis);
+    function daten(): ProfileDb["public"]["Tables"]["profile"]["Insert"] {
+      return {
+        id: user.id,
+        name: user.name,
+        passwort: user.passwort,
+        statuses: {},
+        beweise: {},
+        ...(favoritenUnterstuetzt ? { favoriten: {} } : {}),
+        ...(tauschUnterstuetzt ? { tausch: {} } : {}),
+      };
+    }
+    let ergebnis = await supabase!.from("profile").insert(daten());
+    if (ergebnis.error && istSchemaFehler(ergebnis.error)) {
+      if (tauschUnterstuetzt) {
+        tauschUnterstuetzt = false;
+        ergebnis = await supabase!.from("profile").insert(daten());
+      } else if (favoritenUnterstuetzt) {
+        favoritenUnterstuetzt = false;
+        ergebnis = await supabase!.from("profile").insert(daten());
+      }
     }
     const error = ergebnis.error;
     if (error) {
@@ -377,6 +407,18 @@ export function setFavorit(blattId: string, istFavorit: boolean) {
   if (!user) return;
   if (istFavorit) user.favoriten[blattId] = true;
   else delete user.favoriten[blattId];
+  saveUsers(users);
+  pushProfil(user);
+}
+
+export function setzeTauschInfo(blattId: string, info: TauschInfo | null) {
+  const users = loadUsers();
+  const id = window.localStorage.getItem(SESSION_KEY);
+  const user = users.find((u) => u.id === id);
+  if (!user) return;
+  if (!user.tausch) user.tausch = {};
+  if (info === null || (!info.betrag && !info.notiz)) delete user.tausch[blattId];
+  else user.tausch[blattId] = info;
   saveUsers(users);
   pushProfil(user);
 }

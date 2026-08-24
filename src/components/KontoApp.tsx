@@ -3,8 +3,8 @@
 import { useMemo, useRef, useState } from "react";
 import { ArrowDownUp, Check, Camera, Egg, Heart, Images, LogIn, PartyPopper, Repeat2, ShieldCheck, Trash2, UserPlus } from "lucide-react";
 import { BLAETTER_NACH_ID, nameOderNummer, sortiereSammlung, type SammlungSortierung } from "@/lib/blaetter";
-import { getSession, login, logout, register, setBeweis, setFavorit, setStatus, zaehle } from "@/lib/store";
-import type { Blatt } from "@/lib/types";
+import { getSession, login, logout, register, setBeweis, setFavorit, setStatus, setzeTauschInfo, zaehle } from "@/lib/store";
+import type { Blatt, TauschInfo } from "@/lib/types";
 import { useStoreVersion } from "@/lib/useStoreVersion";
 import { BlattKarte } from "./BlattKarte";
 import { Lupe } from "./Lupe";
@@ -71,6 +71,12 @@ export function KontoApp() {
       );
     })();
     /* Store event räumt auf */
+  }
+
+  function togglen(blattId: string, s: "own" | "wish" | "offer") {
+    const neu = benutzer!.statuses[blattId] === s ? null : s;
+    setStatus(blattId, neu);
+    if (neu !== "offer") setzeTauschInfo(blattId, null);
   }
 
   function hochladenStarten(blattId: string) {
@@ -390,21 +396,28 @@ export function KontoApp() {
             {listeAb.map(({ id, status }) => {
               const b = BLAETTER_NACH_ID.get(id);
               if (!b) return null;
-              return (
-                <BlattKarte
-                  key={id}
-                  blatt={b}
-                  status={status}
-                  bewiesen={!!benutzer.beweise[id]}
-                  favorit={!!benutzer.favoriten?.[id]}
-                  aufToggle={(s) => {
-                    setStatus(id, s);
-                  }}
-                  aufBild={() => setLupe(id)}
-                  aufBeweis={() => hochladenStarten(id)}
-                  aufFavorit={() => setFavorit(id, !benutzer.favoriten?.[id])}
-                />
-              );
+              const props = {
+                blatt: b,
+                status,
+                bewiesen: !!benutzer.beweise[id],
+                favorit: !!benutzer.favoriten?.[id],
+                aufToggle: (s: "own" | "wish" | "offer") => togglen(id, s),
+                aufBild: () => setLupe(id),
+                aufBeweis: () => hochladenStarten(id),
+                aufFavorit: () => setFavorit(id, !benutzer.favoriten?.[id]),
+              };
+              if (tab === "tausch") {
+                return (
+                  <div key={id} className="space-y-2">
+                    <BlattKarte {...props} />
+                    <TauschInfoEditor
+                      blattId={id}
+                      key={`${id}-${benutzer.tausch?.[id]?.betrag ?? ""}-${benutzer.tausch?.[id]?.notiz ?? ""}`}
+                    />
+                  </div>
+                );
+              }
+              return <BlattKarte key={id} {...props} />;
             })}
           </div>
           {listeAb.length > 0 && (
@@ -428,10 +441,70 @@ export function KontoApp() {
           blatt={lupeBlatt}
           status={benutzer.statuses[lupeBlatt.id] ?? null}
           aufSchliessen={() => setLupe(null)}
-          aufToggle={(s) => {
-            setStatus(lupeBlatt.id, s);
-          }}
+          aufToggle={(s) => togglen(lupeBlatt.id, s)}
         />
+      )}
+    </div>
+  );
+}
+
+function TauschInfoEditor({ blattId, info }: { blattId: string; info?: TauschInfo }) {
+  const [betrag, setBetrag] = useState(info?.betrag != null ? String(info.betrag) : "");
+  const [notiz, setNotiz] = useState(info?.notiz ?? "");
+  const [offen, setOffen] = useState(!!(info?.betrag || info?.notiz));
+  const wert = betrag.trim() === "" ? null : Number(betrag.replace(",", "."));
+  const passend = (wert === null || (!Number.isNaN(wert) && wert > 0)) && notiz.length <= 200;
+  return (
+    <div className="rounded-2xl bg-white p-3 ring-1 ring-candy-100">
+      <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-ink-600">
+        <Repeat2 className="h-3 w-3 text-peach-400" /> Tausch-Info
+        <button
+          type="button"
+          onClick={() => setOffen(!offen)}
+          aria-pressed={offen}
+          aria-label={offen ? "Tausch-Info schließen" : "Tausch-Info öffnen"}
+          className="ml-auto text-xs font-bold text-candy-600"
+        >
+          {offen ? "Weniger" : "Mehr"}
+        </button>
+      </p>
+      {offen && (
+        <div className="space-y-1.5">
+          <input
+            value={betrag}
+            onChange={(e) => setBetrag(e.target.value)}
+            type="number"
+            min="0"
+            step="0.5"
+            placeholder="Wunschbetrag € (optional)"
+            className="w-full rounded-full border border-cream-300 bg-white px-3 py-1.5 text-xs font-semibold outline-none focus:border-candy-400"
+          />
+          <input
+            value={notiz}
+            onChange={(e) => setNotiz(e.target.value.slice(0, 200))}
+            placeholder="Notiz / Wunsch (optional)"
+            className="w-full rounded-full border border-cream-300 bg-white px-3 py-1.5 text-xs font-semibold outline-none focus:border-candy-400"
+          />
+          <div className="flex gap-1.5">
+            <button
+              type="button"
+              disabled={!passend}
+              onClick={() => setzeTauschInfo(blattId, { betrag: wert ?? undefined, notiz: notiz.trim() || undefined })}
+              className="rounded-full bg-mint-200 px-3 py-1.5 text-xs font-bold text-emerald-800 hover:bg-mint-300 disabled:opacity-40"
+            >
+              Speichern
+            </button>
+            {(info?.betrag !== undefined || info?.notiz) && (
+              <button
+                type="button"
+                onClick={() => setzeTauschInfo(blattId, null)}
+                className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-ink-600 ring-1 ring-cream-300 hover:bg-cream-100"
+              >
+                Entfernen
+              </button>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

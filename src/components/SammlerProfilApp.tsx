@@ -1,18 +1,22 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { SearchX, Trophy } from "lucide-react";
+import { Repeat2, SearchX, Trophy } from "lucide-react";
+import { BLAETTER_NACH_ID, nameOderNummer } from "@/lib/blaetter";
 import { getSession, listBenutzer, zaehle } from "@/lib/store";
 import { useStoreVersion } from "@/lib/useStoreVersion";
 import { Punkte } from "./Punkte";
 import { SammlerKarussell } from "./SammlerKarussell";
+import { TauschDialog } from "./TauschDialog";
 
 export function SammlerProfilApp() {
   const version = useStoreVersion();
   const params = useSearchParams();
   const name = (params.get("name") ?? "").trim();
   const ich = getSession();
+  const [tauschAngebot, setTauschAngebot] = useState<string | null>(null);
 
   void version;
   const q = name.toLowerCase();
@@ -71,6 +75,75 @@ export function SammlerProfilApp() {
       </div>
 
       <SammlerKarussell benutzer={benutzer} titel={`${benutzer.name}s Lieblingsblätter`} />
+
+      {Object.keys(benutzer.statuses).some((id) => benutzer.statuses[id] === "offer") && (
+        <div className="card-soft p-5">
+          <h3 className="font-display flex items-center gap-2 text-lg font-bold text-ink-800">
+            <Repeat2 className="h-5 w-5 text-peach-400" />
+            Zum Tauschen angeboten
+            <span className="chip bg-peach-100 px-1.5 py-0.5 text-xs text-peach-500">
+              {z.offer}
+            </span>
+          </h3>
+          <p className="mt-1 text-xs font-semibold text-ink-600">
+            {ich?.id === benutzer.id
+              ? "Diese Blätter hast du zum Tausch markiert. Wunschbetrag und Notiz hinterlegst du im Konto."
+              : "Mach ein Angebot: eigene Blätter wählen oder einen Geldbetrag vorschlagen."}
+          </p>
+          <div className="no-scrollbar -mx-1 mt-4 flex gap-4 overflow-x-auto px-1 pb-2">
+            {Object.keys(benutzer.statuses)
+              .filter((id) => benutzer.statuses[id] === "offer")
+              .sort((a, b) => a.localeCompare(b))
+              .map((id) => {
+                const b = BLAETTER_NACH_ID.get(id);
+                if (!b) return null;
+                const info = benutzer.tausch?.[id];
+                return (
+                  <figure key={id} className="w-28 shrink-0 snap-start">
+                    <div className="overflow-hidden rounded-2xl bg-white ring-1 ring-candy-100">
+                      <img
+                        src={b.bild}
+                        alt={nameOderNummer(b)}
+                        loading="lazy"
+                        className="aspect-square w-full object-contain p-1"
+                      />
+                    </div>
+                    <figcaption
+                      className="mt-1 truncate text-center text-[10px] font-bold text-ink-700"
+                      title={nameOderNummer(b)}
+                    >
+                      {nameOderNummer(b)}
+                    </figcaption>
+                    {(info?.betrag != null || info?.notiz) && (
+                      <p className="mt-0.5 line-clamp-2 text-center text-[9px] font-semibold text-candy-700">
+                        {info.betrag != null &&
+                          `€ ${info.betrag.toLocaleString("de-DE", { minimumFractionDigits: 2 })}`}
+                        {info.notiz ? ` · ${info.notiz}` : ""}
+                      </p>
+                    )}
+                    {ich?.id !== benutzer.id && (
+                      <button
+                        type="button"
+                        onClick={() => setTauschAngebot(id)}
+                        className="mt-1.5 w-full rounded-full bg-candy-500 py-1 text-[10px] font-bold text-white hover:bg-candy-600"
+                      >
+                        Angebot machen
+                      </button>
+                    )}
+                  </figure>
+                );
+              })}
+          </div>
+        </div>
+      )}
+
+      {tauschAngebot && (
+        <TauschDialog
+          blattId={tauschAngebot}
+          anbieter={{ id: benutzer.id, name: benutzer.name }}
+          aufSchliessen={() => setTauschAngebot(null)}
+        />
+      )}
 
       <p className="flex items-center justify-center gap-1.5 text-center text-xs font-semibold text-ink-600">
         <Trophy className="h-3.5 w-3.5 text-candy-500" />

@@ -14,3 +14,7 @@
 ## Finding Spots map.
 - 
 - 
+
+## Most likely account favorites 
+- displayed with special borders
+- possibility to show a carussel only showing the most favorite pages on the profile page. 

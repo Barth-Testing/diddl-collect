@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { HeartHandshake, LayoutGrid, MessagesSquare, PawPrint, ShoppingBag, Trophy } from "lucide-react";
+import { ArrowLeftRight, HeartHandshake, LayoutGrid, MessagesSquare, PawPrint, ShoppingBag, Trophy } from "lucide-react";
 import { MausKlein } from "./MausMotto";
 import { HeaderBenutzer } from "./HeaderBenutzer";
 import { AppInstallieren } from "./AppInstallieren";
+import { PostfachLink } from "./PostfachLink";
 
 export function Header() {
   return (
@@ -31,26 +32,34 @@ export function Header() {
           </Link>
           <Link
             href="/forum"
-            className="flex items-center gap-1.5 rounded-full px-2 py-2 text-sm font-bold text-ink-700 hover:bg-candy-100 sm:px-3"
+            className="flex items-center gap-1.5 rounded-full px-1.5 py-2 text-sm font-bold text-ink-700 hover:bg-candy-100 sm:px-3"
           >
             <MessagesSquare className="h-4 w-4" />
             <span className="hidden sm:inline">Forum</span>
           </Link>
           <Link
+            href="/tausch"
+            className="flex items-center gap-1.5 rounded-full px-1.5 py-2 text-sm font-bold text-ink-700 hover:bg-candy-100 sm:px-3"
+          >
+            <ArrowLeftRight className="h-4 w-4" />
+            <span className="hidden sm:inline">Tauschbörse</span>
+          </Link>
+          <Link
             href="/konto"
-            className="flex items-center gap-1.5 rounded-full px-2 py-2 text-sm font-bold text-candy-600 hover:bg-candy-100 sm:px-3"
+            className="flex items-center gap-1.5 rounded-full px-1.5 py-2 text-sm font-bold text-candy-600 hover:bg-candy-100 sm:px-3"
           >
             <HeartHandshake className="h-4 w-4" />
             <span className="hidden sm:inline">Meine Sammlung</span>
           </Link>
           <Link
             href="/shop"
-            className="flex items-center gap-1.5 rounded-full bg-peach-100 px-2 py-2 text-sm font-bold text-peach-500 hover:bg-peach-200 sm:px-3"
+            className="flex items-center gap-1.5 rounded-full bg-peach-100 px-1.5 py-2 text-sm font-bold text-peach-500 hover:bg-peach-200 sm:px-3"
           >
             <ShoppingBag className="h-4 w-4" />
             <span className="hidden sm:inline">Shop</span>
           </Link>
-          <AppInstallieren className="flex items-center gap-1.5 rounded-full bg-mint-200 px-2 py-2 text-sm font-bold text-emerald-800 hover:bg-mint-300 sm:px-3" />
+          <AppInstallieren className="flex items-center gap-1.5 rounded-full bg-mint-200 px-1.5 py-2 text-sm font-bold text-emerald-800 hover:bg-mint-300 sm:px-3" />
+          <PostfachLink />
           <HeaderBenutzer />
         </nav>
       </div>

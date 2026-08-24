@@ -31,6 +31,11 @@ export const FARBREIHENFOLGE = [
 
 export type Status = "own" | "wish" | "offer";
 
+export type TauschInfo = {
+  betrag?: number;
+  notiz?: string;
+};
+
 export type Benutzer = {
   id: string;
   name: string;
@@ -39,6 +44,7 @@ export type Benutzer = {
   statuses: Record<string, Status>;
   beweise: Record<string, string>;
   favoriten: Record<string, boolean>;
+  tausch: Record<string, TauschInfo>;
 };
 
 export type Produkt = {
