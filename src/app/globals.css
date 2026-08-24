@@ -91,6 +91,11 @@
   }
 }
 
+html,
+body {
+  overflow-x: clip;
+}
+
 @keyframes floaty {
   0%,
   100% {

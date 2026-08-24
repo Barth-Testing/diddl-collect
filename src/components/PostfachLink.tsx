@@ -28,7 +28,7 @@ export function PostfachLink() {
       href="/postfach"
       aria-label={`Postfach${ungelesen > 0 ? ` – ${ungelesen} ungelesen` : ""}`}
       title="Postfach"
-      className="relative flex items-center gap-1.5 rounded-full px-1.5 py-2 text-sm font-bold text-ink-700 hover:bg-candy-100 sm:px-3"
+      className="relative flex shrink-0 items-center gap-1.5 rounded-full px-1.5 py-2 text-sm font-bold text-ink-700 hover:bg-candy-100 sm:px-3"
     >
       <Mail className="h-4 w-4" />
       <span className="hidden sm:inline">Postfach</span>
