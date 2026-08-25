@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BadgeCheck, Megaphone, ShieldCheck, Sparkles, Users } from "lucide-react";
+import { BadgeCheck, Megaphone, Plus, ShieldCheck, Sparkles, Users } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
 
 type NewsReihe = {
@@ -59,6 +59,7 @@ export function Neuigkeiten() {
   const [news, setNews] = useState<NewsReihe[]>([]);
   const [gemeinde, setGemeinde] = useState<Gemeinde | null>(null);
   const [bereit, setBereit] = useState(false);
+  const [sichtbar, setSichtbar] = useState(5);
 
   useEffect(() => {
     let aktiv = true;
@@ -70,19 +71,19 @@ export function Neuigkeiten() {
           .from("news")
           .select("id, titel, text, erstellt_am, bild, bild2")
           .order("erstellt_am", { ascending: false })
-          .limit(5);
+          .limit(50);
         if (!erste.error && erste.data) return erste.data;
         const zweite = await supabase
           .from("news")
           .select("id, titel, text, erstellt_am, bild")
           .order("erstellt_am", { ascending: false })
-          .limit(5);
+          .limit(50);
         if (!zweite.error && zweite.data) return zweite.data;
         const dritte = await supabase
           .from("news")
           .select("id, titel, text, erstellt_am")
           .order("erstellt_am", { ascending: false })
-          .limit(5);
+          .limit(50);
         if (!dritte.error && dritte.data) return dritte.data;
         return [];
       };
@@ -172,7 +173,7 @@ export function Neuigkeiten() {
             Noch keine Meldungen – aber die Gemeinde sammelt fleißig weiter. Schau bald wieder vorbei!
           </p>
         ) : (
-          news.map((n) => (
+          news.slice(0, sichtbar).map((n) => (
             <div key={n.id} className="rounded-2xl bg-white p-4 ring-1 ring-cream-200">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <h3 className="font-display font-bold text-ink-800">{n.titel}</h3>
@@ -201,6 +202,15 @@ export function Neuigkeiten() {
               )}
             </div>
           ))
+        )}
+        {news.length > sichtbar && (
+          <button
+            onClick={() => setSichtbar((s) => s + 5)}
+            className="flex w-full items-center justify-center gap-2 rounded-full bg-candy-100 px-5 py-2.5 text-sm font-bold text-candy-700 transition hover:bg-candy-200"
+          >
+            <Plus className="h-4 w-4" />
+            Mehr Beiträge anzeigen ({news.length - sichtbar} weitere)
+          </button>
         )}
       </div>
     </div>
