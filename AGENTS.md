@@ -40,7 +40,13 @@
 - `blaetter.json` is COMPACT JSON (no pretty-printing) — keep that format when rewriting.
 - The catalog year filter defaults matter: extend the `JAHRE` range and the `jahrBis` default in KatalogApp.tsx whenever adding newer years, otherwise new sheets are invisible even though present in data.
 
-## Ranking rule
+## Tausch (src/lib/tausch.ts)
+
+- Thread-Cache liegt in EINEM atomaren localStorage-Key `diddlcollect:tausch` (Mutationen laufen via `serialisiere()`-Mutex, async Teile wie `ladeAlles` rufen `flushQueueInnere()` direkt auf – kein Re-Entry in den Lock). Alte Zwei-Key-Caches (`diddlcollect:tauschangebote` / `diddlcollect:post`) werden beim Lesen migriert und beim Schreiben gelöscht.
+- `markiereGelesen` darf **kein** unbedingtes `emitChange()` abfeuern (Verstärker-Schleife mit `PostfachApp` → Freeze); Änderungen erst nach >5s emittieren.
+- Thread-Ansicht ist für BEIDE Parteien dieselbe: `AngebotVorschau` zeigt gewünschtes Blatt + gebotene Blätter + Betrag + Freitext. Es gibt keinen „Annehmen“-Button (könnte falsche Ansprüche ableiten), nur antworten / Ablehnen / Stornieren.
+
+
 
 - >100 own sheets with <100 proofs ⇒ capped at exactly **100 points**, ranked normally inline (field `punkte`); ≥100 proofs unlock full points. Implemented in `berechneRangliste()`.
 
