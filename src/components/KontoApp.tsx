@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { ArrowDownUp, Check, Camera, Egg, Heart, Images, LogIn, PartyPopper, Repeat2, ShieldCheck, Trash2, UserPlus } from "lucide-react";
 import { BLAETTER_NACH_ID, nameOderNummer, sortiereSammlung, type SammlungSortierung } from "@/lib/blaetter";
 import { getSession, login, logout, register, setBeweis, setFavorit, setStatus, setzeTauschInfo, zaehle } from "@/lib/store";
-import type { Blatt, TauschInfo } from "@/lib/types";
+import type { Blatt, Status, TauschInfo } from "@/lib/types";
 import { useStoreVersion } from "@/lib/useStoreVersion";
 import { BlattKarte } from "./BlattKarte";
 import { Lupe } from "./Lupe";
@@ -31,18 +31,18 @@ export function KontoApp() {
 
   const z = useMemo(() => (benutzer ? zaehle(benutzer) : null), [benutzer]);
 
-  const listeAb: Array<{ id: string; status: "own" | "wish" | "offer" }> = useMemo(() => {
+  const listeAb: Array<{ id: string; status: Status[] }> = useMemo(() => {
     if (!benutzer) return [];
     const eintraege = Object.keys(benutzer.statuses)
       .filter((id) => {
-        const s = benutzer.statuses[id];
-        const gewuenscht = tab === "sammlung" ? s === "own" : tab === "wunsch" ? s === "wish" : s === "offer";
+        const s = benutzer.statuses[id] ?? [];
+        const gewuenscht = tab === "sammlung" ? s.includes("own") : tab === "wunsch" ? s.includes("wish") : s.includes("offer");
         if (!gewuenscht) return false;
         if (nurUnbewiesen && tab === "sammlung" && benutzer.beweise[id]) return false;
         return true;
       })
       .map((id) => ({ id, status: benutzer.statuses[id], blatt: BLAETTER_NACH_ID.get(id) }))
-      .filter((e): e is { id: string; status: "own" | "wish" | "offer"; blatt: Blatt } => e.blatt !== undefined);
+      .filter((e): e is { id: string; status: Status[]; blatt: Blatt } => e.blatt !== undefined);
     const gefiltert =
       bilderQuelle === "beweise" && tab === "sammlung"
         ? eintraege.filter((e) => benutzer.beweise[e.id])
@@ -74,9 +74,9 @@ export function KontoApp() {
   }
 
   function togglen(blattId: string, s: "own" | "wish" | "offer") {
-    const neu = benutzer!.statuses[blattId] === s ? null : s;
-    setStatus(blattId, neu);
-    if (neu !== "offer") setzeTauschInfo(blattId, null);
+    const aktiv = !(benutzer!.statuses[blattId] ?? []).includes(s);
+    setStatus(blattId, s, aktiv);
+    if (s === "offer" && !aktiv) setzeTauschInfo(blattId, null);
   }
 
   function hochladenStarten(blattId: string) {
@@ -439,7 +439,7 @@ export function KontoApp() {
       {lupeBlatt && (
         <Lupe
           blatt={lupeBlatt}
-          status={benutzer.statuses[lupeBlatt.id] ?? null}
+          status={benutzer.statuses[lupeBlatt.id] ?? []}
           aufSchliessen={() => setLupe(null)}
           aufToggle={(s) => togglen(lupeBlatt.id, s)}
         />

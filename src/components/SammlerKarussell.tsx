@@ -15,7 +15,7 @@ export function SammlerKarussell({ benutzer, titel }: { benutzer: Benutzer; tite
   const [kannZurueck, setKannZurueck] = useState(false);
 
   const eigeneIds = Object.keys(benutzer.statuses)
-    .filter((id) => benutzer.statuses[id] === "own")
+    .filter((id) => benutzer.statuses[id]?.includes("own"))
     .sort((a, b) => a.localeCompare(b));
   const hatBeweise = Object.keys(benutzer.beweise ?? {}).length > 0;
   const hatFavoriten = Object.keys(benutzer.favoriten ?? {}).length > 0;

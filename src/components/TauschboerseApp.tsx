@@ -35,7 +35,7 @@ export function TauschboerseApp() {
   const karten = listBenutzer()
     .flatMap((u) =>
       Object.keys(u.statuses)
-        .filter((id) => u.statuses[id] === "offer")
+        .filter((id) => u.statuses[id]?.includes("offer"))
         .map((id) => ({
           blattId: id,
           anbieterName: u.name,

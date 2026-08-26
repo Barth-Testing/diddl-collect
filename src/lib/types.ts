@@ -36,12 +36,42 @@ export type TauschInfo = {
   notiz?: string;
 };
 
+export const ALLE_STATI: readonly Status[] = ["own", "wish", "offer"];
+
+/**
+ * Migriert Altbestände: Vor dem Parallel-Update war pro Blatt nur EIN Status
+ * gespeichert (ein String). Jetzt sind mehrere Stati gleichzeitig erlaubt
+ * (z. B. "Hab ich" UND "Zum Tauschen"). Ein altes "offer" wird logisch zu
+ * own+offer (tauschen setzt Besitz voraus) hochgestuft.
+ */
+export function normalisiereStatus(roh: unknown): Status[] {
+  if (Array.isArray(roh)) {
+    const liste = [...new Set(roh.filter((s): s is Status => (ALLE_STATI as readonly string[]).includes(s as string)))];
+    if (liste.includes("offer") && !liste.includes("own")) liste.push("own");
+    return liste;
+  }
+  if (roh === "offer") return ["own", "offer"];
+  if (roh === "own") return ["own"];
+  if (roh === "wish") return ["wish"];
+  return [];
+}
+
+export function normalisiereStatuses(roh: Record<string, unknown> | null | undefined): Record<string, Status[]> {
+  const out: Record<string, Status[]> = {};
+  if (!roh) return out;
+  for (const [id, wert] of Object.entries(roh)) {
+    const liste = normalisiereStatus(wert);
+    if (liste.length > 0) out[id] = liste;
+  }
+  return out;
+}
+
 export type Benutzer = {
   id: string;
   name: string;
   passwort: string;
   createdAt: number;
-  statuses: Record<string, Status>;
+  statuses: Record<string, Status[]>;
   beweise: Record<string, string>;
   favoriten: Record<string, boolean>;
   tausch: Record<string, TauschInfo>;

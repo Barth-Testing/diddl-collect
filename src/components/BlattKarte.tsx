@@ -9,7 +9,7 @@ export type BlattAktion = "own" | "wish" | "offer";
 
 type Props = {
   blatt: Blatt;
-  status: Status | null;
+  status: Status[];
   bewiesen?: boolean;
   bildOverride?: string;
   favorit?: boolean;
@@ -35,9 +35,9 @@ export function BlattKarte({
       className={cn(
         "card-soft animate-pop relative flex flex-col overflow-hidden transition-transform hover:-translate-y-0.5",
         favorit && "outline outline-[3px] outline-offset-2 outline-yellow-400",
-        status === "own" && "ring-2 ring-candy-400",
-        status === "wish" && "ring-2 ring-berry-300",
-        status === "offer" && "ring-2 ring-peach-300",
+        status.includes("own") && "ring-2 ring-candy-400",
+        !status.includes("own") && status.includes("offer") && "ring-2 ring-peach-300",
+        !status.includes("own") && !status.includes("offer") && status.includes("wish") && "ring-2 ring-berry-300",
       )}
     >
       <button
@@ -51,19 +51,23 @@ export function BlattKarte({
           loading="lazy"
           className="absolute inset-0 h-full w-full object-contain p-2 transition-transform duration-300 group-hover:scale-105"
         />
-        {status === "own" && (
-          <span className="chip absolute left-2 top-2 bg-candy-500 px-2 py-0.5 text-white shadow-sm">
-            <Check className="h-3 w-3" /> Hab ich
-          </span>
-        )}
-        {status === "wish" && (
-          <span className="chip absolute left-2 top-2 bg-berry-400 px-2 py-0.5 text-white shadow-sm">
-            <Heart className="h-3 w-3" /> Wunsch
-          </span>
-        )}
-        {status === "offer" && (
-          <span className="chip absolute left-2 top-2 bg-peach-400 px-2 py-0.5 text-white shadow-sm">
-            <Repeat2 className="h-3 w-3" /> Tausch
+        {status.length > 0 && (
+          <span className="absolute left-2 top-2 flex flex-col items-start gap-1">
+            {status.includes("own") && (
+              <span className="chip bg-candy-500 px-2 py-0.5 text-white shadow-sm">
+                <Check className="h-3 w-3" /> Hab ich
+              </span>
+            )}
+            {status.includes("wish") && (
+              <span className="chip bg-berry-400 px-2 py-0.5 text-white shadow-sm">
+                <Heart className="h-3 w-3" /> Wunsch
+              </span>
+            )}
+            {status.includes("offer") && (
+              <span className="chip bg-peach-400 px-2 py-0.5 text-white shadow-sm">
+                <Repeat2 className="h-3 w-3" /> Tausch
+              </span>
+            )}
           </span>
         )}
         {favorit && (
@@ -91,7 +95,7 @@ export function BlattKarte({
         <div className="mt-auto flex items-center justify-between gap-1 border-t border-candy-100 pt-1.5">
           <div className="flex gap-1">
             <Button
-              aktiv={status === "own"}
+              aktiv={status.includes("own")}
               aktivCls="bg-candy-500 text-white shadow-sm ring-candy-400"
               titel="In meiner Sammlung"
               aria={`${nameOderNummer(blatt)}: Hab ich markieren oder entfernen`}
@@ -100,7 +104,7 @@ export function BlattKarte({
               <Check className="h-3.5 w-3.5" />
             </Button>
             <Button
-              aktiv={status === "wish"}
+              aktiv={status.includes("wish")}
               aktivCls="bg-berry-400 text-white shadow-sm ring-berry-300"
               titel="Auf die Wunschliste"
               aria={`${nameOderNummer(blatt)}: Wunsch markieren oder entfernen`}
@@ -109,7 +113,7 @@ export function BlattKarte({
               <Heart className="h-3.5 w-3.5" />
             </Button>
             <Button
-              aktiv={status === "offer"}
+              aktiv={status.includes("offer")}
               aktivCls="bg-peach-400 text-white shadow-sm ring-peach-300"
               titel="Doppelt – zum Tauschen anbieten"
               aria={`${nameOderNummer(blatt)}: Zum Tauschen markieren oder entfernen`}

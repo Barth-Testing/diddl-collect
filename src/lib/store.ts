@@ -1,4 +1,5 @@
 import type { Benutzer, Status, TauschInfo } from "./types";
+import { normalisiereStatuses } from "./types";
 import { getSupabase, hashPasswort, istHash, supabaseKonfiguriert } from "./supabase";
 
 const USERS_KEY = "diddlcollect:benutzer";
@@ -17,7 +18,7 @@ type ProfileRow = {
   name: string;
   passwort: string;
   created_at: string;
-  statuses: Record<string, Status> | null;
+  statuses: Record<string, Status | Status[]> | null;
   beweise: Record<string, string> | null;
   favoriten?: Record<string, boolean> | null;
   tausch?: Record<string, TauschInfo> | null;
@@ -32,7 +33,7 @@ type ProfileDb = {
           id: string;
           name: string;
           passwort: string;
-          statuses: Record<string, Status>;
+          statuses: Record<string, Status[]>;
           beweise: Record<string, string>;
           favoriten?: Record<string, boolean>;
           tausch?: Record<string, TauschInfo>;
@@ -84,7 +85,7 @@ function loadUsers(): Benutzer[] {
     const users = JSON.parse(raw) as Array<Benutzer & { demo?: boolean }>;
     const ohneDemo = users.filter((u) => !u.demo);
     if (ohneDemo.length !== users.length) saveUsers(ohneDemo);
-    return ohneDemo.map((u) => ({ ...u, favoriten: u.favoriten ?? {}, tausch: u.tausch ?? {} })) as Benutzer[];
+    return ohneDemo.map((u) => ({ ...u, statuses: normalisiereStatuses(u.statuses), favoriten: u.favoriten ?? {}, tausch: u.tausch ?? {} })) as Benutzer[];
   } catch {
     return [];
   }
@@ -101,7 +102,7 @@ function zeileZuBenutzer(zeile: ProfileRow): Benutzer {
     name: zeile.name,
     passwort: zeile.passwort,
     createdAt: new Date(zeile.created_at).getTime(),
-    statuses: zeile.statuses ?? {},
+    statuses: normalisiereStatuses(zeile.statuses),
     beweise: zeile.beweise ?? {},
     favoriten: zeile.favoriten ?? {},
     tausch: zeile.tausch ?? {},
@@ -378,13 +379,19 @@ export function logout() {
   emitChange();
 }
 
-export function setStatus(blattId: string, status: Status | null) {
+export function setStatus(blattId: string, status: Status, aktiv: boolean) {
   const users = loadUsers();
   const id = window.localStorage.getItem(SESSION_KEY);
   const user = users.find((u) => u.id === id);
   if (!user) return;
-  if (status === null) delete user.statuses[blattId];
-  else user.statuses[blattId] = status;
+  const statuses = normalisiereStatuses(user.statuses);
+  const eintrag = statuses[blattId] ?? [];
+  const neu = aktiv
+    ? [...new Set([...eintrag, status])]
+    : eintrag.filter((s) => s !== status);
+  if (neu.length > 0) statuses[blattId] = neu;
+  else delete statuses[blattId];
+  user.statuses = statuses;
   saveUsers(users);
   pushProfil(user);
 }
@@ -428,9 +435,9 @@ export function zaehle(user: Benutzer) {
   let wish = 0;
   let offer = 0;
   for (const s of Object.values(user.statuses)) {
-    if (s === "own") own++;
-    else if (s === "wish") wish++;
-    else offer++;
+    if (s.includes("own")) own++;
+    if (s.includes("wish")) wish++;
+    if (s.includes("offer")) offer++;
   }
   return { own, wish, offer, beweise: Object.keys(user.beweise ?? {}).length };
 }

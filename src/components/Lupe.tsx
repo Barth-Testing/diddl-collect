@@ -7,7 +7,7 @@ import { farbBadge, nameOderNummer } from "@/lib/blaetter";
 
 type Props = {
   blatt: Blatt;
-  status: Status | null;
+  status: Status[];
   aufSchliessen: () => void;
   aufToggle: (status: "own" | "wish" | "offer") => void;
 };
@@ -57,9 +57,10 @@ export function Lupe({ blatt, status, aufSchliessen, aufToggle }: Props) {
           <div className="flex gap-1.5">
             <button
               onClick={() => aufToggle("own")}
+              aria-pressed={status.includes("own")}
               className={cn(
                 "rounded-full px-3 py-1.5 text-xs font-bold transition-all",
-                status === "own"
+                status.includes("own")
                   ? "bg-candy-500 text-white shadow-sm"
                   : "bg-white text-ink-600 ring-1 ring-cream-300 hover:ring-candy-300",
               )}
@@ -68,9 +69,10 @@ export function Lupe({ blatt, status, aufSchliessen, aufToggle }: Props) {
             </button>
             <button
               onClick={() => aufToggle("wish")}
+              aria-pressed={status.includes("wish")}
               className={cn(
                 "rounded-full px-3 py-1.5 text-xs font-bold transition-all",
-                status === "wish"
+                status.includes("wish")
                   ? "bg-berry-400 text-white shadow-sm"
                   : "bg-white text-ink-600 ring-1 ring-cream-300 hover:ring-berry-200",
               )}
@@ -79,9 +81,10 @@ export function Lupe({ blatt, status, aufSchliessen, aufToggle }: Props) {
             </button>
             <button
               onClick={() => aufToggle("offer")}
+              aria-pressed={status.includes("offer")}
               className={cn(
                 "rounded-full px-3 py-1.5 text-xs font-bold transition-all",
-                status === "offer"
+                status.includes("offer")
                   ? "bg-peach-400 text-white shadow-sm"
                   : "bg-white text-ink-600 ring-1 ring-cream-300 hover:ring-peach-200",
               )}

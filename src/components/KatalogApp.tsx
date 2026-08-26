@@ -40,8 +40,8 @@ export function KatalogApp() {
       if (farbe !== "Alle Farben" && b.farbe !== farbe) return false;
       if (b.jahr < jahrVon || b.jahr > jahrBis) return false;
       if (statusFilter !== "Alle") {
-        const s = statuses[b.id] ?? null;
-        if (statusFilter === "none" ? s !== null : s !== statusFilter) return false;
+        const s = statuses[b.id] ?? [];
+        if (statusFilter === "none" ? s.length > 0 : !s.includes(statusFilter)) return false;
       }
       if (q) {
         const text = `${b.name ?? ""} ${b.nummer} ${b.groesse} ${b.farbe}`.toLowerCase();
@@ -78,7 +78,7 @@ export function KatalogApp() {
     return sortiert;
   }, [sort, groesse, farbe, statusFilter, suche, jahrVon, jahrBis, statuses]);
 
-  const ownGesamt = Object.values(statuses).filter((s) => s === "own").length;
+  const ownGesamt = Object.values(statuses).filter((s) => s.includes("own")).length;
 
   const togglen = (blattId: string, status: Status) => {
     const angemeldet = getSession();
@@ -86,7 +86,7 @@ export function KatalogApp() {
       setToast("Hallo! Melde dich bitte erst an, um deine Sammlung zu pflegen.");
       return;
     }
-    setStatus(blattId, statuses[blattId] === status ? null : status);
+    setStatus(blattId, status, !(statuses[blattId] ?? []).includes(status));
   };
 
   const lupeBlatt = lupe ? BLAETTER.find((b) => b.id === lupe) : undefined;
@@ -155,9 +155,9 @@ export function KatalogApp() {
             onChange={(v) => setStatusFilter(v as StatusFilter)}
             optionen={[
               ["Alle", "Alle Stati"],
-              ["own", "Genau: Hab ich"],
-              ["wish", "Genau: Wunsch"],
-              ["offer", "Genau: Tausch"],
+              ["own", "Mit: Hab ich"],
+              ["wish", "Mit: Wunsch"],
+              ["offer", "Mit: Tausch"],
               ["none", "Noch nicht erfasst"],
             ]}
           />
@@ -215,7 +215,7 @@ export function KatalogApp() {
           <BlattKarte
             key={b.id}
             blatt={b}
-            status={statuses[b.id] ?? null}
+            status={statuses[b.id] ?? []}
             bewiesen={!!beweise[b.id]}
             aufToggle={(s) => togglen(b.id, s)}
             aufBild={() => setLupe(b.id)}
@@ -233,7 +233,7 @@ export function KatalogApp() {
       {lupeBlatt && (
         <Lupe
           blatt={lupeBlatt}
-          status={statuses[lupeBlatt.id] ?? null}
+          status={statuses[lupeBlatt.id] ?? []}
           aufSchliessen={() => setLupe(null)}
           aufToggle={(s) => togglen(lupeBlatt.id, s)}
         />

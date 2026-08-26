@@ -29,7 +29,7 @@ export function TauschDialog({ blattId, anbieter, aufSchliessen }: Props) {
   const eigene = useMemo(() => {
     if (!benutzer) return [];
     return Object.keys(benutzer.statuses)
-      .filter((id) => benutzer.statuses[id] === "own")
+      .filter((id) => benutzer.statuses[id]?.includes("own"))
       .map((id) => BLAETTER_NACH_ID.get(id))
       .filter((b): b is NonNullable<typeof b> => b !== undefined);
   }, [benutzer]);

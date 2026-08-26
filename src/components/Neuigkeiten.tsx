@@ -99,7 +99,7 @@ export function Neuigkeiten() {
         let neuestes: string | null = null;
         let neuesteZeit = 0;
         for (const r of profilErgebnis.data) {
-          for (const s of Object.values(r.statuses ?? {})) if (s === "own") blaetter++;
+          for (const s of Object.values(r.statuses ?? {})) if (s === "own" || (Array.isArray(s) && s.includes("own"))) blaetter++;
           beweise += Object.keys(r.beweise ?? {}).length;
           const zeit = new Date(r.created_at).getTime();
           if (zeit > neuesteZeit) {
