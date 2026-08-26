@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { Check, Handshake, Lock, Repeat2, Send, X } from "lucide-react";
-import { BLAETTER_NACH_ID } from "@/lib/blaetter";
+import { Handshake, Lock, Repeat2, Send, X } from "lucide-react";
+import { BLAETTER_NACH_ID, nameOderNummer } from "@/lib/blaetter";
 import { getSession } from "@/lib/store";
 import { useStoreVersion } from "@/lib/useStoreVersion";
 import {
@@ -30,6 +30,10 @@ function formatiereZeit(ts: number) {
   });
 }
 
+function formatBetrag(wert: number | null) {
+  return wert === null ? null : wert.toLocaleString("de-DE", { style: "currency", currency: "EUR" });
+}
+
 function StatusChip({ status }: { status: string }) {
   const map: Record<string, string> = {
     offen: "bg-candy-100 text-candy-700",
@@ -47,6 +51,68 @@ function StatusChip({ status }: { status: string }) {
     <span className={cn("chip px-1.5 py-0.5 text-[10px]", map[status] ?? "bg-cream-200 text-ink-600")}>
       {label[status] ?? status}
     </span>
+  );
+}
+
+/** Zeigt beiden Parteien, um welches Blatt es geht und was offeriert wurde. */
+function AngebotVorschau({ angebot }: { angebot: TauschAngebot }) {
+  const gewuenscht = BLAETTER_NACH_ID.get(angebot.blattId);
+  const geboten = angebot.angebotBlaetter
+    .map((id) => BLAETTER_NACH_ID.get(id))
+    .filter((b): b is NonNullable<typeof b> => b !== undefined);
+  const betrag = formatBetrag(angebot.angebotBetrag);
+  return (
+    <div className="mx-4 mt-3 rounded-2xl bg-candy-50 p-3.5 ring-1 ring-candy-200">
+      <p className="mb-2 flex flex-wrap items-baseline gap-x-1 gap-y-0.5 text-xs font-bold text-candy-700">
+        Angebot von {angebot.interessentName}
+        <span className="font-semibold text-ink-500">für {angebot.anbieterName}</span>
+      </p>
+      {gewuenscht && (
+        <div className="flex items-center gap-3">
+          <img
+            src={gewuenscht.bild}
+            alt=""
+            className="h-14 w-14 shrink-0 rounded-xl bg-white object-contain ring-1 ring-cream-200"
+          />
+          <div className="min-w-0">
+            <p className="truncate text-sm font-bold text-ink-800">{nameOderNummer(gewuenscht)}</p>
+            <p className="text-xs font-semibold text-ink-600">
+              {gewuenscht.groesse} · Nr. {gewuenscht.nummer} · Jahr {gewuenscht.jahr} · {gewuenscht.farbe}
+            </p>
+            <p className="text-xs font-semibold text-ink-500">Gewünschtes Blatt</p>
+          </div>
+        </div>
+      )}
+      {(geboten.length > 0 || betrag) && (
+        <div className="mt-2.5 border-t border-candy-200/60 pt-2.5">
+          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-ink-600">
+            {angebot.interessentName} bietet an:
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {geboten.map((b) => (
+              <span
+                key={b.id}
+                title={`${nameOderNummer(b)} · ${b.groesse} · ${b.jahr}`}
+                className="flex items-center gap-1.5 rounded-full bg-white py-1 pl-1 pr-2.5 text-xs font-bold text-ink-700 ring-1 ring-cream-300"
+              >
+                <img src={b.bild} alt="" className="h-5 w-5 rounded-full bg-white object-contain" />
+                {nameOderNummer(b)}
+              </span>
+            ))}
+            {betrag && (
+              <span className="rounded-full bg-mint-100 px-2.5 py-1 text-xs font-bold text-emerald-800">
+                {betrag}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+      {angebot.nachricht && (
+        <p className="mt-2.5 rounded-xl bg-white px-3 py-2 text-xs font-semibold text-ink-700 ring-1 ring-cream-200">
+          „{angebot.nachricht}“
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -204,10 +270,12 @@ export function PostfachApp() {
               </p>
             </div>
 
+            <AngebotVorschau angebot={gewaehlt} />
+
             <div className="max-h-[430px] space-y-2 overflow-y-auto bg-cream-50/60 p-4">
               {nachrichten.length === 0 && (
                 <p className="text-center text-xs font-semibold text-ink-600">
-                  Noch keine Nachrichten in diesem Thread. Der Anbieter kennt dein Angebot bereits.
+                  Noch keine Nachrichten in diesem Gespräch – antworte unten, wenn du magst.
                 </p>
               )}
               {nachrichten.map((m) => {
@@ -260,13 +328,6 @@ export function PostfachApp() {
 
                 {gewaehlt.anbieterId === ich.id ? (
                   <div className="flex gap-2 border-t border-candy-100 bg-white px-4 py-3">
-                    <button
-                      type="button"
-                      onClick={() => void setzeAngebotStatus(gewaehlt.id, "angenommen")}
-                      className="flex items-center gap-1.5 rounded-full bg-mint-200 px-4 py-2 text-sm font-bold text-emerald-800 hover:bg-mint-300"
-                    >
-                      <Check className="h-4 w-4" /> Annehmen
-                    </button>
                     <button
                       type="button"
                       onClick={() => void setzeAngebotStatus(gewaehlt.id, "abgelehnt")}

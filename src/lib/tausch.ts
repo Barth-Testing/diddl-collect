@@ -90,6 +90,7 @@ type TauschCache = {
 const ANGEBOTE_KEY = "diddlcollect:tauschangebote";
 const POST_KEY = "diddlcollect:post";
 const GELESEN_KEY = "diddlcollect:postgelesen";
+const TAUSCH_KEY = "diddlcollect:tausch";
 const MAX_POST = 2000;
 
 export function tauschKonfiguriert() {
@@ -130,32 +131,62 @@ const leer: TauschCache = { angebote: [], offen: [], post: [], postOffen: [] };
 
 function ladeCache(): TauschCache {
   if (typeof window === "undefined") return leer;
+  if (typeof localStorage === "undefined") return { ...leer };
   try {
-    const raw = window.localStorage.getItem(ANGEBOTE_KEY);
-    if (!raw) return { ...leer };
-    const cache = JSON.parse(raw) as Partial<TauschCache>;
+    const combined = window.localStorage.getItem(TAUSCH_KEY);
+    if (combined) {
+      const cache = JSON.parse(combined) as Partial<TauschCache>;
+      return {
+        angebote: Array.isArray(cache.angebote) ? cache.angebote : [],
+        offen: Array.isArray(cache.offen) ? cache.offen : [],
+        post: Array.isArray(cache.post) ? cache.post : [],
+        postOffen: Array.isArray(cache.postOffen) ? cache.postOffen : [],
+      };
+    }
+    /* Migration: alte Einzel-Keys zusammenführen. */
+    const alteAngebote = JSON.parse(window.localStorage.getItem(ANGEBOTE_KEY) ?? "{}") as Partial<TauschCache>;
+    const altePost = JSON.parse(window.localStorage.getItem(POST_KEY) ?? "{}") as Partial<TauschCache>;
     return {
-      angebote: Array.isArray(cache.angebote) ? cache.angebote : [],
-      offen: Array.isArray(cache.offen) ? cache.offen : [],
-      post: Array.isArray(cache.post) ? cache.post : [],
-      postOffen: Array.isArray(cache.postOffen) ? cache.postOffen : [],
+      angebote: Array.isArray(alteAngebote.angebote) ? alteAngebote.angebote : [],
+      offen: Array.isArray(alteAngebote.offen) ? alteAngebote.offen : [],
+      post: Array.isArray(altePost.post) ? altePost.post : [],
+      postOffen: Array.isArray(altePost.postOffen) ? altePost.postOffen : [],
     };
   } catch {
     return { ...leer };
   }
 }
 
+/** Ein gemeinsamer Schlüssel: Speichern ist damit atomar (eine setItem), konkurrierende
+ *  Task-Interleavings (Realtime + LadeAlles + Senden) können sich nicht mehr gegenseitig
+ *  den Stand wegschreiben. */
 function speichereCache(cache: TauschCache) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(
-    ANGEBOTE_KEY,
-    JSON.stringify({ angebote: cache.angebote.slice(-500), offen: cache.offen }),
+    TAUSCH_KEY,
+    JSON.stringify({
+      angebote: cache.angebote.slice(-500),
+      offen: cache.offen,
+      post: sortierePost(cache.post).slice(-MAX_POST),
+      postOffen: cache.postOffen,
+    }),
   );
-  window.localStorage.setItem(
-    POST_KEY,
-    JSON.stringify({ post: sortierePost(cache.post).slice(-MAX_POST), postOffen: cache.postOffen }),
-  );
+  try {
+    window.localStorage.removeItem(ANGEBOTE_KEY);
+    window.localStorage.removeItem(POST_KEY);
+  } catch {
+    /* alte Schlüssel ignorieren – dürfen nie mehr gelesen werden */
+  }
   emitChange();
+}
+
+/** Serialisiert alle Cache-Mutationen, damit lese-änder-schreibe-Phasen nie
+ *  um denselben Snapshot konkurrieren. */
+let sperre: Promise<unknown> = Promise.resolve();
+function serialisiere<T>(fn: () => T | Promise<T>): Promise<T> {
+  const ergebnis = sperre.then(() => fn());
+  sperre = ergebnis.catch(() => {});
+  return ergebnis;
 }
 
 function sortierePost(post: PostNachricht[]) {
@@ -200,11 +231,19 @@ function merkeAngebot(angebot: TauschAngebot) {
 function merkePost(nachricht: PostNachricht) {
   const cache = ladeCache();
   if (cache.post.some((p) => p.id === nachricht.id)) return;
+  /* Realtime kann dieselbe Nachricht auch per Ladevorgang bringen -> Duplikat abfangen */
+  if (
+    cache.post.some(
+      (p) => p.angebotId === nachricht.angebotId && p.autor === nachricht.autor && p.text === nachricht.text,
+    )
+  )
+    return;
   cache.post.push(nachricht);
   speichereCache(cache);
 }
 
 async function ladeAlles(supabase: ReturnType<typeof getSupabase<Db>>): Promise<boolean> {
+  return serialisiere(async () => {
   if (!supabase) return false;
   const [a, p] = await Promise.all([
     supabase
@@ -244,12 +283,19 @@ async function ladeAlles(supabase: ReturnType<typeof getSupabase<Db>>): Promise<
     }
   }
   speichereCache(cache);
-  await flushQueue();
+  await flushQueueInnere();
   return true;
+  });
 }
 
 /** Wartende Angebote/Nachrichten (Offline-Zeit) hochladen. */
 async function flushQueue() {
+  return serialisiere(async () => {
+    await flushQueueInnere();
+  });
+}
+
+async function flushQueueInnere() {
   const supabase = getSupabase<Db>();
   if (!supabase) return;
   const cache = ladeCache();
@@ -270,7 +316,9 @@ async function flushQueue() {
       .select()
       .single();
     if (!error && data) {
-      cache.offen = cache.offen.filter((x) => x.id !== a.id);
+      const frisch = ladeCache();
+      frisch.offen = frisch.offen.filter((x) => x.id !== a.id);
+      speichereCache(frisch);
       merkeAngebot(alsAngebot(data as AngebotReihe));
     } else if (error) break;
   }
@@ -281,7 +329,10 @@ async function flushQueue() {
       .select()
       .single();
     if (!error && data) {
-      cache.postOffen = cache.postOffen.filter((x) => x.id !== m.id);
+      const frisch = ladeCache();
+      frisch.post = frisch.post.filter((x) => x.id !== m.id);
+      frisch.postOffen = frisch.postOffen.filter((x) => x.id !== m.id);
+      speichereCache(frisch);
       merkePost(alsPost(data as PostReihe));
     } else if (error) break;
   }
@@ -394,6 +445,7 @@ export async function erstelleAngebot(eingabe: {
   betrag: number | null;
   nachricht: string | null;
 }): Promise<TauschAngebot> {
+  return serialisiere(async () => {
   const angebot: TauschAngebot = {
     id: `t-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     blattId: eingabe.blattId,
@@ -438,9 +490,11 @@ export async function erstelleAngebot(eingabe: {
     tabellenBereit = true;
   }
   return angebot;
+  });
 }
 
 export async function setzeAngebotStatus(id: string, status: TauschAngebotStatus) {
+  return serialisiere(async () => {
   const jetzt = Date.now();
   const cache = ladeCache();
   const idx = cache.angebote.findIndex((a) => a.id === id);
@@ -455,9 +509,11 @@ export async function setzeAngebotStatus(id: string, status: TauschAngebotStatus
     .update({ status, aktualisiert_am: new Date(jetzt).toISOString() })
     .eq("id", id);
   if (!error) tabellenBereit = true;
+  });
 }
 
 export async function sendePost(angebotId: string, autor: string, text: string) {
+  return serialisiere(async () => {
   const sauber = text.trim();
   if (!sauber) return false;
   const nachricht: PostNachricht = {
@@ -481,12 +537,14 @@ export async function sendePost(angebotId: string, autor: string, text: string) 
     .single();
   if (!error && data) {
     const frisch = ladeCache();
+    frisch.post = frisch.post.filter((x) => x.id !== nachricht.id);
     frisch.postOffen = frisch.postOffen.filter((x) => x.id !== nachricht.id);
     speichereCache(frisch);
     merkePost(alsPost(data as PostReihe));
     tabellenBereit = true;
   }
   return true;
+  });
 }
 
 /* ---------- Ungelesen-Markierung ---------- */
@@ -503,7 +561,12 @@ function leseGelesen(): Record<string, number> {
 export function markiereGelesen(angebotId: string) {
   if (typeof window === "undefined") return;
   const gelesen = leseGelesen();
-  gelesen[angebotId] = Date.now();
+  const stand = gelesen[angebotId] ?? 0;
+  const jetzt = Date.now();
+  /* Nur bei echten Änderungen senden – sonst entsteht eine Endlos-Render-Schleife
+     (PostfachApp re-rendert bei jedem emitChange und ruft markiereGelesen erneut). */
+  if (jetzt - stand < 5000) return;
+  gelesen[angebotId] = jetzt;
   window.localStorage.setItem(GELESEN_KEY, JSON.stringify(gelesen));
   emitChange();
 }
