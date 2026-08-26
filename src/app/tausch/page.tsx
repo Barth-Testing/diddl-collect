@@ -1,7 +1,7 @@
 import { TauschboerseApp } from "@/components/TauschboerseApp";
 
 export const metadata = {
-  title: "Tauschbörse für Diddl-Blätter – Diddl Collect | Knuddelblätter",
+  title: "Tauschbörse für Diddl-Blätter – Diddl-Collect",
   description:
     "Die Tauschbörse für Diddl-Sammler: Offene Tauschangebote aller Sammler entdecken, eigene Doppelblätter anbieten und private Verhandlungen führen.",
   alternates: { canonical: "/tausch" },

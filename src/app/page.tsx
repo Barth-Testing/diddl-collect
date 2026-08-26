@@ -20,7 +20,7 @@ export default function Startseite() {
           Sammel alle <span className="text-candy-500">Diddl-Blätter</span>!
         </h1>
         <p className="mx-auto mt-4 max-w-xl text-ink-600 sm:text-lg">
-          Das inoffizielle Knuddelblätter-Sammelalbum: Pippo, Diddlina &amp; Co. zum Greifen
+          Das inoffizielle Diddl-Collect-Sammelalbum: Pippo, Diddlina &amp; Co. zum Greifen
           nah. Durchstöbere den großen Katalog aller Diddl-Blätter, setze Häkchen, träume auf
           deiner Wunschliste und tausche Doppelte mit anderen Sammlern.
         </p>
@@ -183,7 +183,7 @@ function ShopSektion() {
           <div>
             <h2 className="font-display text-xl font-bold text-ink-800">Diddl-Funde bei Amazon</h2>
             <p className="text-xs font-semibold text-ink-600">
-              Schöne Sachen für echte Knuddelblätter-Fans – von uns ausgesucht
+              Schöne Sachen für echte Diddl-Blätter-Fans – von uns ausgesucht
             </p>
           </div>
         </div>

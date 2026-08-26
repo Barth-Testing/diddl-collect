@@ -12,7 +12,7 @@ export function Header() {
         <Link href="/" className="flex shrink-0 items-center gap-2 text-ink-800 hover:opacity-80">
           <MausKlein className="h-9 w-9 sm:h-10 sm:w-10" />
           <span className="font-display hidden text-xl font-bold tracking-tight sm:inline">
-            Knuddel<span className="text-candy-500">blätter</span>
+            Diddl-<span className="text-candy-500">Collect</span>
           </span>
         </Link>
         <nav className="no-scrollbar -mx-1 flex min-w-0 shrink items-center gap-0.5 overflow-x-auto px-1 sm:gap-2">
@@ -74,7 +74,7 @@ export function Footer() {
         <div className="flex items-center gap-2">
           <PawPrint className="h-4 w-4 text-candy-400" />
           <p>
-            Knuddelblätter – ein inoffizielles Sammelalbum für Diddl&nbsp;Blätter. Bilder stammen aus
+            Diddl-Collect – ein inoffizielles Sammelalbum für Diddl&nbsp;Blätter. Bilder stammen aus
             dem öffentlichen Katalog von{" "}
             <a
               href="https://www.diddl-exchange.de"

@@ -1,7 +1,7 @@
 import { KontoApp } from "@/components/KontoApp";
 
 export const metadata = {
-  title: "Meine Diddl-Blätter-Sammlung – Diddl Collect | Knuddelblätter",
+  title: "Meine Diddl-Blätter-Sammlung – Diddl-Collect",
   description:
     "Diddl-Blätter-Sammlung verwalten: Konto anlegen, Besitz und Wunschliste pflegen, Doppelte als Tauschangebot markieren und Beweise hochladen.",
   alternates: { canonical: "/konto" },

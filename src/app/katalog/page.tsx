@@ -1,7 +1,7 @@
 import { KatalogApp } from "@/components/KatalogApp";
 
 export const metadata = {
-  title: "Katalog aller Diddl-Blätter – Diddl Collect | Knuddelblätter",
+  title: "Katalog aller Diddl-Blätter – Diddl-Collect",
   description:
     "Alle Diddl-Blätter im Katalog: nach Jahr, Größe oder Farbe sortieren und filtern, Häkchen setzen, Wunschliste pflegen und Doppelte tauschen.",
   alternates: { canonical: "/katalog" },

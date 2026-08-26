@@ -25,7 +25,7 @@ export default function ShopSeite() {
             Diddl-Funde bei Amazon
           </h1>
           <p className="text-sm font-semibold text-ink-600">
-            Schöne Sachen für echte Knuddelblätter-Fans – von uns ausgesucht
+            Schöne Sachen für echte Diddl-Blätter-Fans – von uns ausgesucht
           </p>
         </div>
       </div>

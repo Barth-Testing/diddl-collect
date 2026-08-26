@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { SammlerProfilApp } from "@/components/SammlerProfilApp";
 
 export const metadata = {
-  title: "Sammlerprofil – Diddl Collect | Knuddelblätter",
+  title: "Sammlerprofil – Diddl-Collect",
   description:
     "Sammlerprofil bei Diddl Collect: Punkte, Beweise und das Karussell der Lieblingsblätter anderer Sammler entdecken.",
   alternates: { canonical: "/sammler" },

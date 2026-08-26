@@ -133,53 +133,6 @@ export function KatalogApp() {
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2">
-        {MODI.map((m) => (
-          <button
-            key={m.id}
-            onClick={() => setModus(m.id)}
-            className={cn(
-              "rounded-full px-4 py-2 text-sm font-bold transition-all",
-              modus === m.id
-                ? "bg-candy-500 text-white shadow-md shadow-candy-300/50"
-                : "bg-white text-ink-700 ring-1 ring-cream-300 hover:ring-candy-300",
-            )}
-          >
-            {m.label}
-          </button>
-        ))}
-      </div>
-
-      {modus === "back" && (
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => setKollektion("Alle")}
-            className={cn(
-              "rounded-full px-3.5 py-1.5 text-xs font-bold transition-all",
-              kollektion === "Alle"
-                ? "bg-berry-500 text-white shadow-sm"
-                : "bg-white text-ink-700 ring-1 ring-cream-300 hover:ring-berry-300",
-            )}
-          >
-            Alle Kollektionen
-          </button>
-          {DIDDLBACK_KOLLEKTIONEN.map((k) => (
-            <button
-              key={k.id}
-              onClick={() => setKollektion(k.id)}
-              className={cn(
-                "rounded-full px-3.5 py-1.5 text-xs font-bold transition-all",
-                kollektion === k.id
-                  ? "bg-berry-500 text-white shadow-sm"
-                  : "bg-white text-ink-700 ring-1 ring-cream-300 hover:ring-berry-300",
-              )}
-            >
-              {k.label}
-            </button>
-          ))}
-        </div>
-      )}
-
       <div className="card-soft p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <label className="relative flex-1">
@@ -261,6 +214,53 @@ export function KatalogApp() {
           )}
         </div>
       </div>
+
+      <div className="flex flex-wrap gap-2">
+        {MODI.map((m) => (
+          <button
+            key={m.id}
+            onClick={() => setModus(m.id)}
+            className={cn(
+              "rounded-full px-4 py-2 text-sm font-bold transition-all",
+              modus === m.id
+                ? "bg-candy-500 text-white shadow-md shadow-candy-300/50"
+                : "bg-white text-ink-700 ring-1 ring-cream-300 hover:ring-candy-300",
+            )}
+          >
+            {m.label}
+          </button>
+        ))}
+      </div>
+
+      {modus === "back" && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setKollektion("Alle")}
+            className={cn(
+              "rounded-full px-3.5 py-1.5 text-xs font-bold transition-all",
+              kollektion === "Alle"
+                ? "bg-sky-400 text-white shadow-sm"
+                : "bg-white text-ink-700 ring-1 ring-cream-300 hover:ring-sky-300",
+            )}
+          >
+            Alle Kollektionen
+          </button>
+          {DIDDLBACK_KOLLEKTIONEN.map((k) => (
+            <button
+              key={k.id}
+              onClick={() => setKollektion(k.id)}
+              className={cn(
+                "rounded-full px-3.5 py-1.5 text-xs font-bold transition-all",
+                kollektion === k.id
+                  ? "bg-sky-400 text-white shadow-sm"
+                  : "bg-white text-ink-700 ring-1 ring-cream-300 hover:ring-sky-300",
+              )}
+            >
+              {k.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-bold text-ink-600">
         <span>

@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     template: "%s",
   },
   description:
-    "Diddl Collect: Das kostenlose inoffizielle Sammelalbum für Diddl-Blätter. Katalog mit allen Motiven durchstöbern, Häkchen setzen, Wunschliste pflegen, Doppelte tauschen und in der Sammler-Rangliste punkten.",
+    "Diddl-Collect: Das kostenlose inoffizielle Sammelalbum für Diddl-Blätter. Katalog mit allen Motiven durchstöbern, Häkchen setzen, Wunschliste pflegen, Doppelte tauschen und in der Sammler-Rangliste punkten.",
   manifest: "/manifest.webmanifest",
   alternates: {
     canonical: "/",
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "de_DE",
     url: SEITEN_URL,
-    siteName: "Knuddelblätter – Diddl Collect",
+    siteName: "Diddl-Collect",
     title: "Diddl Collect – Sammelalbum & Katalog für Diddl-Blätter",
     description:
       "Alle Diddl-Blätter sammeln: Katalog stöbern, Häkchen setzen, Wünsche träumen und Doppelte mit anderen Sammlern tauschen.",
@@ -45,7 +45,7 @@ export const metadata: Metadata = {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "Knuddelblätter – das Sammelalbum für Diddl-Blätter",
+        alt: "Diddl-Collect – das Sammelalbum für Diddl-Blätter",
       },
     ],
   },
@@ -62,7 +62,7 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    title: "Knuddelblätter",
+    title: "Diddl-Collect",
     statusBarStyle: "default",
   },
   other: {
@@ -89,7 +89,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "WebSite",
-              name: "Knuddelblätter – Diddl Collect",
+              name: "Diddl-Collect",
               alternateName: "Diddl Collect",
               url: SEITEN_URL,
               inLanguage: "de-DE",

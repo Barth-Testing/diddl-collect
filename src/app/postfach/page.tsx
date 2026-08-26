@@ -1,7 +1,7 @@
 import { PostfachApp } from "@/components/PostfachApp";
 
 export const metadata = {
-  title: "Tausch-Postfach – Diddl Collect | Knuddelblätter",
+  title: "Tausch-Postfach – Diddl-Collect",
   description:
     "Dein privates Tausch-Postfach: Verhandlungen, Nachrichten und Entscheidungen zu deinen Tauschangeboten auf einen Blick.",
   alternates: { canonical: "/postfach" },

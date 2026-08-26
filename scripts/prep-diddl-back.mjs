@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { PNG } from "pngjs";
 
@@ -8,7 +8,7 @@ const DATEN_JSON = new URL("../src/data/diddl-back.json", import.meta.url);
 const BLAETTER_JSON = new URL("../src/data/blaetter.json", import.meta.url);
 
 const KOLLEKTIONEN = [
-  { dir: "erste_kollektion_ready", id: "fr", label: "Diddl is Back Frankreich" },
+  { dir: "erste_kollektion_ready", id: "fr", label: "Diddl is Back Frankreich", jahr: 2025 },
   { dir: "zweite_kollektion_ready", id: "mid", label: "Mid Edition" },
   { dir: "dritte_kollektion", id: "herz", label: "Herz Edition" },
   { dir: "vierte_kollektion_ready", id: "schul", label: "Back to School Edition" },
@@ -17,6 +17,10 @@ const KOLLEKTIONEN = [
   { dir: "birthday_special_ready", id: "geb", label: "Sonderkollektion (Geburtstag)" },
   { dir: "2016_kollektion_ready", id: "forever", label: "Forever Edition 2016", kategorie: "forever", jahr: 2016 },
 ];
+
+const AUSSCHLUSS = new Map([
+  ["forever", new Set(["A4_15_Wenslijst.png", "A4_16_Lievelingsrecept.png"])],
+]);
 
 function klassifiziere(r, g, b) {
   const max = Math.max(r, g, b);
@@ -71,10 +75,7 @@ function parseDatei(dateiName) {
   if (!treffer) return null;
   const [_, groesseCode, nummer] = treffer;
   const groesse = groesseCode === "4" ? "Din A4" : groesseCode === "5" ? "Din A5" : "Din A6";
-  const rest = dateiName.replace(/\.(png|jpe?g|webp)$/i, "").replace(/^.*?A\d+_(?:\w+_)?\d+_?/i, "");
-  const name = rest ? rest.replaceAll("_", " ") : null;
-  const sauber = name ? name.charAt(0).toUpperCase() + name.slice(1) : null;
-  return { groesse, nummer: Number(nummer), name: sauber };
+  return { groesse, nummer: Number(nummer) };
 }
 
 const blaetter = JSON.parse(await readFile(BLAETTER_JSON, "utf8"));
@@ -93,6 +94,14 @@ for (const koll of KOLLEKTIONEN) {
   if (!existsSync(zielOrdner)) mkdirSync(zielOrdner, { recursive: true });
   for (const datei of readdirSync(quellOrdner).sort()) {
     if (!/\.(png|jpe?g|webp)$/i.test(datei)) continue;
+    if (AUSSCHLUSS.get(koll.id)?.has(datei)) {
+      const ziel = new URL(`${koll.id}/${datei}`, BILD_ZIEL);
+      if (existsSync(ziel)) {
+        console.log(`Entferne ausgeschlossenes Bild: ${koll.id}/${datei}`);
+        rmSync(ziel);
+      }
+      continue;
+    }
     const parsed = parseDatei(datei);
     if (!parsed) {
       console.warn(`Überspringe unlesbare Datei: ${koll.dir}/${datei}`);
@@ -110,7 +119,7 @@ for (const koll of KOLLEKTIONEN) {
       groesse: parsed.groesse,
       bild: `/diddl-is-back/${zielDatei}`,
       bildGross: `/diddl-is-back/${zielDatei}`,
-      name: parsed.name,
+      name: null,
       farbe: dominanteFarbe(readFileSync(new URL(zielDatei, BILD_ZIEL))) ?? "Weiß",
       jahr: koll.jahr ?? 2026,
       quelle: `Diddl is Back – ${koll.label}`,
