@@ -30,6 +30,7 @@
 ## Store sync rules (src/lib/store.ts)
 
 - All profiles are synced server-side into a localStorage cache; components re-render via `useStoreVersion()`.
+- `statuses` is now `Record<string, Status[]>` (multi-select: own/wish/offer parallel, z. B. own+offer). Legacy single-string values are normalized via `normalisiereStatus(es)` in types.ts (old `"offer"` ⇒ `["own","offer"]`). ALWAYS normalize on read paths (loadUsers, zeileZuBenutzer) — never compare `=== "own"` directly; use `.includes()`. Backend jsonb column stays unchanged (no SQL migration needed).
 - Adding ANY field to `Benutzer` requires ALL of: optional in `ProfileRow`, normalize old caches in `loadUsers` (`?? {}`), map it in `zeileZuBenutzer`, set it in `register()`, merge + change-compare it in `syncMitServer`, include it in `pushProfil`. Missing one causes silent data loss or TS errors.
 
 ## Catalog data pipeline
