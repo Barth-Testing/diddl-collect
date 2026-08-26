@@ -197,8 +197,13 @@ async function syncMitServer() {
     }
   }
 
+  const sessionId = window.localStorage.getItem(SESSION_KEY);
   for (const [id, lok] of lokalById) {
     if (serverIds.has(id)) continue;
+    /* Nur das eigenen (noch offline angelegte) Konto wieder hochladen –
+       Spiegel von gelöschten Server-Konten (z. B. Admin-Eingriff) wären
+       sonst wie Zombies bei jedem Sync re-anlegt. */
+    if (id !== sessionId) continue;
     ergebnis.set(id, lok);
     geaendert = true;
     if ((await pushProfil(lok)) === false) ergebnis.delete(id);
