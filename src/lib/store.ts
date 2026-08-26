@@ -19,7 +19,7 @@ type ProfileRow = {
   passwort: string;
   created_at: string;
   statuses: Record<string, Status | Status[]> | null;
-  beweise: Record<string, string> | null;
+  beweise: Record<string, string | boolean> | null;
   favoriten?: Record<string, boolean> | null;
   tausch?: Record<string, TauschInfo> | null;
 };
@@ -34,11 +34,17 @@ type ProfileDb = {
           name: string;
           passwort: string;
           statuses: Record<string, Status[]>;
-          beweise: Record<string, string>;
+          beweise: Record<string, string | boolean>;
           favoriten?: Record<string, boolean>;
           tausch?: Record<string, TauschInfo>;
         };
         Update: Partial<ProfileRow>;
+        Relationships: [];
+      };
+      beweis_fotos: {
+        Row: { id: string; profil_id: string; blatt_id: string; bild: string; erstellt_am: string };
+        Insert: { profil_id: string; blatt_id: string; bild: string };
+        Update: never;
         Relationships: [];
       };
     };
@@ -401,15 +407,45 @@ export function setStatus(blattId: string, status: Status, aktiv: boolean) {
   pushProfil(user);
 }
 
-export function setBeweis(blattId: string, dataUrl: string | null) {
+export function setBeweis(blattId: string, wert: string | boolean | null) {
   const users = loadUsers();
   const id = window.localStorage.getItem(SESSION_KEY);
   const user = users.find((u) => u.id === id);
   if (!user) return;
-  if (dataUrl === null) delete user.beweise[blattId];
-  else user.beweise[blattId] = dataUrl;
+  if (wert === null) {
+    delete user.beweise[blattId];
+    const supabase = getSupabase<ProfileDb>();
+    if (supabase) {
+      supabase
+        .from("beweis_fotos")
+        .delete()
+        .eq("profil_id", user.id)
+        .eq("blatt_id", blattId)
+        .then(() => {});
+    }
+  } else {
+    user.beweise[blattId] = wert;
+  }
   saveUsers(users);
   pushProfil(user);
+}
+
+/** Speichert ein Beweisfoto in der eigenen Tabelle und setzt den dünnen Zähler-Wert.
+ *  Fällt bei fehlender Tabelle (noch keine Migration) auf das alte Inline-Verhalten zurück. */
+export async function speichereBeweisFoto(blattId: string, dataUrl: string) {
+  const id = window.localStorage.getItem(SESSION_KEY);
+  if (!id) return setBeweis(blattId, dataUrl);
+  const supabase = getSupabase<ProfileDb>();
+  if (supabase) {
+    const { error } = await supabase
+      .from("beweis_fotos")
+      .upsert({ profil_id: id, blatt_id: blattId, bild: dataUrl }, { onConflict: "profil_id,blatt_id" });
+    if (!error) {
+      setBeweis(blattId, true);
+      return;
+    }
+  }
+  setBeweis(blattId, dataUrl);
 }
 
 export function setFavorit(blattId: string, istFavorit: boolean) {

@@ -72,7 +72,7 @@ export type Benutzer = {
   passwort: string;
   createdAt: number;
   statuses: Record<string, Status[]>;
-  beweise: Record<string, string>;
+  beweise: Record<string, string | boolean>;
   favoriten: Record<string, boolean>;
   tausch: Record<string, TauschInfo>;
 };

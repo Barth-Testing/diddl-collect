@@ -18,7 +18,7 @@ type ProfilReihe = {
   name: string;
   created_at: string;
   statuses: Record<string, string> | null;
-  beweise: Record<string, string> | null;
+  beweise: Record<string, string | boolean> | null;
 };
 
 type Db = {
@@ -37,7 +37,7 @@ type Db = {
           name: string;
           passwort: string;
           statuses: Record<string, string>;
-          beweise: Record<string, string>;
+          beweise: Record<string, string | boolean>;
         };
         Update: Partial<ProfilReihe>;
         Relationships: [];

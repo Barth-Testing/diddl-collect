@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Images, Star } from "lucide-react";
 import type { Benutzer } from "@/lib/types";
 import { BLAETTER_NACH_ID, nameOderNummer } from "@/lib/blaetter";
+import { ladeBeweisFotos } from "@/lib/beweise";
 import { cn } from "@/lib/utils";
 
 type BildQuelle = "vorlage" | "beweis" | "favoriten";
@@ -13,6 +14,17 @@ export function SammlerKarussell({ benutzer, titel }: { benutzer: Benutzer; tite
   const bahnRef = useRef<HTMLDivElement>(null);
   const [kannVor, setKannVor] = useState(false);
   const [kannZurueck, setKannZurueck] = useState(false);
+  const [fotos, setFotos] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let aktiv = true;
+    ladeBeweisFotos(benutzer.id).then((f) => {
+      if (aktiv) setFotos(f);
+    });
+    return () => {
+      aktiv = false;
+    };
+  }, [benutzer.id]);
 
   const eigeneIds = Object.keys(benutzer.statuses)
     .filter((id) => benutzer.statuses[id]?.includes("own"))
@@ -124,7 +136,8 @@ export function SammlerKarussell({ benutzer, titel }: { benutzer: Benutzer; tite
             {ids.map((id) => {
               const blatt = BLAETTER_NACH_ID.get(id);
               if (!blatt) return null;
-              const beweisBild = benutzer.beweise[id];
+              const roh = benutzer.beweise[id];
+              const beweisBild = typeof roh === "string" ? roh : fotos[id];
               return (
                 <figure key={id} data-karte className="w-32 shrink-0 snap-start sm:w-40">
                   <div className="overflow-hidden rounded-2xl bg-white ring-1 ring-candy-100">

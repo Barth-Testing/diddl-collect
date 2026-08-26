@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { ArrowDownUp, Check, Camera, Egg, Heart, Images, LogIn, PartyPopper, Repeat2, ShieldCheck, Trash2, UserPlus } from "lucide-react";
 import { BLAETTER_NACH_ID, nameOderNummer, sortiereSammlung, type SammlungSortierung } from "@/lib/blaetter";
-import { getSession, login, logout, register, setBeweis, setFavorit, setStatus, setzeTauschInfo, zaehle } from "@/lib/store";
+import { getSession, login, logout, register, setBeweis, setFavorit, setStatus, setzeTauschInfo, speichereBeweisFoto, zaehle } from "@/lib/store";
 import type { Blatt, Status, TauschInfo } from "@/lib/types";
 import { useStoreVersion } from "@/lib/useStoreVersion";
 import { BlattKarte } from "./BlattKarte";
@@ -95,9 +95,9 @@ export function KontoApp() {
     const leser = new FileReader();
     leser.onload = () => {
       const img = new Image();
-      img.onload = () => {
+      img.onload = async () => {
         const canvas = document.createElement("canvas");
-        const max = 400;
+        const max = 320;
         const skala = Math.min(1, max / Math.max(img.width, img.height));
         canvas.width = Math.round(img.width * skala);
         canvas.height = Math.round(img.height * skala);
@@ -106,7 +106,7 @@ export function KontoApp() {
         ctx.fillStyle = "#fff";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        setBeweis(blattId, canvas.toDataURL("image/jpeg", 0.7));
+        await speichereBeweisFoto(blattId, canvas.toDataURL("image/jpeg", 0.6));
         setInfos("Beweis gespeichert – schön belegt!");
       };
       img.src = leser.result as string;
