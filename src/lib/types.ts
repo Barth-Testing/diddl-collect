@@ -8,6 +8,9 @@ export type Blatt = {
   farbe: string;
   jahr: number;
   quelle: string;
+  kategorie?: string;
+  kollektion?: string;
+  kollektionId?: string;
 };
 
 export const GROESSEN = ["Din A4", "Din A5", "Din A6"] as const;

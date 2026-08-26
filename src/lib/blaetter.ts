@@ -1,7 +1,18 @@
 import rohDaten from "../data/blaetter.json";
+import diddlBackRoh from "../data/diddl-back.json";
 import { FARBREIHENFOLGE, type Blatt } from "./types";
 
-export const BLAETTER: Blatt[] = rohDaten as Blatt[];
+export const BLAETTER: Blatt[] = [...(rohDaten as Blatt[]), ...(diddlBackRoh as Blatt[])];
+
+export const DIDDLBACK_KOLLEKTIONEN: { id: string; label: string }[] = [
+  { id: "fr", label: "Diddl is Back Frankreich" },
+  { id: "mid", label: "Mid Edition" },
+  { id: "herz", label: "Herz Edition" },
+  { id: "schul", label: "Back to School Edition" },
+  { id: "de", label: "Diddl is Back Deutschland" },
+  { id: "limited", label: "Limited Deutschland" },
+  { id: "geb", label: "Sonderkollektion (Geburtstag)" },
+];
 
 export const BLAETTER_NACH_ID = new Map(BLAETTER.map((b) => [b.id, b]));
 

@@ -1,12 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { PNG } from "pngjs";
 
-const JAHR = 2026;
-const QUELLE_BASIS = "https://www.diddl-sammelverzeichnis.de/diddl-is-back";
-const PAGES = [
-  { url: `${QUELLE_BASIS}/a5-blaetter-1`, cache: "/tmp/opencode/sv/a5.html", groesse: "Din A5", start: 463 },
-  { url: `${QUELLE_BASIS}/a6-blaetter-1`, cache: "/tmp/opencode/sv/a6.html", groesse: "Din A6", start: 229 },
-];
+const PAGES = [];
 
 function extrahiereBilder(html) {
   const treffer = html.match(/src="https:\/\/primary\.jwwb\.nl[^"]*image-high[^"]*"/g) ?? [];
@@ -77,6 +72,10 @@ async function dominanteFarbe(url) {
 }
 
 const datenPfad = new URL("../src/data/blaetter.json", import.meta.url);
+if (PAGES.length === 0) {
+  console.log("fetch:sammelverzeichnis ist deaktiviert – Diddl-is-back-Kollektionen werden jetzt aus src/data/diddl-back.json verwaltet.");
+  process.exit(0);
+}
 const daten = JSON.parse(await readFile(datenPfad, "utf8"));
 const bekannte = new Set(daten.map((e) => e.id));
 const groesseIndex = (g) => (g === "Din A4" ? 0 : g === "Din A5" ? 1 : 2);

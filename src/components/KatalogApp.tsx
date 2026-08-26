@@ -3,23 +3,32 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowDownUp, Check, Heart, LogIn, Repeat2, Search, SlidersHorizontal, X } from "lucide-react";
-import { BLAETTER, VERFÜGBARE_FARBEN } from "@/lib/blaetter";
+import { BLAETTER, DIDDLBACK_KOLLEKTIONEN, VERFÜGBARE_FARBEN } from "@/lib/blaetter";
 import { getSession, setStatus } from "@/lib/store";
 import { FARBREIHENFOLGE, type Status } from "@/lib/types";
 import { BlattKarte } from "./BlattKarte";
 import { Lupe } from "./Lupe";
 import { SelectBasis } from "./SelectBasis";
 import { useStoreVersion } from "@/lib/useStoreVersion";
+import { cn } from "@/lib/utils";
 
 type Sortierung = "jahr-auf" | "jahr-ab" | "groesse" | "farbe" | "nummer" | "name";
 type StatusFilter = "Alle" | "own" | "wish" | "offer" | "none";
 
 const GROESSEN_FILTER = ["Alle Größen", "Din A4", "Din A5", "Din A6"] as const;
 const JAHRE = Array.from({ length: 31 }, (_, i) => 1996 + i);
+const MODI = [
+  { id: "klassisch", label: "Katalog" },
+  { id: "back", label: "Diddl is Back" },
+  { id: "forever", label: "Forever Edition 2016" },
+] as const;
+type Modus = (typeof MODI)[number]["id"];
 
 export function KatalogApp() {
   useStoreVersion();
   const benutzer = getSession();
+  const [modus, setModus] = useState<Modus>("klassisch");
+  const [kollektion, setKollektion] = useState<string>("Alle");
   const [sort, setSort] = useState<Sortierung>("jahr-auf");
   const [groesse, setGroesse] = useState<string>("Alle Größen");
   const [farbe, setFarbe] = useState<string>("Alle Farben");
@@ -35,16 +44,19 @@ export function KatalogApp() {
 
   const gefiltert = useMemo(() => {
     const q = suche.trim().toLowerCase();
+    const neu = modus !== "klassisch";
     const liste = BLAETTER.filter((b) => {
+      if (neu ? b.kategorie !== modus : b.kategorie) return false;
+      if (modus === "back" && kollektion !== "Alle" && b.kollektionId !== kollektion) return false;
       if (groesse !== "Alle Größen" && b.groesse !== groesse) return false;
       if (farbe !== "Alle Farben" && b.farbe !== farbe) return false;
-      if (b.jahr < jahrVon || b.jahr > jahrBis) return false;
+      if (!neu && (b.jahr < jahrVon || b.jahr > jahrBis)) return false;
       if (statusFilter !== "Alle") {
         const s = statuses[b.id] ?? [];
         if (statusFilter === "none" ? s.length > 0 : !s.includes(statusFilter)) return false;
       }
       if (q) {
-        const text = `${b.name ?? ""} ${b.nummer} ${b.groesse} ${b.farbe}`.toLowerCase();
+        const text = `${b.name ?? ""} ${b.nummer} ${b.groesse} ${b.farbe} ${b.kollektion ?? ""}`.toLowerCase();
         if (!text.includes(q)) return false;
       }
       return true;
@@ -55,6 +67,22 @@ export function KatalogApp() {
     };
     const groesseIndex = (g: string) => (g === "Din A4" ? 0 : g === "Din A5" ? 1 : 2);
     const sortiert = [...liste];
+    if (neu) {
+      const kollIndex = (id?: string) => {
+        const i = DIDDLBACK_KOLLEKTIONEN.findIndex((k) => k.id === id);
+        return i === -1 ? 99 : i;
+      };
+      sortiert.sort((a, b) => {
+        if (modus === "back" && kollektion === "Alle") {
+          const ki = kollIndex(a.kollektionId) - kollIndex(b.kollektionId);
+          if (ki !== 0) return ki;
+        }
+        const gi = groesseIndex(a.groesse) - groesseIndex(b.groesse);
+        if (gi !== 0) return gi;
+        return a.nummer - b.nummer || a.id.localeCompare(b.id);
+      });
+      return sortiert;
+    }
     switch (sort) {
       case "jahr-auf":
         sortiert.sort((a, b) => a.jahr - b.jahr || a.nummer - b.nummer);
@@ -76,7 +104,7 @@ export function KatalogApp() {
         break;
     }
     return sortiert;
-  }, [sort, groesse, farbe, statusFilter, suche, jahrVon, jahrBis, statuses]);
+  }, [modus, kollektion, sort, groesse, farbe, statusFilter, suche, jahrVon, jahrBis, statuses]);
 
   const ownGesamt = Object.values(statuses).filter((s) => s.includes("own")).length;
 
@@ -102,6 +130,53 @@ export function KatalogApp() {
           <button onClick={() => setToast(null)} className="ml-auto text-ink-600 hover:text-candy-600" aria-label="Hinweis schließen">
             <X className="h-4 w-4" />
           </button>
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        {MODI.map((m) => (
+          <button
+            key={m.id}
+            onClick={() => setModus(m.id)}
+            className={cn(
+              "rounded-full px-4 py-2 text-sm font-bold transition-all",
+              modus === m.id
+                ? "bg-candy-500 text-white shadow-md shadow-candy-300/50"
+                : "bg-white text-ink-700 ring-1 ring-cream-300 hover:ring-candy-300",
+            )}
+          >
+            {m.label}
+          </button>
+        ))}
+      </div>
+
+      {modus === "back" && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setKollektion("Alle")}
+            className={cn(
+              "rounded-full px-3.5 py-1.5 text-xs font-bold transition-all",
+              kollektion === "Alle"
+                ? "bg-berry-500 text-white shadow-sm"
+                : "bg-white text-ink-700 ring-1 ring-cream-300 hover:ring-berry-300",
+            )}
+          >
+            Alle Kollektionen
+          </button>
+          {DIDDLBACK_KOLLEKTIONEN.map((k) => (
+            <button
+              key={k.id}
+              onClick={() => setKollektion(k.id)}
+              className={cn(
+                "rounded-full px-3.5 py-1.5 text-xs font-bold transition-all",
+                kollektion === k.id
+                  ? "bg-berry-500 text-white shadow-sm"
+                  : "bg-white text-ink-700 ring-1 ring-cream-300 hover:ring-berry-300",
+              )}
+            >
+              {k.label}
+            </button>
+          ))}
         </div>
       )}
 
@@ -161,6 +236,7 @@ export function KatalogApp() {
               ["none", "Noch nicht erfasst"],
             ]}
           />
+          {modus === "klassisch" && (
           <label className="flex items-center gap-1.5 text-xs font-bold text-ink-600">
             <select
               value={jahrVon}
@@ -182,6 +258,7 @@ export function KatalogApp() {
               ))}
             </select>
           </label>
+          )}
         </div>
       </div>
 
