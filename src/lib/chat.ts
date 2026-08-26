@@ -119,6 +119,15 @@ function merkeAusSupabase(reihen: NachrichtReihe[]) {
   speichereCache(cache);
 }
 
+function entferneNachricht(id: string): boolean {
+  const cache = ladeCache();
+  const vorher = cache.nachrichten.length;
+  cache.nachrichten = cache.nachrichten.filter((m) => m.id !== id);
+  if (cache.nachrichten.length === vorher) return false;
+  speichereCache(cache);
+  return true;
+}
+
 function entferneOffene(tempId: string, ersatz?: ChatNachricht) {
   const cache = ladeCache();
   const vorher = cache.offen.length;
@@ -200,6 +209,14 @@ export function verbinde(raum: string, onNachricht: () => void) {
         onNachricht();
       },
     )
+    .on(
+      "postgres_changes",
+      { event: "DELETE", schema: "public", table: "nachrichten" },
+      (payload) => {
+        const id = String((payload.old as { id: number }).id);
+        if (entferneNachricht(id)) onNachricht();
+      },
+    )
     .subscribe((status) => {
       verbunden = status === "SUBSCRIBED";
       if (verbunden) syncQueue();
@@ -228,6 +245,19 @@ async function ladeRaum(
     .limit(MAX_NACHRICHTEN);
   if (!error && data) {
     merkeAusSupabase(data);
+    const { data: ids } = await supabase
+      .from("nachrichten")
+      .select("id")
+      .eq("raum", raum);
+    if (ids) {
+      const vorhanden = new Set(ids.map((r) => String(r.id)));
+      const cache = ladeCache();
+      const vorher = cache.nachrichten.length;
+      cache.nachrichten = cache.nachrichten.filter(
+        (m) => m.raum !== raum || vorhanden.has(m.id),
+      );
+      if (cache.nachrichten.length !== vorher) speichereCache(cache);
+    }
     return true;
   }
   return false;
