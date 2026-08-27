@@ -40,8 +40,12 @@ export function farbBadge(farbe: string) {
   return map[farbe] ?? map.Unbekannt;
 }
 
-export function nameOderNummer(blatt: Blatt) {
-  return blatt.name ?? `Blatt Nr. ${blatt.nummer}`;
+/** Einheitliche Benamung aller Blätter: <Jahr>-<DIN-Größe>-<Nummer>.
+ *  Bei Diddl-is-Back-Sammlungen wird die Kollektion ergänzt, weil dort die
+ *  Nummerierung je Kollektion neu beginnt (sonst gäbe es Dopplungen). */
+export function blattTitel(blatt: Blatt): string {
+  const basis = `${blatt.jahr}-${blatt.groesse}-${blatt.nummer}`;
+  return blatt.kollektion ? `${basis} (${blatt.kollektion})` : basis;
 }
 
 export type SammlungSortierung =
@@ -64,9 +68,7 @@ export function sortiereSammlung<T extends { blatt: Blatt }>(liste: T[], modus: 
       sortiert.sort((a, b) => a.blatt.nummer - b.blatt.nummer || nachId(a, b));
       break;
     case "name":
-      sortiert.sort((a, b) =>
-        (a.blatt.name ?? `zzz${a.blatt.nummer}`).localeCompare(b.blatt.name ?? `zzz${b.blatt.nummer}`),
-      );
+      sortiert.sort((a, b) => blattTitel(a.blatt).localeCompare(blattTitel(b.blatt), "de", { numeric: true }));
       break;
     case "jahr-auf":
       sortiert.sort((a, b) => a.blatt.jahr - b.blatt.jahr || a.blatt.nummer - b.blatt.nummer || nachId(a, b));

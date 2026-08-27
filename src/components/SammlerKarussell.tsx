@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Images, Star } from "lucide-react";
 import type { Benutzer } from "@/lib/types";
-import { BLAETTER_NACH_ID, nameOderNummer } from "@/lib/blaetter";
+import { BLAETTER_NACH_ID, blattTitel } from "@/lib/blaetter";
 import { ladeBeweisFotos } from "@/lib/beweise";
 import { cn } from "@/lib/utils";
 
@@ -143,16 +143,16 @@ export function SammlerKarussell({ benutzer, titel }: { benutzer: Benutzer; tite
                   <div className="overflow-hidden rounded-2xl bg-white ring-1 ring-candy-100">
                     <img
                       src={quelle === "beweis" && beweisBild ? beweisBild : blatt.bild}
-                      alt={nameOderNummer(blatt)}
+                      alt={blattTitel(blatt)}
                       loading="lazy"
                       className="aspect-square w-full object-contain p-1"
                     />
                   </div>
                   <figcaption
                     className="mt-1 truncate text-center text-[10px] font-bold text-ink-700"
-                    title={nameOderNummer(blatt)}
+                    title={blattTitel(blatt)}
                   >
-                    {nameOderNummer(blatt)}
+                    {blattTitel(blatt)}
                   </figcaption>
                 </figure>
               );

@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowDownUp, Check, Heart, LogIn, Repeat2, Search, SlidersHorizontal, X } from "lucide-react";
-import { BLAETTER, DIDDLBACK_KOLLEKTIONEN, VERFÜGBARE_FARBEN } from "@/lib/blaetter";
+import { BLAETTER, DIDDLBACK_KOLLEKTIONEN, VERFÜGBARE_FARBEN, blattTitel } from "@/lib/blaetter";
 import { getSession, setStatus } from "@/lib/store";
 import { FARBREIHENFOLGE, type Status } from "@/lib/types";
 import { BlattKarte } from "./BlattKarte";
@@ -56,7 +56,7 @@ export function KatalogApp() {
         if (statusFilter === "none" ? s.length > 0 : !s.includes(statusFilter)) return false;
       }
       if (q) {
-        const text = `${b.name ?? ""} ${b.nummer} ${b.groesse} ${b.farbe} ${b.kollektion ?? ""}`.toLowerCase();
+        const text = `${blattTitel(b)} ${b.name ?? ""} ${b.nummer} ${b.groesse} ${b.farbe} ${b.kollektion ?? ""}`.toLowerCase();
         if (!text.includes(q)) return false;
       }
       return true;
@@ -100,7 +100,7 @@ export function KatalogApp() {
         sortiert.sort((a, b) => a.nummer - b.nummer);
         break;
       case "name":
-        sortiert.sort((a, b) => (a.name ?? `zzz${a.nummer}`).localeCompare(b.name ?? `zzz${b.nummer}`));
+        sortiert.sort((a, b) => blattTitel(a).localeCompare(blattTitel(b), "de", { numeric: true }));
         break;
     }
     return sortiert;
@@ -140,7 +140,7 @@ export function KatalogApp() {
             <input
               value={suche}
               onChange={(e) => setSuche(e.target.value)}
-              placeholder="Nach Motiv, Nummer, Farbe suchen …"
+              placeholder="Nach Benamung, Nummer, Farbe suchen …"
               className="w-full rounded-full border border-cream-300 bg-white py-2.5 pl-9 pr-4 text-sm font-semibold text-ink-800 outline-none placeholder:text-ink-600/60 focus:border-candy-400 focus:ring-2 focus:ring-candy-200"
             />
           </label>
@@ -158,7 +158,7 @@ export function KatalogApp() {
                 ["groesse", "Größe"],
                 ["farbe", "Farbe"],
                 ["nummer", "Nummer"],
-                ["name", "Motiv (A–Z)"],
+                ["name", "Jahr–Größe–Nr."],
               ]}
             />
           </div>

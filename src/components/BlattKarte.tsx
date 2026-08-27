@@ -3,7 +3,7 @@
 import { Check, Heart, Repeat2, Camera, Star } from "lucide-react";
 import type { Blatt, Status } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { farbBadge, nameOderNummer } from "@/lib/blaetter";
+import { farbBadge, blattTitel } from "@/lib/blaetter";
 
 export type BlattAktion = "own" | "wish" | "offer";
 
@@ -43,11 +43,11 @@ export function BlattKarte({
       <button
         onClick={aufBild}
         className="group relative block aspect-square w-full overflow-hidden bg-white"
-        aria-label={`Motiv von ${nameOderNummer(blatt)} vergrößern`}
+        aria-label={`Motiv von ${blattTitel(blatt)} vergrößern`}
       >
         <img
           src={bildOverride ?? blatt.bild}
-          alt={nameOderNummer(blatt)}
+          alt={blattTitel(blatt)}
           loading="lazy"
           className="absolute inset-0 h-full w-full object-contain p-2 transition-transform duration-300 group-hover:scale-105"
         />
@@ -78,8 +78,8 @@ export function BlattKarte({
       </button>
 
       <div className="flex flex-1 flex-col gap-1.5 p-2.5">
-        <p className="line-clamp-1 text-xs font-bold text-ink-800" title={nameOderNummer(blatt)}>
-          {nameOderNummer(blatt)}
+        <p className="line-clamp-1 text-xs font-bold text-ink-800" title={blattTitel(blatt)}>
+          {blattTitel(blatt)}
         </p>
         <div className="flex flex-wrap items-center gap-1">
           <span className="chip bg-cream-100 px-1.5 py-0.5 text-ink-700">
@@ -98,7 +98,7 @@ export function BlattKarte({
               aktiv={status.includes("own")}
               aktivCls="bg-candy-500 text-white shadow-sm ring-candy-400"
               titel="In meiner Sammlung"
-              aria={`${nameOderNummer(blatt)}: Hab ich markieren oder entfernen`}
+              aria={`${blattTitel(blatt)}: Hab ich markieren oder entfernen`}
               onClick={() => aufToggle("own")}
             >
               <Check className="h-3.5 w-3.5" />
@@ -107,7 +107,7 @@ export function BlattKarte({
               aktiv={status.includes("wish")}
               aktivCls="bg-berry-400 text-white shadow-sm ring-berry-300"
               titel="Auf die Wunschliste"
-              aria={`${nameOderNummer(blatt)}: Wunsch markieren oder entfernen`}
+              aria={`${blattTitel(blatt)}: Wunsch markieren oder entfernen`}
               onClick={() => aufToggle("wish")}
             >
               <Heart className="h-3.5 w-3.5" />
@@ -116,7 +116,7 @@ export function BlattKarte({
               aktiv={status.includes("offer")}
               aktivCls="bg-peach-400 text-white shadow-sm ring-peach-300"
               titel="Doppelt – zum Tauschen anbieten"
-              aria={`${nameOderNummer(blatt)}: Zum Tauschen markieren oder entfernen`}
+              aria={`${blattTitel(blatt)}: Zum Tauschen markieren oder entfernen`}
               onClick={() => aufToggle("offer")}
             >
               <Repeat2 className="h-3.5 w-3.5" />
@@ -139,7 +139,7 @@ export function BlattKarte({
                 aktiv={!!favorit}
                 aktivCls="bg-yellow-400 text-white shadow-sm"
                 titel={favorit ? "Von den Top-Favoriten entfernen" : "Zu den Top-Favoriten hinzufügen"}
-                aria={`${nameOderNummer(blatt)}: Als Top-Favorit markieren oder entfernen`}
+                aria={`${blattTitel(blatt)}: Als Top-Favorit markieren oder entfernen`}
                 onClick={aufFavorit}
               >
                 <Star className="h-3.5 w-3.5" />

@@ -3,7 +3,7 @@
 import { X, ExternalLink } from "lucide-react";
 import type { Blatt, Status } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { farbBadge, nameOderNummer } from "@/lib/blaetter";
+import { farbBadge, blattTitel } from "@/lib/blaetter";
 
 type Props = {
   blatt: Blatt;
@@ -19,7 +19,7 @@ export function Lupe({ blatt, status, aufSchliessen, aufToggle }: Props) {
       onClick={aufSchliessen}
       role="dialog"
       aria-modal="true"
-      aria-label={`Motiv: ${nameOderNummer(blatt)}`}
+      aria-label={`Motiv: ${blattTitel(blatt)}`}
     >
       <div
         className="animate-pop card-soft flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden"
@@ -27,9 +27,8 @@ export function Lupe({ blatt, status, aufSchliessen, aufToggle }: Props) {
       >
         <div className="flex items-center justify-between border-b border-candy-100 px-4 py-3">
           <div className="min-w-0">
-            <p className="truncate font-display text-lg font-bold text-ink-800">{nameOderNummer(blatt)}</p>
+            <p className="truncate font-display text-lg font-bold text-ink-800">{blattTitel(blatt)}</p>
             <p className="text-xs font-semibold text-ink-600">
-              {blatt.groesse} · Nr. {blatt.nummer} · Jahr {blatt.jahr} ·{" "}
               <span className={cn("chip px-1.5", farbBadge(blatt.farbe))}>{blatt.farbe}</span>
             </p>
           </div>
@@ -45,7 +44,7 @@ export function Lupe({ blatt, status, aufSchliessen, aufToggle }: Props) {
         <div className="flex items-center justify-center bg-white p-4">
           <img
             src={blatt.bildGross}
-            alt={nameOderNummer(blatt)}
+            alt={blattTitel(blatt)}
             onError={(e) => {
               (e.target as HTMLImageElement).src = blatt.bild;
             }}

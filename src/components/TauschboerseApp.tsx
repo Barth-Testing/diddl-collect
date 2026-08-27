@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArrowLeftRight } from "lucide-react";
-import { BLAETTER_NACH_ID, nameOderNummer } from "@/lib/blaetter";
+import { BLAETTER_NACH_ID, blattTitel } from "@/lib/blaetter";
 import { getSession, listBenutzer } from "@/lib/store";
 import { useStoreVersion } from "@/lib/useStoreVersion";
 import { subscribeTausch, verbindeTausch } from "@/lib/tausch";
@@ -49,7 +49,7 @@ export function TauschboerseApp() {
       if (groesse && blatt.groesse !== groesse) return false;
       if (farbe && blatt.farbe !== farbe) return false;
       if (!q) return true;
-      const text = `${blatt.name ?? ""} ${blatt.nummer} ${anbieterName}`.toLowerCase();
+      const text = `${blattTitel(blatt)} ${blatt.name ?? ""} ${blatt.nummer} ${anbieterName}`.toLowerCase();
       return text.includes(q);
     })
     .sort((a, b) => a.anbieterName.localeCompare(b.anbieterName) || a.blattId.localeCompare(b.blattId));
@@ -103,12 +103,12 @@ export function TauschboerseApp() {
             <div key={blattId} className="card-soft flex flex-col gap-2 p-3">
               <img
                 src={blatt!.bild}
-                alt={nameOderNummer(blatt!)}
+                alt={blattTitel(blatt!)}
                 loading="lazy"
                 className="aspect-square w-full rounded-2xl bg-white object-contain ring-1 ring-candy-100"
               />
-              <p className="line-clamp-1 text-center text-xs font-bold text-ink-800" title={nameOderNummer(blatt!)}>
-                {nameOderNummer(blatt!)}
+              <p className="line-clamp-1 text-center text-xs font-bold text-ink-800" title={blattTitel(blatt!)}>
+                {blattTitel(blatt!)}
               </p>
               <p className="text-center text-[10px] font-semibold text-ink-600">
                 von{" "}

@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Repeat2, Search, Send, X } from "lucide-react";
-import { BLAETTER_NACH_ID, nameOderNummer } from "@/lib/blaetter";
+import { BLAETTER_NACH_ID, blattTitel } from "@/lib/blaetter";
 import { getSession } from "@/lib/store";
 import { useStoreVersion } from "@/lib/useStoreVersion";
 import { erstelleAngebot } from "@/lib/tausch";
@@ -38,7 +38,7 @@ export function TauschDialog({ blattId, anbieter, aufSchliessen }: Props) {
     const q = suche.trim().toLowerCase();
     if (!q) return eigene;
     return eigene.filter((b) =>
-      `${b.name ?? ""} ${b.nummer} ${b.groesse}`.toLowerCase().includes(q),
+      `${blattTitel(b)} ${b.name ?? ""} ${b.nummer} ${b.groesse}`.toLowerCase().includes(q),
     );
   }, [eigene, suche]);
 
@@ -75,7 +75,7 @@ export function TauschDialog({ blattId, anbieter, aufSchliessen }: Props) {
       onClick={aufSchliessen}
       role="dialog"
       aria-modal="true"
-      aria-label={`Tauschangebot für ${nameOderNummer(blatt)}`}
+      aria-label={`Tauschangebot für ${blattTitel(blatt)}`}
     >
       <div
         className="animate-pop card-soft flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden"
@@ -84,7 +84,7 @@ export function TauschDialog({ blattId, anbieter, aufSchliessen }: Props) {
         <div className="flex items-center justify-between border-b border-candy-100 px-4 py-3">
           <div className="min-w-0">
             <p className="truncate font-display text-lg font-bold text-ink-800">
-              Tausch-Angebot: {nameOderNummer(blatt)}
+              Tausch-Angebot: {blattTitel(blatt)}
             </p>
             <p className="text-xs font-semibold text-ink-600">
               Blatt von <span className="font-bold text-candy-600">{anbieter.name}</span>
@@ -175,7 +175,7 @@ export function TauschDialog({ blattId, anbieter, aufSchliessen }: Props) {
                           alt=""
                           className={cn("h-6 w-6 rounded-full object-contain", aktiv ? "bg-white/20" : "bg-white")}
                         />
-                        <span className="max-w-24 truncate">{nameOderNummer(b)}</span>
+                        <span className="max-w-24 truncate">{blattTitel(b)}</span>
                       </button>
                     );
                   })}

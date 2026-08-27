@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Handshake, Lock, Repeat2, Send, X } from "lucide-react";
-import { BLAETTER_NACH_ID, nameOderNummer } from "@/lib/blaetter";
+import { BLAETTER_NACH_ID, blattTitel } from "@/lib/blaetter";
 import { getSession } from "@/lib/store";
 import { useStoreVersion } from "@/lib/useStoreVersion";
 import {
@@ -75,7 +75,7 @@ function AngebotVorschau({ angebot }: { angebot: TauschAngebot }) {
             className="h-14 w-14 shrink-0 rounded-xl bg-white object-contain ring-1 ring-cream-200"
           />
           <div className="min-w-0">
-            <p className="truncate text-sm font-bold text-ink-800">{nameOderNummer(gewuenscht)}</p>
+            <p className="truncate text-sm font-bold text-ink-800">{blattTitel(gewuenscht)}</p>
             <p className="text-xs font-semibold text-ink-600">
               {gewuenscht.groesse} · Nr. {gewuenscht.nummer} · Jahr {gewuenscht.jahr} · {gewuenscht.farbe}
             </p>
@@ -92,11 +92,11 @@ function AngebotVorschau({ angebot }: { angebot: TauschAngebot }) {
             {geboten.map((b) => (
               <span
                 key={b.id}
-                title={`${nameOderNummer(b)} · ${b.groesse} · ${b.jahr}`}
+                title={`${blattTitel(b)} · ${b.groesse} · ${b.jahr}`}
                 className="flex items-center gap-1.5 rounded-full bg-white py-1 pl-1 pr-2.5 text-xs font-bold text-ink-700 ring-1 ring-cream-300"
               >
                 <img src={b.bild} alt="" className="h-5 w-5 rounded-full bg-white object-contain" />
-                {nameOderNummer(b)}
+                {blattTitel(b)}
               </span>
             ))}
             {betrag && (
@@ -243,7 +243,7 @@ export function PostfachApp() {
                   {gegenueber}
                 </span>
                 <span className="block truncate text-[10px] font-semibold text-ink-600">
-                  {blatt?.name ?? blatt?.nummer ?? "Blatt"}
+                  {blatt ? blattTitel(blatt) : "Blatt"}
                 </span>
               </span>
               <StatusChip status={a.status} />

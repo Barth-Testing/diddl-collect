@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Repeat2, SearchX, Trophy } from "lucide-react";
-import { BLAETTER_NACH_ID, nameOderNummer } from "@/lib/blaetter";
+import { BLAETTER_NACH_ID, blattTitel } from "@/lib/blaetter";
 import { getSession, listBenutzer, zaehle } from "@/lib/store";
 import { useStoreVersion } from "@/lib/useStoreVersion";
 import { Punkte } from "./Punkte";
@@ -103,16 +103,16 @@ export function SammlerProfilApp() {
                     <div className="overflow-hidden rounded-2xl bg-white ring-1 ring-candy-100">
                       <img
                         src={b.bild}
-                        alt={nameOderNummer(b)}
+                        alt={blattTitel(b)}
                         loading="lazy"
                         className="aspect-square w-full object-contain p-1"
                       />
                     </div>
                     <figcaption
                       className="mt-1 truncate text-center text-[10px] font-bold text-ink-700"
-                      title={nameOderNummer(b)}
+                      title={blattTitel(b)}
                     >
-                      {nameOderNummer(b)}
+                      {blattTitel(b)}
                     </figcaption>
                     {(info?.betrag != null || info?.notiz) && (
                       <p className="mt-0.5 line-clamp-2 text-center text-[9px] font-semibold text-candy-700">

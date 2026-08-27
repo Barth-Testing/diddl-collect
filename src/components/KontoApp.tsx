@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { ArrowDownUp, Check, Camera, Egg, Heart, Images, LogIn, PartyPopper, Repeat2, ShieldCheck, Trash2, UserPlus } from "lucide-react";
-import { BLAETTER_NACH_ID, nameOderNummer, sortiereSammlung, type SammlungSortierung } from "@/lib/blaetter";
+import { BLAETTER_NACH_ID, blattTitel, sortiereSammlung, type SammlungSortierung } from "@/lib/blaetter";
 import { getSession, login, logout, register, setBeweis, setFavorit, setStatus, setzeTauschInfo, speichereBeweisFoto, zaehle } from "@/lib/store";
 import type { Blatt, Status, TauschInfo } from "@/lib/types";
 import { useStoreVersion } from "@/lib/useStoreVersion";
@@ -292,9 +292,9 @@ export function KontoApp() {
               if (!b) return null;
               return (
                 <figure key={id} className="card-soft overflow-hidden p-2">
-                  <img src={b.bild} alt={nameOderNummer(b)} className="aspect-square w-full rounded-xl object-contain" />
+                  <img src={b.bild} alt={blattTitel(b)} className="aspect-square w-full rounded-xl object-contain" />
                   <figcaption className="mt-1 truncate text-center text-[10px] font-bold text-ink-700">
-                    {nameOderNummer(b)}
+                    {blattTitel(b)}
                   </figcaption>
                 </figure>
               );
@@ -317,7 +317,7 @@ export function KontoApp() {
                 optionen={[
                   ["id", "Nummer (A4–A6)"],
                   ["nummer", "Blattnummer"],
-                  ["name", "Motiv (A–Z)"],
+                  ["name", "Jahr–Größe–Nr."],
                   ["jahr-auf", "Jahr (alt → neu)"],
                   ["jahr-ab", "Jahr (neu → alt)"],
                   ["groesse", "Größe"],
