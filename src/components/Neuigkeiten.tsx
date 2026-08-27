@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { BadgeCheck, Megaphone, Plus, ShieldCheck, Sparkles, Users } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
 
@@ -42,6 +43,12 @@ type Db = {
         Update: Partial<ProfilReihe>;
         Relationships: [];
       };
+      beweis_fotos: {
+        Row: { id: number; profil_id: string; blatt_id: string; bild: string; erstellt_am: string };
+        Insert: { profil_id: string; blatt_id: string; bild: string };
+        Update: never;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -58,71 +65,26 @@ type Gemeinde = {
 export function Neuigkeiten() {
   const [news, setNews] = useState<NewsReihe[]>([]);
   const [gemeinde, setGemeinde] = useState<Gemeinde | null>(null);
-  const [bereit, setBereit] = useState(false);
   const [sichtbar, setSichtbar] = useState(5);
 
   useEffect(() => {
     let aktiv = true;
-    const laden = async () => {
-      const supabase = getSupabase<Db>();
-      if (!supabase) return;
-      const ladeNews = async () => {
-        const erste = await supabase
-          .from("news")
-          .select("id, titel, text, erstellt_am, bild, bild2")
-          .order("erstellt_am", { ascending: false })
-          .limit(50);
-        if (!erste.error && erste.data) return erste.data;
-        const zweite = await supabase
-          .from("news")
-          .select("id, titel, text, erstellt_am, bild")
-          .order("erstellt_am", { ascending: false })
-          .limit(50);
-        if (!zweite.error && zweite.data) return zweite.data;
-        const dritte = await supabase
-          .from("news")
-          .select("id, titel, text, erstellt_am")
-          .order("erstellt_am", { ascending: false })
-          .limit(50);
-        if (!dritte.error && dritte.data) return dritte.data;
-        return [];
-      };
-      const [newsListe, profilErgebnis] = await Promise.all([
-        ladeNews(),
-        supabase.from("profile").select("id, name, created_at, statuses, beweise"),
-      ]);
-      if (!aktiv) return;
-      if (newsListe.length > 0) setNews(newsListe);
-      if (!profilErgebnis.error && profilErgebnis.data) {
-        let blaetter = 0;
-        let beweise = 0;
-        let neuestes: string | null = null;
-        let neuesteZeit = 0;
-        for (const r of profilErgebnis.data) {
-          for (const s of Object.values(r.statuses ?? {})) if (s === "own" || (Array.isArray(s) && s.includes("own"))) blaetter++;
-          beweise += Object.keys(r.beweise ?? {}).length;
-          const zeit = new Date(r.created_at).getTime();
-          if (zeit > neuesteZeit) {
-            neuesteZeit = zeit;
-            neuestes = r.name;
-          }
-        }
-        setGemeinde({
-          sammler: profilErgebnis.data.length,
-          blaetter,
-          beweise,
-          neuestesMitglied: neuestes,
-        });
-      }
-      setBereit(true);
-    };
-    laden();
+    const supabase = getSupabase<Db>();
+    if (!supabase) return;
+    /* News und Gemeinde-Stats laufen unabhängig – die News erscheinen sofort,
+       die Statistik schließt mit den leichten Queries auf. */
+    void (async () => {
+      const liste = await ladeNews(supabase);
+      if (aktiv && liste.length > 0) setNews(liste);
+    })();
+    void (async () => {
+      const stats = await ladeGemeinde(supabase);
+      if (aktiv && stats) setGemeinde(stats);
+    })();
     return () => {
       aktiv = false;
     };
   }, []);
-
-  if (!bereit) return null;
 
   return (
     <div className="card-soft p-6">
@@ -215,6 +177,63 @@ export function Neuigkeiten() {
       </div>
     </div>
   );
+}
+
+async function ladeNews(supabase: SupabaseClient<Db>): Promise<NewsReihe[]> {
+  const erste = await supabase
+    .from("news")
+    .select("id, titel, text, erstellt_am, bild, bild2")
+    .order("erstellt_am", { ascending: false })
+    .limit(50);
+  if (!erste.error && erste.data) return erste.data;
+  const zweite = await supabase
+    .from("news")
+    .select("id, titel, text, erstellt_am, bild")
+    .order("erstellt_am", { ascending: false })
+    .limit(50);
+  if (!zweite.error && zweite.data) return zweite.data;
+  const dritte = await supabase
+    .from("news")
+    .select("id, titel, text, erstellt_am")
+    .order("erstellt_am", { ascending: false })
+    .limit(50);
+  if (!dritte.error && dritte.data) return dritte.data;
+  return [];
+}
+
+/** Gemeinde-Statistik ohne die schwere `beweise`-Spalte: nur zählen, nie Bildinhalte mitladen. */
+async function ladeGemeinde(supabase: SupabaseClient<Db>): Promise<Gemeinde | null> {
+  const anzahl = await supabase.from("profile").select("id", { count: "exact", head: true });
+  if (anzahl.error) return null;
+  const [neuestes, fotos, statuses] = await Promise.all([
+    supabase.from("profile").select("name, created_at").order("created_at", { ascending: false }).limit(1),
+    supabase.from("beweis_fotos").select("id", { count: "exact", head: true }),
+    supabase.from("profile").select("statuses"),
+  ]);
+  let beweise = 0;
+  if (!fotos.error) {
+    beweise = fotos.count ?? 0;
+  } else {
+    /* Tabelle existiert noch nicht -> alte Zählweise (nur Anzahl, nichts speichern). */
+    const alt = await supabase.from("profile").select("beweise");
+    if (!alt.error && alt.data) {
+      for (const r of alt.data) beweise += Object.keys(r.beweise ?? {}).length;
+    }
+  }
+  let blaetter = 0;
+  if (!statuses.error && statuses.data) {
+    for (const r of statuses.data) {
+      for (const s of Object.values(r.statuses ?? {})) {
+        if (s === "own" || (Array.isArray(s) && s.includes("own"))) blaetter++;
+      }
+    }
+  }
+  return {
+    sammler: anzahl.count ?? 0,
+    blaetter,
+    beweise,
+    neuestesMitglied: neuestes.data?.[0]?.name ?? null,
+  };
 }
 
 function GemeindeKarte({
