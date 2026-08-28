@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { ArrowDownUp, Check, Camera, Egg, Heart, Images, LogIn, PartyPopper, Repeat2, ShieldCheck, Trash2, UserPlus } from "lucide-react";
-import { BLAETTER_NACH_ID, blattTitel, sortiereSammlung, type SammlungSortierung } from "@/lib/blaetter";
+import { BLAETTER, BLAETTER_NACH_ID, blattTitel, sortiereSammlung, type SammlungSortierung } from "@/lib/blaetter";
 import { getSession, login, logout, register, setBeweis, setFavorit, setStatus, setzeTauschInfo, speichereBeweisFoto, zaehle } from "@/lib/store";
 import type { Blatt, Status, TauschInfo } from "@/lib/types";
 import { useStoreVersion } from "@/lib/useStoreVersion";
@@ -224,7 +224,7 @@ export function KontoApp() {
             Abmelden
           </button>
           <p className="max-w-52 text-right text-xs font-semibold text-ink-600">
-            Fortschritt: {z.own} von 855 ({Math.round((z.own / 855) * 100)} %)
+            Fortschritt: {z.own} von {BLAETTER.length} ({Math.round((z.own / BLAETTER.length) * 100)} %)
           </p>
         </div>
       </div>

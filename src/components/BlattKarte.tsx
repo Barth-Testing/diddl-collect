@@ -85,7 +85,9 @@ export function BlattKarte({
           <span className="chip bg-cream-100 px-1.5 py-0.5 text-ink-700">
             {blatt.groesse.replace("Din ", "")}
           </span>
-          <span className="chip bg-candy-100 px-1.5 py-0.5 text-candy-700">{blatt.jahr}</span>
+          {blatt.jahr !== null && (
+            <span className="chip bg-candy-100 px-1.5 py-0.5 text-candy-700">{blatt.jahr}</span>
+          )}
           <span className={cn("chip px-1.5 py-0.5", farbBadge(blatt.farbe))}>{blatt.farbe}</span>
           {bewiesen && (
             <span className="chip bg-mint-200 px-1.5 py-0.5 text-[10px] text-emerald-800">✓ Beweis</span>

@@ -77,7 +77,8 @@ function AngebotVorschau({ angebot }: { angebot: TauschAngebot }) {
           <div className="min-w-0">
             <p className="truncate text-sm font-bold text-ink-800">{blattTitel(gewuenscht)}</p>
             <p className="text-xs font-semibold text-ink-600">
-              {gewuenscht.groesse} · Nr. {gewuenscht.nummer} · Jahr {gewuenscht.jahr} · {gewuenscht.farbe}
+              {gewuenscht.groesse} · Nr. {gewuenscht.nummer}
+              {gewuenscht.jahr !== null ? <> · Jahr {gewuenscht.jahr}</> : null} · {gewuenscht.farbe}
             </p>
             <p className="text-xs font-semibold text-ink-500">Gewünschtes Blatt</p>
           </div>
@@ -92,7 +93,7 @@ function AngebotVorschau({ angebot }: { angebot: TauschAngebot }) {
             {geboten.map((b) => (
               <span
                 key={b.id}
-                title={`${blattTitel(b)} · ${b.groesse} · ${b.jahr}`}
+                title={`${blattTitel(b)} · ${b.groesse}${b.jahr !== null ? ` · ${b.jahr}` : ""}`}
                 className="flex items-center gap-1.5 rounded-full bg-white py-1 pl-1 pr-2.5 text-xs font-bold text-ink-700 ring-1 ring-cream-300"
               >
                 <img src={b.bild} alt="" className="h-5 w-5 rounded-full bg-white object-contain" />

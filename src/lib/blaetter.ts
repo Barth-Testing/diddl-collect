@@ -1,8 +1,9 @@
 import rohDaten from "../data/blaetter.json";
 import diddlBackRoh from "../data/diddl-back.json";
+import reliefRoh from "../data/relief.json";
 import { FARBREIHENFOLGE, type Blatt } from "./types";
 
-export const BLAETTER: Blatt[] = [...(rohDaten as Blatt[]), ...(diddlBackRoh as Blatt[])];
+export const BLAETTER: Blatt[] = [...(rohDaten as Blatt[]), ...(diddlBackRoh as Blatt[]), ...(reliefRoh as Blatt[])];
 
 export const DIDDLBACK_KOLLEKTIONEN: { id: string; label: string }[] = [
   { id: "fr", label: "Diddl is Back Frankreich" },
@@ -42,8 +43,10 @@ export function farbBadge(farbe: string) {
 
 /** Einheitliche Benamung aller Blätter: <Jahr>-<DIN-Größe>-<Nummer>.
  *  Bei Diddl-is-Back-Sammlungen wird die Kollektion ergänzt, weil dort die
- *  Nummerierung je Kollektion neu beginnt (sonst gäbe es Dopplungen). */
+ *  Nummerierung je Kollektion neu beginnt (sonst gäbe es Dopplungen).
+ *  Reliefblätter haben weder Jahr noch DIN-Größe: Relief-<Nummer>. */
 export function blattTitel(blatt: Blatt): string {
+  if (blatt.kategorie === "relief") return `Relief-${blatt.nummer}`;
   const basis = `${blatt.jahr}-${blatt.groesse}-${blatt.nummer}`;
   return blatt.kollektion ? `${basis} (${blatt.kollektion})` : basis;
 }
@@ -71,10 +74,10 @@ export function sortiereSammlung<T extends { blatt: Blatt }>(liste: T[], modus: 
       sortiert.sort((a, b) => blattTitel(a.blatt).localeCompare(blattTitel(b.blatt), "de", { numeric: true }));
       break;
     case "jahr-auf":
-      sortiert.sort((a, b) => a.blatt.jahr - b.blatt.jahr || a.blatt.nummer - b.blatt.nummer || nachId(a, b));
+      sortiert.sort((a, b) => (a.blatt.jahr ?? 0) - (b.blatt.jahr ?? 0) || a.blatt.nummer - b.blatt.nummer || nachId(a, b));
       break;
     case "jahr-ab":
-      sortiert.sort((a, b) => b.blatt.jahr - a.blatt.jahr || a.blatt.nummer - b.blatt.nummer || nachId(a, b));
+      sortiert.sort((a, b) => (b.blatt.jahr ?? 0) - (a.blatt.jahr ?? 0) || a.blatt.nummer - b.blatt.nummer || nachId(a, b));
       break;
     case "groesse": {
       const groesseIndex = (g: string) => (g === "Din A4" ? 0 : g === "Din A5" ? 1 : 2);

@@ -8,7 +8,8 @@ import { getProdukte } from "@/lib/shop";
 
 export default function Startseite() {
   const einzigartigeFarben = new Set(BLAETTER.map((b) => b.farbe)).size;
-  const jahre = `${Math.min(...BLAETTER.map((b) => b.jahr))}–${Math.max(...BLAETTER.map((b) => b.jahr))}`;
+  const jahreSet = new Set(BLAETTER.map((b) => b.jahr).filter((j): j is number => j !== null));
+  const jahre = jahreSet.size > 0 ? `${Math.min(...jahreSet)}–${Math.max(...jahreSet)}` : "–";
 
   return (
     <main>

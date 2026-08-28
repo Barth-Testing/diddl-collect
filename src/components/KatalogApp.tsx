@@ -15,12 +15,13 @@ import { cn } from "@/lib/utils";
 type Sortierung = "jahr-auf" | "jahr-ab" | "groesse" | "farbe" | "nummer" | "name";
 type StatusFilter = "Alle" | "own" | "wish" | "offer" | "none";
 
-const GROESSEN_FILTER = ["Alle Größen", "Din A4", "Din A5", "Din A6"] as const;
+const GROESSEN_FILTER = ["Alle Größen", "Din A4", "Din A5", "Din A6", "Relief"] as const;
 const JAHRE = Array.from({ length: 31 }, (_, i) => 1996 + i);
 const MODI = [
   { id: "klassisch", label: "Katalog" },
   { id: "back", label: "Diddl is Back" },
   { id: "forever", label: "Forever Edition 2016" },
+  { id: "relief", label: "Reliefblätter" },
 ] as const;
 type Modus = (typeof MODI)[number]["id"];
 
@@ -50,7 +51,7 @@ export function KatalogApp() {
       if (modus === "back" && kollektion !== "Alle" && b.kollektionId !== kollektion) return false;
       if (groesse !== "Alle Größen" && b.groesse !== groesse) return false;
       if (farbe !== "Alle Farben" && b.farbe !== farbe) return false;
-      if (!neu && (b.jahr < jahrVon || b.jahr > jahrBis)) return false;
+      if (!neu && ((b.jahr ?? 0) < jahrVon || (b.jahr ?? 0) > jahrBis)) return false;
       if (statusFilter !== "Alle") {
         const s = statuses[b.id] ?? [];
         if (statusFilter === "none" ? s.length > 0 : !s.includes(statusFilter)) return false;
@@ -85,10 +86,10 @@ export function KatalogApp() {
     }
     switch (sort) {
       case "jahr-auf":
-        sortiert.sort((a, b) => a.jahr - b.jahr || a.nummer - b.nummer);
+        sortiert.sort((a, b) => (a.jahr ?? 0) - (b.jahr ?? 0) || a.nummer - b.nummer);
         break;
       case "jahr-ab":
-        sortiert.sort((a, b) => b.jahr - a.jahr || a.nummer - b.nummer);
+        sortiert.sort((a, b) => (b.jahr ?? 0) - (a.jahr ?? 0) || a.nummer - b.nummer);
         break;
       case "groesse":
         sortiert.sort((a, b) => groesseIndex(a.groesse) - groesseIndex(b.groesse) || a.nummer - b.nummer);
