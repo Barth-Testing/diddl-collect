@@ -47,11 +47,11 @@ export default function Startseite() {
       </section>
 
       <section className="mx-auto max-w-6xl px-4 py-8">
-        <Neuigkeiten />
+        <ShopSektion />
       </section>
 
       <section className="mx-auto max-w-6xl px-4 py-8">
-        <ShopSektion />
+        <Neuigkeiten />
       </section>
 
       <section className="mx-auto max-w-6xl px-4 py-10">

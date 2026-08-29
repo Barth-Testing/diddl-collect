@@ -4,6 +4,26 @@
   "generatedAt": "2026-08-21T12:00:00.000Z",
   "products": [
     {
+      "asin": "B08GKTLB25",
+      "title": "Ideen mit Herz Collector's Sleeves – A4 mit 4x A6 Taschen, glasklar, 50er Pack",
+      "price": 12.97,
+      "currency": "EUR",
+      "imageUrl": "https://m.media-amazon.com/images/I/51A5VjjH2NL._AC_SL1000_.jpg",
+      "rating": 4.7,
+      "reviews": 1266,
+      "affiliateUrl": "https://www.amazon.de/dp/B08GKTLB25?th=1&linkCode=ll2&tag=gamerparktv-21&linkId=8462ea89284b94f6df5d58c174e53723&ref_=as_li_ss_tl"
+    },
+    {
+      "asin": "B08GKTRX16",
+      "title": "Ideen mit Herz Collector's Sleeves – A4 mit 2x A5 Taschen, transparent, 50er Pack",
+      "price": 12.97,
+      "currency": "EUR",
+      "imageUrl": "https://m.media-amazon.com/images/I/51tOlFkkEhL._AC_SL1000_.jpg",
+      "rating": 4.6,
+      "reviews": 871,
+      "affiliateUrl": "https://www.amazon.de/dp/B08GKTRX16?tag=gamerparktv-21"
+    },
+    {
       "asin": "B0C9SRY8RF",
       "title": "30 Pack 120 Taschen A4 Foto Hüllen für A4",
       "price": 11.99,
@@ -22,16 +42,6 @@
       "rating": null,
       "reviews": null,
       "affiliateUrl": "https://www.amazon.de/Transparente-Postkartenh%C3%BCllen-Doppelseitiger-Seitenschutz-Nachf%C3%BCllseiten/dp/B0CB9YNBB5?pd_rd_w=fzgXy&content-id=amzn1.sym.69b55cf7-905e-4b9a-a39d-f45a9848e6f4&pf_rd_p=69b55cf7-905e-4b9a-a39d-f45a9848e6f4&pf_rd_r=V8DNWPSJJ1QHEB1SGJMM&pd_rd_wg=Ff4xU&pd_rd_r=552c50aa-4bd6-4a87-9525-d7e3189be12a&sp_csd=d2lkZ2V0TmFtZT1zcF9kZXRhaWxfdGhlbWF0aWM&aref=KjGogr5ggD&th=1&linkCode=ll2&tag=gamerparktv-21&linkId=34a7af2b36083d2fc334f489e73b19fa&ref_=as_li_ss_tl"
-    },
-    {
-      "asin": "B08GKTLB25",
-      "title": "Ideen mit Herz Collector's Sleeves – A4 mit 4x A6 Taschen, glasklar, 50er Pack",
-      "price": 12.97,
-      "currency": "EUR",
-      "imageUrl": "https://m.media-amazon.com/images/I/51A5VjjH2NL._AC_SL1000_.jpg",
-      "rating": 4.7,
-      "reviews": 1266,
-      "affiliateUrl": "https://www.amazon.de/dp/B08GKTLB25?th=1&linkCode=ll2&tag=gamerparktv-21&linkId=8462ea89284b94f6df5d58c174e53723&ref_=as_li_ss_tl"
     },
     {
       "asin": "383323346X",
