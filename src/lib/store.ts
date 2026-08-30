@@ -5,6 +5,8 @@ import { getSupabase, hashPasswort, rpcAufruf, supabaseKonfiguriert } from "./su
 const USERS_KEY = "diddlcollect:benutzer";
 const SESSION_KEY = "diddlcollect:session";
 const USERID_KEY = "diddlcollect:userid";
+const SYNCZEIT_KEY = "diddlcollect:synczeit";
+const SYNC_TTL = 12 * 60 * 60 * 1000;
 
 /**
  * Konten liegen dauerhaft in Supabase (Tabelle "profile"). Der localStorage
@@ -205,6 +207,13 @@ async function ladeProfileZeilen(): Promise<ProfileRow[] | null> {
 function starteSync() {
   if (typeof window === "undefined") return;
   if (!supabaseKonfiguriert() || synchronisiert || syncLaeuft) return;
+  /* Datenvolumen-Sparmodus: frisches Kopien-Cache (letzte 12 h) wird nicht
+     erneut heruntergeladen – jede Seite lädt sonst ~1,4 MB Konten-Daten. */
+  const letzte = Number(window.localStorage.getItem(SYNCZEIT_KEY) ?? "0");
+  if (Date.now() - letzte < SYNC_TTL && window.localStorage.getItem(USERS_KEY)) {
+    synchronisiert = true;
+    return;
+  }
   syncLaeuft = true;
   syncMitServer()
     .catch(() => {})
@@ -271,6 +280,7 @@ async function syncMitServer() {
   }
 
   if (geaendert) saveUsers([...ergebnis.values()]);
+  window.localStorage.setItem(SYNCZEIT_KEY, String(Date.now()));
 }
 
 /** Die eigene Sammlung serverseitig sichern – via Session-Token (RPC). */

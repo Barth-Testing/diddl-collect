@@ -92,6 +92,8 @@ const ANGEBOTE_KEY = "diddlcollect:tauschangebote";
 const POST_KEY = "diddlcollect:post";
 const GELESEN_KEY = "diddlcollect:postgelesen";
 const TAUSCH_KEY = "diddlcollect:tausch";
+const FRISCH_KEY = "diddlcollect:tausch:frisch";
+const FRISCH_MS = 10 * 60 * 1000;
 const MAX_POST = 2000;
 
 export function tauschKonfiguriert() {
@@ -246,6 +248,16 @@ function merkePost(nachricht: PostNachricht) {
 async function ladeAlles(supabase: ReturnType<typeof getSupabase<Db>>): Promise<boolean> {
   return serialisiere(async () => {
   if (!supabase) return false;
+  /* Datensparmodus: frischen Cache (10 Min) nicht erneut komplett laden –
+     Realtime liefert neue Einträge ohnehin nach. */
+  if (typeof window !== "undefined") {
+    const letzte = Number(window.localStorage.getItem(FRISCH_KEY) ?? "0");
+    if (Date.now() - letzte < FRISCH_MS && window.localStorage.getItem(TAUSCH_KEY)) {
+      tabellenBereit = true;
+      tabellenFehlend = false;
+      return true;
+    }
+  }
   const [a, p] = await Promise.all([
     supabase
       .from("tauschangebot")
@@ -284,6 +296,7 @@ async function ladeAlles(supabase: ReturnType<typeof getSupabase<Db>>): Promise<
     }
   }
   speichereCache(cache);
+  if (typeof window !== "undefined") window.localStorage.setItem(FRISCH_KEY, String(Date.now()));
   await flushQueueInnere();
   return true;
   });
