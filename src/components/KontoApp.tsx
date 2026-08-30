@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
-import { ArrowDownUp, Check, Camera, Egg, Heart, Images, LogIn, PartyPopper, Repeat2, Share2, ShieldCheck, Trash2, UserPlus } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowDownUp, AtSign, Check, Camera, Egg, Heart, Images, KeyRound, LogIn, PartyPopper, Repeat2, Share2, ShieldCheck, Trash2, UserPlus, UserRound } from "lucide-react";
 import { BLAETTER, BLAETTER_NACH_ID, blattTitel, sortiereSammlung, type SammlungSortierung } from "@/lib/blaetter";
-import { getSession, login, logout, register, setBeweis, setFavorit, setStatus, setzeTauschInfo, speichereBeweisFoto, zaehle } from "@/lib/store";
-import type { Blatt, Status, TauschInfo } from "@/lib/types";
+import { aenderePasswort, entferneEmail, getSession, leseEigeneEmail, login, logout, register, setBeweis, setFavorit, setStatus, setzeEmail, setzeTauschInfo, speichereBeweisFoto, zaehle } from "@/lib/store";
+import type { Benutzer, Blatt, Status, TauschInfo } from "@/lib/types";
 import { useStoreVersion } from "@/lib/useStoreVersion";
 import { BlattKarte } from "./BlattKarte";
 import { Lupe } from "./Lupe";
@@ -13,7 +13,7 @@ import { SammlerKarussell } from "./SammlerKarussell";
 import { SelectBasis } from "./SelectBasis";
 import { cn, kopiereText } from "@/lib/utils";
 
-type Tab = "sammlung" | "wunsch" | "tausch" | "beweise";
+type Tab = "sammlung" | "wunsch" | "tausch" | "beweise" | "konto";
 
 export function KontoApp() {
   useStoreVersion();
@@ -29,8 +29,20 @@ export function KontoApp() {
   const [sichtbar, setSichtbar] = useState(150);
   const [kopiert, setKopiert] = useState(false);
   const [teilenFehler, setTeilenFehler] = useState(false);
+  const [mailVollstaendig, setMailVollstaendig] = useState<boolean | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const pendingBeweis = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!benutzer) return;
+    let aktiv = true;
+    void leseEigeneEmail().then((m) => {
+      if (aktiv) setMailVollstaendig(m !== null);
+    });
+    return () => {
+      aktiv = false;
+    };
+  }, [benutzer?.id ?? null]);
 
   async function teileGalerie() {
     const name = benutzer!.name;
@@ -77,9 +89,11 @@ export function KontoApp() {
   function anmeldenOderRegistrieren(modus: "login" | "register", form: HTMLFormElement) {
     const name = form.querySelector<HTMLInputElement>("input[data-name]")?.value ?? "";
     const pw = form.querySelector<HTMLInputElement>("input[data-passwort]")?.value ?? "";
+    const mail = form.querySelector<HTMLInputElement>("input[data-email]")?.value ?? "";
     setFehler({});
     void (async () => {
-      const ergebnis = modus === "login" ? await login(name, pw) : await register(name, pw);
+      const ergebnis =
+        modus === "login" ? await login(name, pw) : await register(name, pw, mail || undefined);
       if (!ergebnis.ok) {
         setFehler({ [modus]: ergebnis.fehler ?? "Das hat nicht geklappt." });
         return;
@@ -156,6 +170,14 @@ export function KontoApp() {
           </p>
           <div className="mt-4 space-y-3">
             <Feld id="k-name-reg" label="Sammlername" placeholder="z. B. BlattLotte" autoComplete="username" />
+            <Feld
+              id="k-mail-reg"
+              label="E-Mail (optional)"
+              type="email"
+              placeholder="Für Notfälle – nur du selbst siehst sie"
+              autoComplete="email"
+              dataEmail
+            />
             <Feld
               id="k-pw-reg"
               label="Passwort"
@@ -272,6 +294,22 @@ export function KontoApp() {
         </div>
       </div>
 
+      {mailVollstaendig === false && (
+        <div className="animate-pop card-soft flex items-center gap-3 border-berry-200 bg-berry-50 px-4 py-3 text-sm font-semibold text-ink-800">
+          <AtSign className="h-5 w-5 shrink-0 text-berry-400" />
+          <span>
+            Hinterlege noch eine E-Mail-Adresse – nur du selbst und der Seitenbetreiber können
+            sie sehen. Sie dient als Notfall-Erreichbarkeit, falls du dein Passwort vergisst.
+          </span>
+          <button
+            onClick={() => setTab("konto")}
+            className="ml-auto shrink-0 rounded-full bg-berry-400 px-4 py-1.5 text-xs font-bold text-white hover:bg-berry-500"
+          >
+            E-Mail hinterlegen
+          </button>
+        </div>
+      )}
+
       {z.own > 100 && z.beweise < 100 && (
         <div className="animate-pop card-soft flex items-center gap-3 border-peach-300 bg-peach-50 px-4 py-3 text-sm font-semibold text-ink-800">
           <ShieldCheck className="h-5 w-5 shrink-0 text-peach-500" />
@@ -299,6 +337,7 @@ export function KontoApp() {
             ["wunsch", "Wunschliste", z.wish, Heart],
             ["tausch", "Zum Tauschen", z.offer, Repeat2],
             ["beweise", "Beweise & Regeln", z.beweise, ShieldCheck],
+            ["konto", "Konto", null, UserRound],
           ] as const
         ).map(([key, label, anzahl, Icon]) => (
           <button
@@ -347,6 +386,8 @@ export function KontoApp() {
             )}
           </div>
         </div>
+      ) : tab === "konto" ? (
+        <KontoEinrichten benutzer={benutzer} />
       ) : (
         <>
           <div className="card-soft flex flex-wrap items-center gap-x-5 gap-y-3 p-4">
@@ -562,18 +603,216 @@ function TauschInfoEditor({ blattId, info }: { blattId: string; info?: TauschInf
   );
 }
 
+function KontoEinrichten({ benutzer }: { benutzer: Benutzer }) {
+  const [mail, setMail] = useState("");
+  const [mailAktuell, setMailAktuell] = useState<string | null>(null);
+  const [mailInfo, setMailInfo] = useState<string | null>(null);
+  const [mailFehler, setMailFehler] = useState<string | null>(null);
+  const [alt, setAlt] = useState("");
+  const [neu, setNeu] = useState("");
+  const [neu2, setNeu2] = useState("");
+  const [pwInfo, setPwInfo] = useState<string | null>(null);
+  const [pwFehler, setPwFehler] = useState<string | null>(null);
+  const [keinServer, setKeinServer] = useState(false);
+
+  useEffect(() => {
+    let aktiv = true;
+    void leseEigeneEmail().then((m) => {
+      if (aktiv) setMailAktuell(m);
+    });
+    return () => {
+      aktiv = false;
+    };
+  }, [mailInfo]);
+
+  function maskiere(m: string) {
+    const [local, domain] = m.split("@");
+    if (!domain) return m;
+    const zeichen = local.slice(0, 2);
+    return `${zeichen}•••@${domain}`;
+  }
+
+  async function speichereMail() {
+    setMailInfo(null);
+    setMailFehler(null);
+    const ergebnis = await setzeEmail(mail);
+    if (ergebnis.ok) {
+      setMail("");
+      setMailInfo("E-Mail gespeichert – nur du und der Seitenbetreiber sehen sie.");
+      setMailAktuell(mail.trim());
+    } else {
+      setMailFehler(ergebnis.fehler ?? "Das hat nicht geklappt.");
+    }
+  }
+
+  async function entferne() {
+    setMailInfo(null);
+    setMailFehler(null);
+    const ok = await entferneEmail();
+    if (ok) {
+      setMailAktuell(null);
+      setMailInfo("E-Mail entfernt.");
+    } else {
+      setMailFehler("Das hat nicht geklappt – bitte neu anmelden und erneut versuchen.");
+      setKeinServer(true);
+    }
+  }
+
+  async function aenderePw() {
+    setPwInfo(null);
+    setPwFehler(null);
+    if (neu.length < 4) {
+      setPwFehler("Das neue Passwort braucht mindestens 4 Zeichen.");
+      return;
+    }
+    if (neu !== neu2) {
+      setPwFehler("Die Wiederholung passt nicht zum neuen Passwort.");
+      return;
+    }
+    const ergebnis = await aenderePasswort(benutzer.name, alt, neu);
+    if (ergebnis.ok) {
+      setAlt("");
+      setNeu("");
+      setNeu2("");
+      setPwInfo("Passwort geändert – andere Geräte wurden abgemeldet.");
+    } else {
+      setPwFehler(ergebnis.fehler ?? "Das hat nicht geklappt.");
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      {keinServer && (
+        <p className="rounded-2xl bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
+          Keine Verbindung zur Cloud – Änderungen werden nicht gespeichert.
+        </p>
+      )}
+      <div className="card-soft p-5">
+        <h2 className="font-display flex items-center gap-2 text-lg font-bold text-ink-800">
+          <UserRound className="h-5 w-5 text-candy-500" /> Dein Konto
+        </h2>
+        <p className="mt-1 text-sm font-semibold text-ink-600">
+          Angemeldet als <span className="font-bold text-candy-600">{benutzer.name}</span> – seit{" "}
+          {new Date(benutzer.createdAt).toLocaleDateString("de-DE")}. Alles hier ist nur für dich
+          sichtbar.
+        </p>
+      </div>
+
+      <div className="card-soft p-5">
+        <h3 className="font-display flex items-center gap-2 font-bold text-ink-800">
+          <AtSign className="h-4 w-4 text-berry-400" /> E-Mail-Adresse
+        </h3>
+        <p className="mt-1 text-xs font-semibold text-ink-600">
+          Optional: Sie bleibt privat (nur du + der Seitenbetreiber) und dient als
+          Notfall-Erreichbarkeit, z. B. wenn du dein Passwort vergisst.
+        </p>
+        {mailAktuell !== null && (
+          <p className="mt-2 rounded-2xl bg-mint-50 px-3 py-2 text-sm font-bold text-emerald-800 ring-1 ring-mint-200">
+            Hinterlegt: {maskiere(mailAktuell)}
+            <button
+              onClick={() => void entferne()}
+              className="ml-3 rounded-full bg-white px-3 py-1 text-xs font-bold text-ink-600 ring-1 ring-cream-300 hover:bg-cream-100"
+            >
+              Entfernen
+            </button>
+          </p>
+        )}
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+          <input
+            value={mail}
+            onChange={(e) => setMail(e.target.value)}
+            type="email"
+            placeholder="z. B. name@beispiel.de"
+            className="flex-1 rounded-full border border-cream-300 bg-white px-4 py-2 text-sm font-semibold outline-none focus:border-candy-400 focus:ring-2 focus:ring-candy-200"
+          />
+          <button
+            disabled={!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail.trim())}
+            onClick={() => void speichereMail()}
+            className="rounded-full bg-candy-500 px-5 py-2 text-sm font-bold text-white hover:bg-candy-600 disabled:opacity-40"
+          >
+            Speichern
+          </button>
+        </div>
+        {mailInfo && <p className="mt-2 text-xs font-bold text-emerald-700">{mailInfo}</p>}
+        {mailFehler && <p className="mt-2 text-xs font-bold text-red-700">{mailFehler}</p>}
+      </div>
+
+      <div className="card-soft p-5">
+        <h3 className="font-display flex items-center gap-2 font-bold text-ink-800">
+          <KeyRound className="h-4 w-4 text-peach-400" /> Passwort ändern
+        </h3>
+        <p className="mt-1 text-xs font-semibold text-ink-600">
+          Das alte Passwort wird geprüft; danach werden alle anderen Geräte abgemeldet.
+        </p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-wide text-ink-600">Benutzername</span>
+            <input
+              value={benutzer.name}
+              readOnly
+              className="mt-1 w-full rounded-2xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm font-bold text-ink-800"
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-wide text-ink-600">Altes Passwort</span>
+            <input
+              value={alt}
+              onChange={(e) => setAlt(e.target.value)}
+              type="password"
+              autoComplete="current-password"
+              className="mt-1 w-full rounded-2xl border border-cream-300 bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-candy-400 focus:ring-2 focus:ring-candy-200"
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-wide text-ink-600">Neues Passwort</span>
+            <input
+              value={neu}
+              onChange={(e) => setNeu(e.target.value)}
+              type="password"
+              autoComplete="new-password"
+              placeholder="Min. 4 Zeichen"
+              className="mt-1 w-full rounded-2xl border border-cream-300 bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-candy-400 focus:ring-2 focus:ring-candy-200"
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-wide text-ink-600">Neues Passwort wiederholen</span>
+            <input
+              value={neu2}
+              onChange={(e) => setNeu2(e.target.value)}
+              type="password"
+              autoComplete="new-password"
+              className="mt-1 w-full rounded-2xl border border-cream-300 bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-candy-400 focus:ring-2 focus:ring-candy-200"
+            />
+          </label>
+        </div>
+        <button
+          onClick={() => void aenderePw()}
+          disabled={!alt || !neu || !neu2}
+          className="mt-3 rounded-full bg-peach-400 px-5 py-2 text-sm font-bold text-white hover:bg-peach-500 disabled:opacity-40"
+        >
+          Passwort ändern
+        </button>
+        {pwInfo && <p className="mt-2 text-xs font-bold text-emerald-700">{pwInfo}</p>}
+        {pwFehler && <p className="mt-2 text-xs font-bold text-red-700">{pwFehler}</p>}
+      </div>
+    </div>
+  );
+}
+
 function Feld({
   id,
   label,
   type = "text",
   placeholder,
   autoComplete,
+  dataEmail,
 }: {
   id: string;
   label: string;
   type?: string;
   placeholder?: string;
   autoComplete?: string;
+  dataEmail?: boolean;
 }) {
   return (
     <label className="block">
@@ -585,6 +824,7 @@ function Feld({
         autoComplete={autoComplete}
         data-name={id.includes("name") ? "" : undefined}
         data-passwort={id.includes("pw") ? "" : undefined}
+        data-email={dataEmail ? "" : undefined}
         required
         className="mt-1 w-full rounded-2xl border border-cream-300 bg-white px-3 py-2.5 text-sm font-semibold text-ink-800 outline-none focus:border-candy-400 focus:ring-2 focus:ring-candy-200"
       />

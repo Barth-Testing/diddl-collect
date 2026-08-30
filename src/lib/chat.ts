@@ -1,5 +1,6 @@
 import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
-import { getSupabase, supabaseKonfiguriert } from "./supabase";
+import { getSupabase, rpcAufruf, supabaseKonfiguriert } from "./supabase";
+import { holSessionToken } from "./store";
 
 export const RAUME = [
   { id: "allgemein", label: "Allgemein", beschreibung: "Erzähl von deinen Schätzen, stell dich vor." },
@@ -38,7 +39,7 @@ type Db = {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: Record<string, (args: Record<string, unknown>) => PromiseLike<unknown>>;
   };
 };
 
@@ -149,16 +150,16 @@ function istOfflineDuplikat(reihe: { raum: string; autor: string; text: string }
 }
 
 async function syncQueue() {
-  const supabase = getSupabase<Db>();
-  if (!supabase) return;
+  const token = holSessionToken();
+  if (!token) return;
   const cache = ladeCache();
   const wartend = [...cache.offen];
   for (const m of wartend) {
-    const { data, error } = await supabase
-      .from("nachrichten")
-      .insert({ raum: m.raum, autor: m.autor, text: m.text })
-      .select()
-      .single();
+    const { data, error } = await rpcAufruf<NachrichtReihe>("forum_posten", {
+      p_token: token,
+      p_raum: m.raum,
+      p_text: m.text,
+    });
     if (!error && data) {
       entferneOffene(m.id, alsNachricht(data));
     }
@@ -250,7 +251,7 @@ async function ladeRaum(
       .select("id")
       .eq("raum", raum);
     if (ids) {
-      const vorhanden = new Set(ids.map((r) => String(r.id)));
+      const vorhanden = new Set(ids.map((r: { id: number }) => String(r.id)));
       const cache = ladeCache();
       const vorher = cache.nachrichten.length;
       cache.nachrichten = cache.nachrichten.filter(
@@ -282,14 +283,9 @@ export function senden(raum: string, autor: string, text: string): boolean {
   cache.offen.push(temp);
   speichereCache(cache);
 
-  const supabase = getSupabase<Db>();
-  if (!supabase) return true;
-  supabase
-    .from("nachrichten")
-    .insert({ raum: temp.raum, autor: temp.autor, text: temp.text })
-    .select()
-    .single()
-    .then(({ data, error }) => {
+  const token = holSessionToken();
+  if (!token) return true;
+  rpcAufruf<NachrichtReihe>("forum_posten", { p_token: token, p_raum: temp.raum, p_text: temp.text }).then(({ data, error }) => {
       if (!error && data) entferneOffene(temp.id, alsNachricht(data));
       else if (verbunden) syncQueue();
     });

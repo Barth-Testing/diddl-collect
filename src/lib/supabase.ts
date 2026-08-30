@@ -31,3 +31,21 @@ export async function hashPasswort(passwort: string): Promise<string> {
 export function istHash(wert: string) {
   return /^[0-9a-f]{64}$/.test(wert);
 }
+
+/** Kleiner, typsicherer RPC-Aufruf-Helfer (die generische Tabellen-Typisierung
+ *  von supabase-js deckt unbekannte Server-Funktionen nicht ab). */
+export type RpcAntwort<T> = {
+  data: T | null;
+  error: { code?: string; message?: string } | null;
+};
+
+export async function rpcAufruf<T = unknown>(
+  fn: string,
+  args: Record<string, unknown> = {},
+): Promise<RpcAntwort<T>> {
+  const client = getSupabase<unknown>();
+  if (!client) return { data: null, error: { message: "nicht konfiguriert" } };
+  return (client as unknown as {
+    rpc: (f: string, a: Record<string, unknown>) => Promise<RpcAntwort<T>>;
+  }).rpc(fn, args);
+}

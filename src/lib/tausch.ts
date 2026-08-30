@@ -1,5 +1,6 @@
 import type { RealtimeChannel } from "@supabase/supabase-js";
-import { getSupabase, supabaseKonfiguriert } from "./supabase";
+import { getSupabase, rpcAufruf, supabaseKonfiguriert } from "./supabase";
+import { holSessionToken } from "./store";
 
 export type TauschAngebotStatus = "offen" | "angenommen" | "abgelehnt" | "storniert";
 
@@ -76,7 +77,7 @@ type Db = {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: Record<string, (args: Record<string, unknown>) => PromiseLike<unknown>>;
   };
 };
 
@@ -296,44 +297,39 @@ async function flushQueue() {
 }
 
 async function flushQueueInnere() {
-  const supabase = getSupabase<Db>();
-  if (!supabase) return;
+  const token = holSessionToken();
+  if (!token) return;
   const cache = ladeCache();
   for (const a of [...cache.offen]) {
-    const { data, error } = await supabase
-      .from("tauschangebot")
-      .insert({
-        id: a.id,
-        blatt_id: a.blattId,
-        anbieter_id: a.anbieterId,
-        anbieter_name: a.anbieterName,
-        interessent_id: a.interessentId,
-        interessent_name: a.interessentName,
-        angebot_blatter: a.angebotBlaetter,
-        angebot_betrag: a.angebotBetrag,
-        nachricht: a.nachricht,
-      })
-      .select()
-      .single();
+    const { data, error } = await rpcAufruf<AngebotReihe>("angebot_anlegen", {
+      p_token: token,
+      p_id: a.id,
+      p_blatt_id: a.blattId,
+      p_anbieter_id: a.anbieterId,
+      p_anbieter_name: a.anbieterName,
+      p_angebot_blatter: a.angebotBlaetter,
+      p_angebot_betrag: a.angebotBetrag,
+      p_nachricht: a.nachricht,
+    });
     if (!error && data) {
       const frisch = ladeCache();
       frisch.offen = frisch.offen.filter((x) => x.id !== a.id);
       speichereCache(frisch);
-      merkeAngebot(alsAngebot(data as AngebotReihe));
+      merkeAngebot(alsAngebot(data as unknown as AngebotReihe));
     } else if (error) break;
   }
   for (const m of [...cache.postOffen]) {
-    const { data, error } = await supabase
-      .from("postnachrichten")
-      .insert({ angebot_id: m.angebotId, autor: m.autor, text: m.text })
-      .select()
-      .single();
+    const { data, error } = await rpcAufruf<PostReihe>("post_senden", {
+      p_token: token,
+      p_angebot_id: m.angebotId,
+      p_text: m.text,
+    });
     if (!error && data) {
       const frisch = ladeCache();
       frisch.post = frisch.post.filter((x) => x.id !== m.id);
       frisch.postOffen = frisch.postOffen.filter((x) => x.id !== m.id);
       speichereCache(frisch);
-      merkePost(alsPost(data as PostReihe));
+      merkePost(alsPost(data as unknown as PostReihe));
     } else if (error) break;
   }
 }
@@ -465,28 +461,24 @@ export async function erstelleAngebot(eingabe: {
   cache.offen.push(angebot);
   speichereCache(cache);
 
-  const supabase = getSupabase<Db>();
-  if (!supabase) return angebot;
-  const { data, error } = await supabase
-    .from("tauschangebot")
-    .insert({
-      id: angebot.id,
-      blatt_id: angebot.blattId,
-      anbieter_id: angebot.anbieterId,
-      anbieter_name: angebot.anbieterName,
-      interessent_id: angebot.interessentId,
-      interessent_name: angebot.interessentName,
-      angebot_blatter: angebot.angebotBlaetter,
-      angebot_betrag: angebot.angebotBetrag,
-      nachricht: angebot.nachricht,
-    })
-    .select()
-    .single();
+  const token = holSessionToken();
+  const { data, error } = token
+    ? await rpcAufruf<AngebotReihe>("angebot_anlegen", {
+        p_token: token,
+        p_id: angebot.id,
+        p_blatt_id: angebot.blattId,
+        p_anbieter_id: angebot.anbieterId,
+        p_anbieter_name: angebot.anbieterName,
+        p_angebot_blatter: angebot.angebotBlaetter,
+        p_angebot_betrag: angebot.angebotBetrag,
+        p_nachricht: angebot.nachricht,
+      })
+    : { data: null, error: null };
   if (!error && data) {
     const frisch = ladeCache();
     frisch.offen = frisch.offen.filter((x) => x.id !== angebot.id);
     speichereCache(frisch);
-    merkeAngebot(alsAngebot(data as AngebotReihe));
+    merkeAngebot(alsAngebot(data as unknown as AngebotReihe));
     tabellenBereit = true;
   }
   return angebot;
@@ -502,12 +494,13 @@ export async function setzeAngebotStatus(id: string, status: TauschAngebotStatus
     cache.angebote[idx] = { ...cache.angebote[idx], status, aktualisiertAm: jetzt };
     speichereCache(cache);
   }
-  const supabase = getSupabase<Db>();
-  if (!supabase) return;
-  const { error } = await supabase
-    .from("tauschangebot")
-    .update({ status, aktualisiert_am: new Date(jetzt).toISOString() })
-    .eq("id", id);
+  const token = holSessionToken();
+  if (!token) return;
+  const { error } = await rpcAufruf("angebot_status", {
+    p_token: token,
+    p_angebot_id: id,
+    p_status: status,
+  });
   if (!error) tabellenBereit = true;
   });
 }
@@ -528,13 +521,13 @@ export async function sendePost(angebotId: string, autor: string, text: string) 
   cache.post.push(nachricht);
   speichereCache(cache);
 
-  const supabase = getSupabase<Db>();
-  if (!supabase) return true;
-  const { data, error } = await supabase
-    .from("postnachrichten")
-    .insert({ angebot_id: angebotId, autor: nachricht.autor, text: nachricht.text })
-    .select()
-    .single();
+  const token = holSessionToken();
+  if (!token) return true;
+  const { data, error } = await rpcAufruf<PostReihe>("post_senden", {
+    p_token: token,
+    p_angebot_id: angebotId,
+    p_text: nachricht.text,
+  });
   if (!error && data) {
     const frisch = ladeCache();
     frisch.post = frisch.post.filter((x) => x.id !== nachricht.id);

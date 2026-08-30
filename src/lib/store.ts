@@ -1,9 +1,10 @@
 import type { Benutzer, Status, TauschInfo } from "./types";
 import { normalisiereStatuses, remappeBlattSchluessel } from "./types";
-import { getSupabase, hashPasswort, istHash, supabaseKonfiguriert } from "./supabase";
+import { getSupabase, hashPasswort, rpcAufruf, supabaseKonfiguriert } from "./supabase";
 
 const USERS_KEY = "diddlcollect:benutzer";
 const SESSION_KEY = "diddlcollect:session";
+const USERID_KEY = "diddlcollect:userid";
 
 /**
  * Konten liegen dauerhaft in Supabase (Tabelle "profile"). Der localStorage
@@ -49,7 +50,7 @@ type ProfileDb = {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: Record<string, (args: Record<string, unknown>) => PromiseLike<unknown>>;
   };
 };
 
@@ -122,6 +123,47 @@ function zeileZuBenutzer(zeile: ProfileRow): Benutzer {
     favoriten: remappeBlattSchluessel(zeile.favoriten ?? {}),
     tausch: remappeBlattSchluessel(zeile.tausch ?? {}),
   };
+}
+
+/* ---------- Session-Token (serverseitig vergeben, 30 Tage gültig) ---------- */
+
+const TOKEN_FORMAT = /^[0-9a-f]{64}$/;
+
+function istToken(wert: string): boolean {
+  return TOKEN_FORMAT.test(wert);
+}
+
+/** Der aktuelle Session-Token (256-Bit-Zufall) – ersetzt die alte Klartext-User-ID. */
+export function holSessionToken(): string | null {
+  if (typeof window === "undefined") return null;
+  const wert = window.localStorage.getItem(SESSION_KEY) ?? "";
+  if (istToken(wert)) return wert;
+  /* Migration: früher lag hier die Klartext-User-ID. In "userid" verschieben –
+     ohne Token laufen Schreibvorgänge bis zum nächsten Login lokal weiter. */
+  if (wert) {
+    window.localStorage.setItem(USERID_KEY, wert);
+    window.localStorage.removeItem(SESSION_KEY);
+  }
+  return null;
+}
+
+function setzeSession(token: string, userId: string) {
+  window.localStorage.setItem(SESSION_KEY, token);
+  window.localStorage.setItem(USERID_KEY, userId);
+}
+
+function loescheSession() {
+  window.localStorage.removeItem(SESSION_KEY);
+  window.localStorage.removeItem(USERID_KEY);
+}
+
+function sessionNutzerId(): string | null {
+  return window.localStorage.getItem(USERID_KEY);
+}
+
+/** 28000 = Session/Passwort serverseitig ungültig → lokale Sitzung verwerfen. */
+function istSessionFehler(code?: string) {
+  return code === "28000" || code === "42501";
 }
 
 let synchronisiert = false;
@@ -202,17 +244,21 @@ async function syncMitServer() {
     const tausch = { ...lok.tausch, ...server.tausch };
     const gemergt: Benutzer = { ...server, statuses, beweise, favoriten, tausch };
     ergebnis.set(zeile.id, gemergt);
+    /* Hochladen nur für das EIGENE Konto (Session-Token gehört dem Nutzer);
+       bei anderen Konten gibt es keine lokalen Änderungen – nur anfassen,
+       wenn sich durch die Server-Daten etwas geändert hat. */
     if (
-      JSON.stringify(statuses) !== JSON.stringify(lok.statuses) ||
-      JSON.stringify(beweise) !== JSON.stringify(lok.beweise) ||
-      JSON.stringify(favoriten) !== JSON.stringify(lok.favoriten) ||
-      JSON.stringify(tausch) !== JSON.stringify(lok.tausch)
+      zeile.id === sessionNutzerId() &&
+      (JSON.stringify(statuses) !== JSON.stringify(lok.statuses) ||
+        JSON.stringify(beweise) !== JSON.stringify(lok.beweise) ||
+        JSON.stringify(favoriten) !== JSON.stringify(lok.favoriten) ||
+        JSON.stringify(tausch) !== JSON.stringify(lok.tausch))
     ) {
       pushProfil(gemergt);
     }
   }
 
-  const sessionId = window.localStorage.getItem(SESSION_KEY);
+  const sessionId = sessionNutzerId();
   for (const [id, lok] of lokalById) {
     if (serverIds.has(id)) continue;
     /* Nur das eigenen (noch offline angelegte) Konto wieder hochladen –
@@ -227,52 +273,23 @@ async function syncMitServer() {
   if (geaendert) saveUsers([...ergebnis.values()]);
 }
 
-/** Ein Konto (komplett) auf den Server schreiben – Klartext-Passwörter werden vorher gehasht. */
+/** Die eigene Sammlung serverseitig sichern – via Session-Token (RPC). */
 async function pushProfil(benutzer: Benutzer): Promise<boolean> {
-  const supabase = getSupabase<ProfileDb>();
-  if (!supabase) return true;
-  const passwort = istHash(benutzer.passwort)
-    ? benutzer.passwort
-    : await hashPasswort(benutzer.passwort);
-  function daten(): ProfileDb["public"]["Tables"]["profile"]["Insert"] {
-    return {
-      id: benutzer.id,
-      name: benutzer.name,
-      passwort,
-      statuses: benutzer.statuses,
-      beweise: benutzer.beweise,
-      ...(favoritenUnterstuetzt ? { favoriten: benutzer.favoriten ?? {} } : {}),
-      ...(tauschUnterstuetzt ? { tausch: benutzer.tausch ?? {} } : {}),
-    };
-  }
-  let ergebnis = await supabase.from("profile").upsert(daten(), { onConflict: "id" });
-  if (ergebnis.error && istSchemaFehler(ergebnis.error)) {
-    if (tauschUnterstuetzt) {
-      tauschUnterstuetzt = false;
-      ergebnis = await supabase.from("profile").upsert(daten(), { onConflict: "id" });
-    } else if (favoritenUnterstuetzt) {
-      favoritenUnterstuetzt = false;
-      ergebnis = await supabase.from("profile").upsert(daten(), { onConflict: "id" });
-    }
-  }
-  const { error } = ergebnis;
+  const token = holSessionToken();
+  if (!token) return true;
+  const { error } = await rpcAufruf("profil_schreiben", {
+    p_token: token,
+    p_statuses: benutzer.statuses,
+    p_beweise: benutzer.beweise,
+    p_favoriten: benutzer.favoriten ?? {},
+    p_tausch: benutzer.tausch ?? {},
+  });
   if (error) {
-    if (error.code === "23505") {
-      const sessionId = window.localStorage.getItem(SESSION_KEY);
-      const users = loadUsers().filter((u) => u.id !== benutzer.id);
-      saveUsers(users);
-      if (sessionId === benutzer.id) window.localStorage.removeItem(SESSION_KEY);
-      return false;
+    if (istSessionFehler(error.code)) {
+      loescheSession();
+      emitChange();
     }
     return true;
-  }
-  if (passwort !== benutzer.passwort) {
-    const users = loadUsers();
-    const gefunden = users.find((u) => u.id === benutzer.id);
-    if (gefunden) {
-      gefunden.passwort = passwort;
-      saveUsers(users);
-    }
   }
   return true;
 }
@@ -285,72 +302,119 @@ export function listBenutzer(): Benutzer[] {
 export function getSession(): Benutzer | null {
   if (typeof window === "undefined") return null;
   starteSync();
-  const id = window.localStorage.getItem(SESSION_KEY);
+  const id = sessionNutzerId();
   if (!id) return null;
   return loadUsers().find((u) => u.id === id) ?? null;
+}
+
+type KontoAntwort = {
+  ok: boolean;
+  token?: string;
+  profil?: ProfileRow;
+  fehler?: string;
+  nurLokal?: boolean;
+};
+
+/** Anmelde-Ergebnis in die Ladensicht übernehmen (Token + Profil in Cache). */
+function uebernimmAnmeldung(ergebnis: KontoAntwort): { ok: boolean; fehler?: string; nurLokal?: boolean } {
+  if (!ergebnis.ok || !ergebnis.token || !ergebnis.profil) {
+    return { ok: false, fehler: ergebnis.fehler ?? "Das hat nicht geklappt – schau später noch einmal vorbei." };
+  }
+  const benutzer = zeileZuBenutzer(ergebnis.profil);
+  const rest = loadUsers().filter((u) => u.id !== benutzer.id);
+  saveUsers([...rest, benutzer]);
+  setzeSession(ergebnis.token, benutzer.id);
+  emitChange();
+  return { ok: true };
+}
+
+/** Netzwerk-/Serverfehler? → Freundliche Meldung, keine falschen Diagnosen. */
+function istNetzFehler(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  return error.code == null || error.code === "PGRST302" || /Failed to fetch|fetch failed/i.test(error.message ?? "");
 }
 
 export async function register(
   name: string,
   passwort: string,
+  email?: string,
 ): Promise<{ ok: boolean; fehler?: string; nurLokal?: boolean }> {
   const trimmed = name.trim();
   if (trimmed.length < 2) return { ok: false, fehler: "Der Sammlername braucht mindestens 2 Zeichen." };
   if (passwort.length < 4) return { ok: false, fehler: "Das Passwort braucht mindestens 4 Zeichen." };
+  const mail = email?.trim() || null;
+
+  if (supabaseKonfiguriert()) {
+    const { data, error } = await rpcAufruf<{ token?: string; profil?: ProfileRow }>("registrieren", {
+      p_name: trimmed,
+      p_passwort: passwort,
+      p_email: mail,
+    });
+    if (error) {
+      if (error.code === "23505")
+        return { ok: false, fehler: (error.message ?? "").includes("E-Mail")
+          ? "Diese E-Mail-Adresse ist bereits hinterlegt."
+          : "Diesen Sammlernamen gibt es schon – versuch einen anderen." };
+      if (istNetzFehler(error))
+        return { ok: false, fehler: "Keine Verbindung zur Cloud – bitte später noch einmal versuchen." };
+      if (error.code === "PGRST202" || (error.message ?? "").includes("not found")) {
+        /* Übergangsphase: Cloud-Funktionen noch nicht angelegt → lokales Konto (altes Verhalten). */
+        const users = loadUsers();
+        if (users.some((u) => u.name.toLowerCase() === trimmed.toLowerCase()))
+          return { ok: false, fehler: "Diesen Sammlernamen gibt es schon – versuch einen anderen." };
+        const user: Benutzer = {
+          id: `u-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          name: trimmed,
+          passwort: await hashPasswort(passwort),
+          createdAt: Date.now(),
+          statuses: {},
+          beweise: {},
+          favoriten: {},
+          tausch: {},
+        };
+        const supabase = getSupabase<ProfileDb>();
+        if (supabase) {
+          await (supabase.from("profile") as unknown as {
+            insert: (zeile: Record<string, unknown>) => PromiseLike<unknown>;
+          }).insert({
+            id: user.id,
+            name: user.name,
+            passwort: user.passwort,
+            statuses: {},
+            beweise: {},
+            ...(favoritenUnterstuetzt ? { favoriten: {} } : {}),
+            ...(tauschUnterstuetzt ? { tausch: {} } : {}),
+          });
+        }
+        users.push(user);
+        saveUsers(users);
+        window.localStorage.setItem(USERID_KEY, user.id);
+        emitChange();
+        return { ok: true, nurLokal: true };
+      }
+      return { ok: false, fehler: error.message || "Das hat nicht geklappt." };
+    }
+    return uebernimmAnmeldung({ ok: true, token: data?.token, profil: data?.profil });
+  }
+
+  /* Ohne Supabase-Konfiguration (Demo/Lokal): altes Verhalten. */
   const users = loadUsers();
   if (users.some((u) => u.name.toLowerCase() === trimmed.toLowerCase()))
     return { ok: false, fehler: "Diesen Sammlernamen gibt es schon – versuch einen anderen." };
   const user: Benutzer = {
     id: `u-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     name: trimmed,
-    passwort: "",
+    passwort,
     createdAt: Date.now(),
     statuses: {},
     beweise: {},
     favoriten: {},
     tausch: {},
   };
-  if (supabaseKonfiguriert()) {
-    user.passwort = await hashPasswort(passwort);
-    const supabase = getSupabase<ProfileDb>();
-    function daten(): ProfileDb["public"]["Tables"]["profile"]["Insert"] {
-      return {
-        id: user.id,
-        name: user.name,
-        passwort: user.passwort,
-        statuses: {},
-        beweise: {},
-        ...(favoritenUnterstuetzt ? { favoriten: {} } : {}),
-        ...(tauschUnterstuetzt ? { tausch: {} } : {}),
-      };
-    }
-    let ergebnis = await supabase!.from("profile").insert(daten());
-    if (ergebnis.error && istSchemaFehler(ergebnis.error)) {
-      if (tauschUnterstuetzt) {
-        tauschUnterstuetzt = false;
-        ergebnis = await supabase!.from("profile").insert(daten());
-      } else if (favoritenUnterstuetzt) {
-        favoritenUnterstuetzt = false;
-        ergebnis = await supabase!.from("profile").insert(daten());
-      }
-    }
-    const error = ergebnis.error;
-    if (error) {
-      if (error.code === "23505")
-        return { ok: false, fehler: "Diesen Sammlernamen gibt es schon – versuch einen anderen." };
-      /* Kein Netz oder Serverproblem: Konto vorerst nur lokal – der nächste Sync holt es hoch. */
-      users.push(user);
-      saveUsers(users);
-      window.localStorage.setItem(SESSION_KEY, user.id);
-      emitChange();
-      return { ok: true, nurLokal: true };
-    }
-  } else {
-    user.passwort = passwort;
-  }
   users.push(user);
   saveUsers(users);
   window.localStorage.setItem(SESSION_KEY, user.id);
+  window.localStorage.setItem(USERID_KEY, user.id);
   emitChange();
   return { ok: true };
 }
@@ -359,49 +423,126 @@ export async function login(
   name: string,
   passwort: string,
 ): Promise<{ ok: boolean; fehler?: string }> {
-  const fehler = { ok: false as const, fehler: "Name oder Passwort stimmen nicht." };
   const trimmed = name.trim();
+
+  if (supabaseKonfiguriert()) {
+    const { data, error } = await rpcAufruf<{ token?: string; profil?: ProfileRow }>("anmelden", {
+      p_name: trimmed,
+      p_passwort: passwort,
+    });
+    if (error) {
+      if (error.code === "28000") return { ok: false, fehler: "Name oder Passwort stimmen nicht." };
+      if (istNetzFehler(error))
+        return { ok: false, fehler: "Keine Verbindung zur Cloud – bitte später noch einmal versuchen." };
+      if (error.code === "PGRST202" || (error.message ?? "").includes("not found")) {
+        /* Übergangsphase: Cloud-Funktionen noch nicht angelegt → alter Weg. */
+        const lokal = lokalerLogin(trimmed, passwort);
+        if (lokal) return { ok: true };
+        return { ok: false, fehler: "Name oder Passwort stimmen nicht." };
+      }
+      return { ok: false, fehler: error.message || "Das hat nicht geklappt." };
+    }
+    const ergebnis = uebernimmAnmeldung({ ok: true, token: data?.token, profil: data?.profil });
+    return ergebnis.ok ? { ok: true } : { ok: false, fehler: ergebnis.fehler };
+  }
+
+  /* Ohne Supabase-Konfiguration (Demo/Lokal): altes Verhalten. */
+  return lokalerLogin(trimmed, passwort)
+    ? { ok: true }
+    : { ok: false, fehler: "Name oder Passwort stimmen nicht." };
+}
+
+/** Login gegen die lokale Konto-Kopie (Offline/Demo/Übergangsphase ohne Cloud-Funktionen). */
+function lokalerLogin(name: string, passwort: string): boolean {
   const users = loadUsers();
   for (const u of users) {
-    if (u.name.toLowerCase() !== trimmed.toLowerCase()) continue;
-    const passt =
-      u.passwort === passwort ||
-      (istHash(u.passwort) && u.passwort === (await hashPasswort(passwort)));
-    if (passt) {
-      window.localStorage.setItem(SESSION_KEY, u.id);
+    if (u.name.toLowerCase() !== name.toLowerCase()) continue;
+    if (u.passwort === passwort) {
+      window.localStorage.setItem(USERID_KEY, u.id);
       emitChange();
-      return { ok: true };
+      return true;
     }
-    return fehler;
+    return false;
   }
-  const supabase = getSupabase<ProfileDb>();
-  if (supabase) {
-    let { data } = await supabase.from("profile").select("*").eq("name", trimmed);
-    if (!data || data.length === 0) {
-      ({ data } = await supabase.from("profile").select("*").ilike("name", trimmed));
-    }
-    const hash = await hashPasswort(passwort);
-    const zeile = data?.find((z) => z.passwort === hash);
-    if (zeile) {
-      const benutzer = zeileZuBenutzer(zeile);
-      const rest = loadUsers().filter((u) => u.id !== zeile.id);
-      saveUsers([...rest, benutzer]);
-      window.localStorage.setItem(SESSION_KEY, zeile.id);
-      emitChange();
-      return { ok: true };
-    }
-  }
-  return fehler;
+  return false;
 }
 
 export function logout() {
-  window.localStorage.removeItem(SESSION_KEY);
+  const token = holSessionToken();
+  if (token) {
+    rpcAufruf("abmelden", { p_token: token }).then(() => {});
+  }
+  loescheSession();
   emitChange();
+}
+
+/** Eigene E-Mail lesen (Spalte ist privat – nur der Besitzer via Token). */
+export async function leseEigeneEmail(): Promise<string | null> {
+  const token = holSessionToken();
+  if (!token) return null;
+  const { data, error } = await rpcAufruf<{ email?: string } | string>("lese_eigene_email", { p_token: token });
+  if (error) return null;
+  if (typeof data === "string") return data;
+  return data?.email ?? null;
+}
+
+/** E-Mail hinterlegen/ändern – bleibt privat und ist nicht verpflichtend. */
+export async function setzeEmail(email: string): Promise<{ ok: boolean; fehler?: string }> {
+  const token = holSessionToken();
+  if (!token) return { ok: false, fehler: "Bitte erst anmelden." };
+  const { error } = await rpcAufruf("email_setzen", { p_token: token, p_email: email.trim() });
+  if (error) {
+    if (error.code === "23505") return { ok: false, fehler: "Diese E-Mail-Adresse ist bereits hinterlegt." };
+    if (error.code === "23514") return { ok: false, fehler: "Bitte eine gültige E-Mail-Adresse angeben." };
+    if (istSessionFehler(error.code)) {
+      loescheSession();
+      emitChange();
+      return { ok: false, fehler: "Sitzung abgelaufen – bitte neu anmelden." };
+    }
+    return { ok: false, fehler: error.message || "Das hat nicht geklappt." };
+  }
+  return { ok: true };
+}
+
+/** E-Mail entfernen (optionales Feld). */
+export async function entferneEmail(): Promise<boolean> {
+  const token = holSessionToken();
+  if (!token) return false;
+  const { error } = await rpcAufruf("email_entfernen", { p_token: token });
+  return !error;
+}
+
+/** Passwort ändern: Benutzername + altes Passwort + neues Passwort (min. 4 Zeichen). */
+export async function aenderePasswort(
+  name: string,
+  altes: string,
+  neues: string,
+): Promise<{ ok: boolean; fehler?: string }> {
+  const token = holSessionToken();
+  if (!token) return { ok: false, fehler: "Bitte erst anmelden." };
+  const { error } = await rpcAufruf("passwort_aendern", {
+    p_token: token,
+    p_name: name.trim(),
+    p_altes_passwort: altes,
+    p_neues_passwort: neues,
+  });
+  if (error) {
+    if (error.code === "28000") return { ok: false, fehler: "Das alte Passwort stimmt nicht." };
+    if (error.code === "42501") return { ok: false, fehler: "Der Benutzername passt nicht zum angemeldeten Konto." };
+    if (error.code === "23514") return { ok: false, fehler: "Das neue Passwort braucht mindestens 4 Zeichen." };
+    if (istSessionFehler(error.code)) {
+      loescheSession();
+      emitChange();
+      return { ok: false, fehler: "Sitzung abgelaufen – bitte neu anmelden." };
+    }
+    return { ok: false, fehler: error.message || "Das hat nicht geklappt." };
+  }
+  return { ok: true };
 }
 
 export function setStatus(blattId: string, status: Status, aktiv: boolean) {
   const users = loadUsers();
-  const id = window.localStorage.getItem(SESSION_KEY);
+  const id = sessionNutzerId();
   const user = users.find((u) => u.id === id);
   if (!user) return;
   const statuses = normalisiereStatuses(user.statuses);
@@ -418,19 +559,14 @@ export function setStatus(blattId: string, status: Status, aktiv: boolean) {
 
 export function setBeweis(blattId: string, wert: string | boolean | null) {
   const users = loadUsers();
-  const id = window.localStorage.getItem(SESSION_KEY);
+  const id = sessionNutzerId();
   const user = users.find((u) => u.id === id);
   if (!user) return;
   if (wert === null) {
     delete user.beweise[blattId];
-    const supabase = getSupabase<ProfileDb>();
-    if (supabase) {
-      supabase
-        .from("beweis_fotos")
-        .delete()
-        .eq("profil_id", user.id)
-        .eq("blatt_id", blattId)
-        .then(() => {});
+    const token = holSessionToken();
+    if (token) {
+      rpcAufruf("beweis_loeschen", { p_token: token, p_blatt_id: blattId }).then(() => {});
     }
   } else {
     user.beweise[blattId] = wert;
@@ -442,15 +578,16 @@ export function setBeweis(blattId: string, wert: string | boolean | null) {
 /** Speichert ein Beweisfoto in der eigenen Tabelle und setzt den dünnen Zähler-Wert.
  *  Fällt bei fehlender Tabelle (noch keine Migration) auf das alte Inline-Verhalten zurück. */
 export async function speichereBeweisFoto(blattId: string, dataUrl: string) {
-  const id = window.localStorage.getItem(SESSION_KEY);
-  if (!id) return setBeweis(blattId, dataUrl);
-  const supabase = getSupabase<ProfileDb>();
-  if (supabase) {
-    const { error } = await supabase
-      .from("beweis_fotos")
-      .upsert({ profil_id: id, blatt_id: blattId, bild: dataUrl }, { onConflict: "profil_id,blatt_id" });
+  const token = holSessionToken();
+  if (token) {
+    const { error } = await rpcAufruf("beweis_hochladen", { p_token: token, p_blatt_id: blattId, p_bild: dataUrl });
     if (!error) {
       setBeweis(blattId, true);
+      return;
+    }
+    if (istSessionFehler(error.code)) {
+      loescheSession();
+      emitChange();
       return;
     }
   }
@@ -459,7 +596,7 @@ export async function speichereBeweisFoto(blattId: string, dataUrl: string) {
 
 export function setFavorit(blattId: string, istFavorit: boolean) {
   const users = loadUsers();
-  const id = window.localStorage.getItem(SESSION_KEY);
+  const id = sessionNutzerId();
   const user = users.find((u) => u.id === id);
   if (!user) return;
   if (istFavorit) user.favoriten[blattId] = true;
@@ -470,7 +607,7 @@ export function setFavorit(blattId: string, istFavorit: boolean) {
 
 export function setzeTauschInfo(blattId: string, info: TauschInfo | null) {
   const users = loadUsers();
-  const id = window.localStorage.getItem(SESSION_KEY);
+  const id = sessionNutzerId();
   const user = users.find((u) => u.id === id);
   if (!user) return;
   if (!user.tausch) user.tausch = {};
