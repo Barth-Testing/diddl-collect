@@ -12,6 +12,7 @@ type NewsReihe = {
   erstellt_am: string;
   bild?: string | null;
   bild2?: string | null;
+  link?: string | null;
 };
 
 type ProfilReihe = {
@@ -145,20 +146,24 @@ export function Neuigkeiten() {
               {(n.bild || n.bild2) && (
                 <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {n.bild && (
-                    <img
-                      src={n.bild}
-                      alt={n.titel}
-                      loading="lazy"
-                      className="max-h-96 w-full rounded-xl object-contain ring-1 ring-cream-200"
-                    />
+                    <Imagelink link={n.link} titel={n.titel}>
+                      <img
+                        src={n.bild}
+                        alt={n.titel}
+                        loading="lazy"
+                        className="max-h-96 w-full rounded-xl object-contain ring-1 ring-cream-200"
+                      />
+                    </Imagelink>
                   )}
                   {n.bild2 && (
-                    <img
-                      src={n.bild2}
-                      alt={`${n.titel} (2)`}
-                      loading="lazy"
-                      className="max-h-96 w-full rounded-xl object-contain ring-1 ring-cream-200"
-                    />
+                    <Imagelink link={n.link} titel={`${n.titel} (2)`}>
+                      <img
+                        src={n.bild2}
+                        alt={`${n.titel} (2)`}
+                        loading="lazy"
+                        className="max-h-96 w-full rounded-xl object-contain ring-1 ring-cream-200"
+                      />
+                    </Imagelink>
                   )}
                 </div>
               )}
@@ -182,22 +187,28 @@ export function Neuigkeiten() {
 async function ladeNews(supabase: SupabaseClient<Db>): Promise<NewsReihe[]> {
   const erste = await supabase
     .from("news")
-    .select("id, titel, text, erstellt_am, bild, bild2")
+    .select("id, titel, text, erstellt_am, bild, bild2, link")
     .order("erstellt_am", { ascending: false })
     .limit(50);
   if (!erste.error && erste.data) return erste.data;
   const zweite = await supabase
     .from("news")
-    .select("id, titel, text, erstellt_am, bild")
+    .select("id, titel, text, erstellt_am, bild, bild2")
     .order("erstellt_am", { ascending: false })
     .limit(50);
   if (!zweite.error && zweite.data) return zweite.data;
   const dritte = await supabase
     .from("news")
-    .select("id, titel, text, erstellt_am")
+    .select("id, titel, text, erstellt_am, bild")
     .order("erstellt_am", { ascending: false })
     .limit(50);
   if (!dritte.error && dritte.data) return dritte.data;
+  const vierte = await supabase
+    .from("news")
+    .select("id, titel, text, erstellt_am")
+    .order("erstellt_am", { ascending: false })
+    .limit(50);
+  if (!vierte.error && vierte.data) return vierte.data;
   return [];
 }
 
@@ -234,6 +245,24 @@ async function ladeGemeinde(supabase: SupabaseClient<Db>): Promise<Gemeinde | nu
     beweise,
     neuestesMitglied: neuestes.data?.[0]?.name ?? null,
   };
+}
+
+function Imagelink({ link, titel, children }: { link?: string | null; titel: string; children: React.ReactNode }) {
+  if (!link) return <>{children}</>;
+  return (
+    <a
+      href={link}
+      target="_blank"
+      rel="noopener noreferrer sponsored"
+      className="group relative block rounded-xl"
+      aria-label={`Produkt zu „${titel}“ auf Amazon ansehen`}
+    >
+      {children}
+      <span className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-candy-500/90 px-3 py-1 text-[10px] font-bold text-white opacity-0 shadow-md group-hover:opacity-100">
+        Zum Produkt auf Amazon
+      </span>
+    </a>
+  );
 }
 
 function GemeindeKarte({
