@@ -14,12 +14,15 @@ export function PostfachLink() {
 
   useEffect(() => {
     const remove = subscribeTausch(() => setVersion((v) => v + 1));
-    const cleanup = verbindeTausch();
+    /* Ohne Anmeldung gibt es keine Ungelesen-Markierung – die schweren
+       Tausch-Downloads (Angebote + Posts) müssen dann nicht auf jedem
+       Seitenaufruf mitlaufen. */
+    const cleanup = ich ? verbindeTausch() : () => {};
     return () => {
       remove();
       cleanup();
     };
-  }, []);
+  }, [ich?.id]);
 
   const ungelesen = ich ? ungeleseneThreads(ich) : 0;
 

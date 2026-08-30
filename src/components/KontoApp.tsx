@@ -26,6 +26,7 @@ export function KontoApp() {
   const [sortierung, setSortierung] = useState<SammlungSortierung>("id");
   const [bilderQuelle, setBilderQuelle] = useState<"vorlagen" | "beweise">("vorlagen");
   const [karussellAn, setKarussellAn] = useState(false);
+  const [sichtbar, setSichtbar] = useState(150);
   const fileRef = useRef<HTMLInputElement>(null);
   const pendingBeweis = useRef<string | null>(null);
 
@@ -393,7 +394,7 @@ export function KontoApp() {
             </div>
           )}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5">
-            {listeAb.map(({ id, status }) => {
+            {listeAb.slice(0, sichtbar).map(({ id, status }) => {
               const b = BLAETTER_NACH_ID.get(id);
               if (!b) return null;
               const props = {
@@ -420,6 +421,15 @@ export function KontoApp() {
               return <BlattKarte key={id} {...props} />;
             })}
           </div>
+          {listeAb.length > sichtbar && (
+            <button
+              type="button"
+              onClick={() => setSichtbar((s) => s + 150)}
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-candy-100 px-5 py-2.5 text-sm font-bold text-candy-700 transition hover:bg-candy-200"
+            >
+              Mehr Blätter anzeigen ({listeAb.length - sichtbar} weitere)
+            </button>
+          )}
           {listeAb.length > 0 && (
             <button
               onClick={() => {

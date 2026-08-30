@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { BadgeCheck, Megaphone, Plus, ShieldCheck, Sparkles, Users } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
+import { listBenutzer, zaehle } from "@/lib/store";
 
 type NewsReihe = {
   id: number;
@@ -212,15 +213,16 @@ async function ladeNews(supabase: SupabaseClient<Db>): Promise<NewsReihe[]> {
   return [];
 }
 
-/** Gemeinde-Statistik ohne die schwere `beweise`-Spalte: nur zählen, nie Bildinhalte mitladen. */
+/** Gemeinde-Statistik ohne die schweren Spalten: Zähler via Count-Head-Queries,
+ *  Blatt-Zähler aus dem bereits synchronisierten Cache (derselbe Stand wie Rangliste).
+ *  Nur bei leerem Cache (Erstbesuch) wird als Fallback die statuses-Spalte geladen. */
 async function ladeGemeinde(supabase: SupabaseClient<Db>): Promise<Gemeinde | null> {
-  const anzahl = await supabase.from("profile").select("id", { count: "exact", head: true });
-  if (anzahl.error) return null;
-  const [neuestes, fotos, statuses] = await Promise.all([
+  const [anzahl, neuestes, fotos] = await Promise.all([
+    supabase.from("profile").select("id", { count: "exact", head: true }),
     supabase.from("profile").select("name, created_at").order("created_at", { ascending: false }).limit(1),
     supabase.from("beweis_fotos").select("id", { count: "exact", head: true }),
-    supabase.from("profile").select("statuses"),
   ]);
+  if (anzahl.error) return null;
   let beweise = 0;
   if (!fotos.error) {
     beweise = fotos.count ?? 0;
@@ -232,10 +234,16 @@ async function ladeGemeinde(supabase: SupabaseClient<Db>): Promise<Gemeinde | nu
     }
   }
   let blaetter = 0;
-  if (!statuses.error && statuses.data) {
-    for (const r of statuses.data) {
-      for (const s of Object.values(r.statuses ?? {})) {
-        if (s === "own" || (Array.isArray(s) && s.includes("own"))) blaetter++;
+  const cache = listBenutzer();
+  if (cache.length >= 5) {
+    for (const u of cache) blaetter += zaehle(u).own;
+  } else {
+    const statuses = await supabase.from("profile").select("statuses");
+    if (!statuses.error && statuses.data) {
+      for (const r of statuses.data) {
+        for (const s of Object.values(r.statuses ?? {})) {
+          if (s === "own" || (Array.isArray(s) && s.includes("own"))) blaetter++;
+        }
       }
     }
   }

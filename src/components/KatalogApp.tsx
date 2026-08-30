@@ -39,6 +39,7 @@ export function KatalogApp() {
   const [jahrBis, setJahrBis] = useState(2026);
   const [toast, setToast] = useState<string | null>(null);
   const [lupe, setLupe] = useState<string | null>(null);
+  const [sichtbar, setSichtbar] = useState(120);
 
   const statuses = useMemo(() => benutzer?.statuses ?? {}, [benutzer]);
   const beweise = useMemo(() => benutzer?.beweise ?? {}, [benutzer]);
@@ -301,7 +302,7 @@ export function KatalogApp() {
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5">
-        {gefiltert.map((b) => (
+        {gefiltert.slice(0, sichtbar).map((b) => (
           <BlattKarte
             key={b.id}
             blatt={b}
@@ -313,6 +314,16 @@ export function KatalogApp() {
           />
         ))}
       </div>
+
+      {gefiltert.length > sichtbar && (
+        <button
+          type="button"
+          onClick={() => setSichtbar((s) => s + 120)}
+          className="flex w-full items-center justify-center gap-2 rounded-full bg-candy-100 px-5 py-2.5 text-sm font-bold text-candy-700 transition hover:bg-candy-200"
+        >
+          Mehr Blätter anzeigen ({gefiltert.length - sichtbar} weitere)
+        </button>
+      )}
 
       {gefiltert.length === 0 && (
         <div className="card-soft flex flex-col items-center gap-2 p-10 text-center text-ink-600">

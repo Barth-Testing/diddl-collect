@@ -17,6 +17,9 @@ export function SammlerProfilApp() {
   const name = (params.get("name") ?? "").trim();
   const ich = getSession();
   const [tauschAngebot, setTauschAngebot] = useState<string | null>(null);
+  const [mehrTreffer, setMehrTreffer] = useState(false);
+  const [mehrWunsch, setMehrWunsch] = useState(false);
+  const [mehrAngebot, setMehrAngebot] = useState(false);
 
   void version;
   const q = name.toLowerCase();
@@ -95,7 +98,7 @@ export function SammlerProfilApp() {
             Brief mit mehreren Blättern, das spart Porto.
           </p>
           <div className="no-scrollbar -mx-1 mt-4 flex gap-4 overflow-x-auto px-1 pb-2">
-            {treffer.map((id) => {
+            {(mehrTreffer ? treffer : treffer.slice(0, 60)).map((id) => {
               const b = BLAETTER_NACH_ID.get(id);
               if (!b) return null;
               return (
@@ -125,6 +128,15 @@ export function SammlerProfilApp() {
               );
             })}
           </div>
+          {!mehrTreffer && treffer.length > 60 && (
+            <button
+              type="button"
+              onClick={() => setMehrTreffer(true)}
+              className="mt-2 rounded-full bg-mint-100 px-4 py-1.5 text-xs font-bold text-emerald-700 hover:bg-mint-200"
+            >
+              Mehr Treffer anzeigen ({treffer.length} insgesamt)
+            </button>
+          )}
         </div>
       )}
 
@@ -143,7 +155,7 @@ export function SammlerProfilApp() {
               : "Das sucht dieser Sammler – vielleicht kannst du helfen."}
           </p>
           <div className="no-scrollbar -mx-1 mt-4 flex gap-4 overflow-x-auto px-1 pb-2">
-            {wunschliste.map((id) => {
+            {(mehrWunsch ? wunschliste : wunschliste.slice(0, 60)).map((id) => {
               const b = BLAETTER_NACH_ID.get(id);
               if (!b) return null;
               return (
@@ -166,6 +178,15 @@ export function SammlerProfilApp() {
               );
             })}
           </div>
+          {!mehrWunsch && wunschliste.length > 60 && (
+            <button
+              type="button"
+              onClick={() => setMehrWunsch(true)}
+              className="mt-2 rounded-full bg-berry-100 px-4 py-1.5 text-xs font-bold text-berry-500 hover:bg-berry-200"
+            >
+              Mehr Wunschblätter anzeigen ({wunschliste.length} insgesamt)
+            </button>
+          )}
         </div>
       )}
 
@@ -184,10 +205,11 @@ export function SammlerProfilApp() {
               : "Mach ein Angebot: eigene Blätter wählen oder einen Geldbetrag vorschlagen."}
           </p>
           <div className="no-scrollbar -mx-1 mt-4 flex gap-4 overflow-x-auto px-1 pb-2">
-            {Object.keys(benutzer.statuses)
-              .filter((id) => benutzer.statuses[id]?.includes("offer"))
-              .sort((a, b) => a.localeCompare(b))
-              .map((id) => {
+            {(() => {
+              const ids = Object.keys(benutzer.statuses)
+                .filter((id) => benutzer.statuses[id]?.includes("offer"))
+                .sort((a, b) => a.localeCompare(b));
+              return (mehrAngebot ? ids : ids.slice(0, 60)).map((id) => {
                 const b = BLAETTER_NACH_ID.get(id);
                 if (!b) return null;
                 const info = benutzer.tausch?.[id];
@@ -225,8 +247,18 @@ export function SammlerProfilApp() {
                     )}
                   </figure>
                 );
-              })}
+              });
+            })()}
           </div>
+          {!mehrAngebot && z.offer > 60 && (
+            <button
+              type="button"
+              onClick={() => setMehrAngebot(true)}
+              className="mt-2 rounded-full bg-peach-100 px-4 py-1.5 text-xs font-bold text-peach-500 hover:bg-peach-200"
+            >
+              Mehr Angebote anzeigen ({z.offer} insgesamt)
+            </button>
+          )}
         </div>
       )}
 

@@ -15,6 +15,7 @@ export function SammlerKarussell({ benutzer, titel }: { benutzer: Benutzer; tite
   const [kannVor, setKannVor] = useState(false);
   const [kannZurueck, setKannZurueck] = useState(false);
   const [fotos, setFotos] = useState<Record<string, string>>({});
+  const [alleAnzeigen, setAlleAnzeigen] = useState(false);
 
   useEffect(() => {
     let aktiv = true;
@@ -68,6 +69,8 @@ export function SammlerKarussell({ benutzer, titel }: { benutzer: Benutzer; tite
     const breite = karte ? karte.offsetWidth + 16 : 160;
     bahn.scrollBy({ left: richtung * breite, behavior: "smooth" });
   };
+
+  const sichtbare = alleAnzeigen ? ids : ids.slice(0, 60);
 
   return (
     <div className="card-soft p-5">
@@ -133,7 +136,7 @@ export function SammlerKarussell({ benutzer, titel }: { benutzer: Benutzer; tite
             onScroll={aktualisierePfeile}
             className="no-scrollbar -mx-1 flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-1 pb-2"
           >
-            {ids.map((id) => {
+            {sichtbare.map((id) => {
               const blatt = BLAETTER_NACH_ID.get(id);
               if (!blatt) return null;
               const roh = benutzer.beweise[id];
@@ -158,6 +161,16 @@ export function SammlerKarussell({ benutzer, titel }: { benutzer: Benutzer; tite
               );
             })}
           </div>
+
+          {!alleAnzeigen && ids.length > 60 && (
+            <button
+              type="button"
+              onClick={() => setAlleAnzeigen(true)}
+              className="mt-2 rounded-full bg-candy-100 px-4 py-1.5 text-xs font-bold text-candy-700 hover:bg-candy-200"
+            >
+              Alle {ids.length} anzeigen
+            </button>
+          )}
 
           {kannZurueck && (
             <button

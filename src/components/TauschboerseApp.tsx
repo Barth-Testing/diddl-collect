@@ -53,6 +53,7 @@ export function TauschboerseApp() {
   const [nurWunsch, setNurWunsch] = useState(false);
   const [gewaehlt, setGewaehlt] = useState<Record<string, string>>({});
   const [dialog, setDialog] = useState<{ blattId: string; anbieter: { id: string; name: string } } | null>(null);
+  const [sichtbar, setSichtbar] = useState(120);
 
   const zuruecksetzen = () => setNurBlatt(null);
 
@@ -158,7 +159,7 @@ export function TauschboerseApp() {
           {gefiltert.length} Blätter werden aktuell getauscht – je Karte kannst du den passenden Anbieter wählen.
         </p>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-          {gefiltert.map((gruppe) => {
+          {gefiltert.slice(0, sichtbar).map((gruppe) => {
             const auswahl = gewaehlt[gruppe.blattId] ?? gruppe.anbieter[0]?.id;
             const anbieter = gruppe.anbieter.find((a) => a.id === auswahl) ?? gruppe.anbieter[0];
             const istMein = anbieter?.id === ich?.id;
@@ -237,6 +238,15 @@ export function TauschboerseApp() {
             );
           })}
         </div>
+        {gefiltert.length > sichtbar && (
+          <button
+            type="button"
+            onClick={() => setSichtbar((s) => s + 120)}
+            className="flex w-full items-center justify-center gap-2 rounded-full bg-candy-100 px-5 py-2.5 text-sm font-bold text-candy-700 transition hover:bg-candy-200"
+          >
+            Mehr Blätter anzeigen ({gefiltert.length - sichtbar} weitere)
+          </button>
+        )}
         </>
       )}
 
