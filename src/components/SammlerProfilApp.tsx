@@ -10,7 +10,7 @@ import { useStoreVersion } from "@/lib/useStoreVersion";
 import { Punkte } from "./Punkte";
 import { SammlerKarussell } from "./SammlerKarussell";
 import { TauschDialog } from "./TauschDialog";
-import { cn } from "@/lib/utils";
+import { cn, kopiereText } from "@/lib/utils";
 
 export function SammlerProfilApp() {
   const version = useStoreVersion();
@@ -326,25 +326,4 @@ export function SammlerProfilApp() {
   );
 }
 
-async function kopiereText(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    /* Fallback für Browser ohne Clipboard-Berechtigung */
-    try {
-      const textarea = document.createElement("textarea");
-      textarea.value = text;
-      textarea.style.position = "fixed";
-      textarea.style.opacity = "0";
-      document.body.appendChild(textarea);
-      textarea.focus();
-      textarea.select();
-      const ok = document.execCommand("copy");
-      document.body.removeChild(textarea);
-      return ok;
-    } catch {
-      return false;
-    }
-  }
-}
+

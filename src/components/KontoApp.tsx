@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { ArrowDownUp, Check, Camera, Egg, Heart, Images, LogIn, PartyPopper, Repeat2, ShieldCheck, Trash2, UserPlus } from "lucide-react";
+import { ArrowDownUp, Check, Camera, Egg, Heart, Images, LogIn, PartyPopper, Repeat2, Share2, ShieldCheck, Trash2, UserPlus } from "lucide-react";
 import { BLAETTER, BLAETTER_NACH_ID, blattTitel, sortiereSammlung, type SammlungSortierung } from "@/lib/blaetter";
 import { getSession, login, logout, register, setBeweis, setFavorit, setStatus, setzeTauschInfo, speichereBeweisFoto, zaehle } from "@/lib/store";
 import type { Blatt, Status, TauschInfo } from "@/lib/types";
@@ -11,7 +11,7 @@ import { Lupe } from "./Lupe";
 import { Punkte } from "./Punkte";
 import { SammlerKarussell } from "./SammlerKarussell";
 import { SelectBasis } from "./SelectBasis";
-import { cn } from "@/lib/utils";
+import { cn, kopiereText } from "@/lib/utils";
 
 type Tab = "sammlung" | "wunsch" | "tausch" | "beweise";
 
@@ -27,8 +27,31 @@ export function KontoApp() {
   const [bilderQuelle, setBilderQuelle] = useState<"vorlagen" | "beweise">("vorlagen");
   const [karussellAn, setKarussellAn] = useState(false);
   const [sichtbar, setSichtbar] = useState(150);
+  const [kopiert, setKopiert] = useState(false);
+  const [teilenFehler, setTeilenFehler] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const pendingBeweis = useRef<string | null>(null);
+
+  async function teileGalerie() {
+    const name = benutzer!.name;
+    const url = `${window.location.origin}/sammler?name=${encodeURIComponent(name)}`;
+    const titel = `Diddl-Collect: ${name}s Sammelgalerie`;
+    if (typeof navigator.share === "function") {
+      try {
+        await navigator.share({ title: titel, url });
+      } catch {
+        /* Nutzer hat abgebrochen */
+      }
+      return;
+    }
+    if (await kopiereText(url)) {
+      setKopiert(true);
+      setTimeout(() => setKopiert(false), 2500);
+    } else {
+      setTeilenFehler(true);
+      setTimeout(() => setTeilenFehler(false), 2500);
+    }
+  }
 
   const z = useMemo(() => (benutzer ? zaehle(benutzer) : null), [benutzer]);
 
@@ -218,6 +241,25 @@ export function KontoApp() {
           <Punkte label="Bewiesen" wert={z.beweise} farbe="text-emerald-600" />
         </div>
         <div className="flex flex-col gap-2 sm:items-end">
+          <button
+            type="button"
+            onClick={() => void teileGalerie()}
+            className={cn(
+              "flex items-center justify-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold transition-all",
+              kopiert && !teilenFehler
+                ? "bg-emerald-600 text-white shadow-sm"
+                : teilenFehler
+                  ? "font-semibold text-red-600 ring-1 ring-red-200"
+                  : "bg-white text-ink-700 ring-1 ring-cream-300 hover:bg-candy-100 hover:ring-candy-300",
+            )}
+          >
+            <Share2 className="h-4 w-4" />
+            {kopiert && !teilenFehler
+              ? "Link kopiert!"
+              : teilenFehler
+                ? "Teilen fehlgeschlagen"
+                : "Galerie teilen"}
+          </button>
           <button
             onClick={() => logout()}
             className="rounded-full bg-white px-4 py-2 text-sm font-bold text-ink-600 ring-1 ring-cream-300 hover:bg-candy-100"
