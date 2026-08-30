@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowDownUp, Check, Heart, LogIn, Repeat2, Search, SlidersHorizontal, X } from "lucide-react";
 import { BLAETTER, DIDDLBACK_KOLLEKTIONEN, VERFÜGBARE_FARBEN, blattTitel } from "@/lib/blaetter";
-import { getSession, setStatus } from "@/lib/store";
+import { getSession, listBenutzer, setStatus } from "@/lib/store";
 import { FARBREIHENFOLGE, type Status } from "@/lib/types";
 import { BlattKarte } from "./BlattKarte";
 import { Lupe } from "./Lupe";
@@ -26,7 +26,7 @@ const MODI = [
 type Modus = (typeof MODI)[number]["id"];
 
 export function KatalogApp() {
-  useStoreVersion();
+  const storeVersion = useStoreVersion();
   const benutzer = getSession();
   const [modus, setModus] = useState<Modus>("klassisch");
   const [kollektion, setKollektion] = useState<string>("Alle");
@@ -42,6 +42,18 @@ export function KatalogApp() {
 
   const statuses = useMemo(() => benutzer?.statuses ?? {}, [benutzer]);
   const beweise = useMemo(() => benutzer?.beweise ?? {}, [benutzer]);
+
+  /* Wie viele Sammler bieten dieses Blatt in der Tauschbörse an. */
+  const tauschAngebote = useMemo(() => {
+    const zaehler = new Map<string, number>();
+    for (const u of listBenutzer()) {
+      for (const [id, s] of Object.entries(u.statuses)) {
+        if (!s.includes("offer")) continue;
+        zaehler.set(id, (zaehler.get(id) ?? 0) + 1);
+      }
+    }
+    return zaehler;
+  }, [storeVersion]);
 
   const gefiltert = useMemo(() => {
     const q = suche.trim().toLowerCase();
@@ -295,6 +307,7 @@ export function KatalogApp() {
             blatt={b}
             status={statuses[b.id] ?? []}
             bewiesen={!!beweise[b.id]}
+            tauschAngebote={tauschAngebote.get(b.id) ?? 0}
             aufToggle={(s) => togglen(b.id, s)}
             aufBild={() => setLupe(b.id)}
           />

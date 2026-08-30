@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Check, Heart, Repeat2, Camera, Star } from "lucide-react";
 import type { Blatt, Status } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -13,6 +14,7 @@ type Props = {
   bewiesen?: boolean;
   bildOverride?: string;
   favorit?: boolean;
+  tauschAngebote?: number;
   aufToggle: (status: BlattAktion) => void;
   aufBild: () => void;
   aufBeweis?: () => void;
@@ -25,6 +27,7 @@ export function BlattKarte({
   bewiesen,
   bildOverride,
   favorit,
+  tauschAngebote = 0,
   aufToggle,
   aufBild,
   aufBeweis,
@@ -74,6 +77,15 @@ export function BlattKarte({
           <span className="chip absolute right-2 top-2 bg-yellow-400 px-1.5 py-0.5 text-white shadow-sm">
             <Star className="h-3 w-3 fill-current" /> Top
           </span>
+        )}
+        {tauschAngebote > 0 && (
+          <Link
+            href={`/tausch?blatt=${encodeURIComponent(blatt.id)}`}
+            className="chip absolute bottom-2 right-2 bg-peach-500 px-1.5 py-0.5 text-white shadow-sm transition-transform hover:scale-105"
+            title="In der Tauschbörse angeboten – Filter setzen"
+          >
+            <Repeat2 className="h-3 w-3" /> {tauschAngebote}
+          </Link>
         )}
       </button>
 

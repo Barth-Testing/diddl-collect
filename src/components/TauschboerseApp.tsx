@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeftRight, Heart, Users } from "lucide-react";
 import { BLAETTER_NACH_ID, blattTitel } from "@/lib/blaetter";
@@ -38,14 +39,22 @@ function suchText(gruppe: AngebotsGruppe) {
 
 export function TauschboerseApp() {
   useStoreVersion();
+  const params = useSearchParams();
+  const blattParam = params.get("blatt");
   const [, setVersion] = useState(0);
   const ich = getSession();
-  const [suche, setSuche] = useState("");
+  const [suche, setSuche] = useState(() => {
+    const b = blattParam ? BLAETTER_NACH_ID.get(blattParam) : undefined;
+    return b ? blattTitel(b) : "";
+  });
+  const [nurBlatt, setNurBlatt] = useState<string | null>(blattParam);
   const [groesse, setGroesse] = useState("");
   const [farbe, setFarbe] = useState("");
   const [nurWunsch, setNurWunsch] = useState(false);
   const [gewaehlt, setGewaehlt] = useState<Record<string, string>>({});
   const [dialog, setDialog] = useState<{ blattId: string; anbieter: { id: string; name: string } } | null>(null);
+
+  const zuruecksetzen = () => setNurBlatt(null);
 
   useEffect(() => {
     const cleanup = verbindeTausch();
@@ -85,25 +94,38 @@ export function TauschboerseApp() {
     return gruppen
       .map((g) => ({ ...g, text: suchText(g) }))
       .filter((g) => {
+        if (nurBlatt && g.blatt.id !== nurBlatt) return false;
         if (groesse && g.blatt.groesse !== groesse) return false;
         if (farbe && g.blatt.farbe !== farbe) return false;
         if (nurWunsch && !wunschIds.has(g.blatt.id)) return false;
         if (q && !g.text.includes(q)) return false;
         return true;
       });
-  }, [gruppen, groesse, farbe, nurWunsch, wunschIds, q]);
+  }, [gruppen, nurBlatt, groesse, farbe, nurWunsch, wunschIds, q]);
 
   return (
     <div className="space-y-4">
       <Filterleiste
         suche={suche}
-        setSuche={setSuche}
+        setSuche={(v) => {
+          setSuche(v);
+          zuruecksetzen();
+        }}
         groesse={groesse}
-        setGroesse={setGroesse}
+        setGroesse={(v) => {
+          setGroesse(v);
+          zuruecksetzen();
+        }}
         farbe={farbe}
-        setFarbe={setFarbe}
+        setFarbe={(v) => {
+          setFarbe(v);
+          zuruecksetzen();
+        }}
         nurWunsch={nurWunsch}
-        setNurWunsch={setNurWunsch}
+        setNurWunsch={(v) => {
+          setNurWunsch(v);
+          zuruecksetzen();
+        }}
         wunschAnzahl={wunschIds.size}
       />
       {!ich && (

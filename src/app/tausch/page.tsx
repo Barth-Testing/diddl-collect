@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { TauschboerseApp } from "@/components/TauschboerseApp";
 
 export const metadata = {
@@ -17,7 +18,11 @@ export default function TauschSeite() {
         Zeig, was du sammelst und tausche Doppelte: Blätter oder Geldbetrag vorschlagen, im
         Postfach verhandeln – ganz ohne Zwischenhändler.
       </p>
-      <TauschboerseApp />
+      <Suspense
+        fallback={<div className="card-soft mt-6 p-6 text-sm font-semibold text-ink-600">Lade Tauschbörse …</div>}
+      >
+        <TauschboerseApp />
+      </Suspense>
     </main>
   );
 }
