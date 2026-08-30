@@ -24,19 +24,19 @@ begin
 
   for m in
     select * from (values
-      ('A5-463', 'diddlback-de-a5-004'),
-      ('A5-464', 'diddlback-de-a5-003'),
-      ('A5-465', 'diddlback-de-a5-006'),
-      ('A5-466', 'diddlback-de-a5-005'),
-      ('A5-467', 'diddlback-de-a5-001'),
-      ('A5-468', 'diddlback-de-a5-002'),
-      ('A6-229', 'diddlback-de-a6-005'),
-      ('A6-230', 'diddlback-de-a6-006'),
-      ('A6-231', 'diddlback-de-a6-002'),
-      ('A6-232', 'diddlback-de-a6-003'),
-      ('A6-233', 'diddlback-de-a6-004'),
-      ('A6-234', 'diddlback-de-a6-001')
-    ) as v(alt text, neu text)
+      ('A5-463'::text, 'diddlback-de-a5-004'::text),
+      ('A5-464'::text, 'diddlback-de-a5-003'::text),
+      ('A5-465'::text, 'diddlback-de-a5-006'::text),
+      ('A5-466'::text, 'diddlback-de-a5-005'::text),
+      ('A5-467'::text, 'diddlback-de-a5-001'::text),
+      ('A5-468'::text, 'diddlback-de-a5-002'::text),
+      ('A6-229'::text, 'diddlback-de-a6-005'::text),
+      ('A6-230'::text, 'diddlback-de-a6-006'::text),
+      ('A6-231'::text, 'diddlback-de-a6-002'::text),
+      ('A6-232'::text, 'diddlback-de-a6-003'::text),
+      ('A6-233'::text, 'diddlback-de-a6-004'::text),
+      ('A6-234'::text, 'diddlback-de-a6-001'::text)
+    ) as v(alt, neu)
   loop
     execute format(
       'update public.profile set statuses = (statuses - %L) || jsonb_build_object(%L, coalesce(statuses -> %L, statuses -> %L)) where statuses ? %L',
@@ -62,19 +62,19 @@ begin
   if to_regclass('public.beweis_fotos') is not null then
     for m in
       select * from (values
-        ('A5-463', 'diddlback-de-a5-004'),
-        ('A5-464', 'diddlback-de-a5-003'),
-        ('A5-465', 'diddlback-de-a5-006'),
-        ('A5-466', 'diddlback-de-a5-005'),
-        ('A5-467', 'diddlback-de-a5-001'),
-        ('A5-468', 'diddlback-de-a5-002'),
-        ('A6-229', 'diddlback-de-a6-005'),
-        ('A6-230', 'diddlback-de-a6-006'),
-        ('A6-231', 'diddlback-de-a6-002'),
-        ('A6-232', 'diddlback-de-a6-003'),
-        ('A6-233', 'diddlback-de-a6-004'),
-        ('A6-234', 'diddlback-de-a6-001')
-      ) as v(alt text, neu text)
+        ('A5-463'::text, 'diddlback-de-a5-004'::text),
+        ('A5-464'::text, 'diddlback-de-a5-003'::text),
+        ('A5-465'::text, 'diddlback-de-a5-006'::text),
+        ('A5-466'::text, 'diddlback-de-a5-005'::text),
+        ('A5-467'::text, 'diddlback-de-a5-001'::text),
+        ('A5-468'::text, 'diddlback-de-a5-002'::text),
+        ('A6-229'::text, 'diddlback-de-a6-005'::text),
+        ('A6-230'::text, 'diddlback-de-a6-006'::text),
+        ('A6-231'::text, 'diddlback-de-a6-002'::text),
+        ('A6-232'::text, 'diddlback-de-a6-003'::text),
+        ('A6-233'::text, 'diddlback-de-a6-004'::text),
+        ('A6-234'::text, 'diddlback-de-a6-001'::text)
+      ) as v(alt, neu)
     loop
       execute format(
         'update public.beweis_fotos b set blatt_id = %L where b.blatt_id = %L and not exists (select 1 from public.beweis_fotos z where z.profil_id = b.profil_id and z.blatt_id = %L)',
