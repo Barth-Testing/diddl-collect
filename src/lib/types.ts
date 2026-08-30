@@ -112,6 +112,8 @@ export type Benutzer = {
   beweise: Record<string, string | boolean>;
   favoriten: Record<string, boolean>;
   tausch: Record<string, TauschInfo>;
+  /** Spender/Unterstützer – wird NUR serverseitig gesetzt (SQL), nie vom Client. */
+  supporter?: boolean;
 };
 
 export type Produkt = {

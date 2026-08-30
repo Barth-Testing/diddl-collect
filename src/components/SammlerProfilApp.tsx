@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Heart, Mail, Repeat2, SearchX, Share2, Trophy } from "lucide-react";
+import { Gem, Heart, Mail, Repeat2, SearchX, Share2, Trophy } from "lucide-react";
 import { BLAETTER_NACH_ID, blattTitel } from "@/lib/blaetter";
 import { getSession, listBenutzer, zaehle } from "@/lib/store";
 import { useStoreVersion } from "@/lib/useStoreVersion";
@@ -88,7 +88,17 @@ export function SammlerProfilApp() {
             {benutzer.name.slice(0, 1).toUpperCase()}
           </span>
           <div>
-            <p className="font-display text-xl font-bold text-ink-800">{benutzer.name}</p>
+            <p className="flex flex-wrap items-center gap-2 font-display text-xl font-bold text-ink-800">
+              {benutzer.name}
+              {benutzer.supporter && (
+                <span
+                  className="chip bg-yellow-400 px-2 py-0.5 text-xs text-white shadow-sm"
+                  title="Unterstützer: hält die Seite mit einer Spende am Laufen"
+                >
+                  <Gem className="h-3.5 w-3.5" /> Supporter
+                </span>
+              )}
+            </p>
             <p className="text-xs font-semibold text-ink-600">
               Sammler seit {new Date(benutzer.createdAt).toLocaleDateString("de-DE")}
             </p>

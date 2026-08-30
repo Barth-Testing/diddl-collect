@@ -25,6 +25,7 @@ type ProfileRow = {
   beweise: Record<string, string | boolean> | null;
   favoriten?: Record<string, boolean> | null;
   tausch?: Record<string, TauschInfo> | null;
+  supporter?: boolean | null;
 };
 
 type ProfileDb = {
@@ -102,6 +103,7 @@ function loadUsers(): Benutzer[] {
           beweise: remappeBlattSchluessel(u.beweise ?? {}),
           favoriten: remappeBlattSchluessel(u.favoriten ?? {}),
           tausch: remappeBlattSchluessel(u.tausch ?? {}),
+          supporter: u.supporter === true,
         }) as Benutzer,
     );
   } catch {
@@ -124,6 +126,7 @@ function zeileZuBenutzer(zeile: ProfileRow): Benutzer {
     beweise: remappeBlattSchluessel(zeile.beweise ?? {}),
     favoriten: remappeBlattSchluessel(zeile.favoriten ?? {}),
     tausch: remappeBlattSchluessel(zeile.tausch ?? {}),
+    supporter: zeile.supporter === true,
   };
 }
 
@@ -331,6 +334,8 @@ function uebernimmAnmeldung(ergebnis: KontoAntwort): { ok: boolean; fehler?: str
     return { ok: false, fehler: ergebnis.fehler ?? "Das hat nicht geklappt – schau später noch einmal vorbei." };
   }
   const benutzer = zeileZuBenutzer(ergebnis.profil);
+  const vorhanden = loadUsers().find((u) => u.id === benutzer.id);
+  if (vorhanden?.supporter) benutzer.supporter = true;
   const rest = loadUsers().filter((u) => u.id !== benutzer.id);
   saveUsers([...rest, benutzer]);
   setzeSession(ergebnis.token, benutzer.id);
@@ -420,6 +425,7 @@ export async function register(
     beweise: {},
     favoriten: {},
     tausch: {},
+    supporter: false,
   };
   users.push(user);
   saveUsers(users);

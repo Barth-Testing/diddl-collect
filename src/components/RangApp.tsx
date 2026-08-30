@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Medal, ShieldAlert, ShieldCheck } from "lucide-react";
-import { berechneRangliste, getSession } from "@/lib/store";
+import { Gem, HeartHandshake, Medal, ShieldAlert, ShieldCheck } from "lucide-react";
+import { berechneRangliste, getSession, listBenutzer } from "@/lib/store";
 import { useStoreVersion } from "@/lib/useStoreVersion";
 import { cn } from "@/lib/utils";
 
@@ -10,11 +10,36 @@ export function RangApp() {
   useStoreVersion();
   const benutzer = getSession();
   const eintraege = berechneRangliste();
+  const supporter = listBenutzer().filter((u) => u.supporter);
 
   const meinEintrag = benutzer ? eintraege.find((e) => e.benutzer.id === benutzer.id) : null;
 
   return (
     <div className="mt-6 space-y-4">
+      {supporter.length > 0 && (
+        <div className="card-soft border-yellow-200 bg-gradient-to-r from-yellow-50 via-amber-50 to-yellow-50 p-5">
+          <h2 className="font-display flex items-center gap-2 text-lg font-bold text-ink-800">
+            <HeartHandshake className="h-5 w-5 text-yellow-500" />
+            Danke an unsere Unterstützer!
+          </h2>
+          <p className="mt-1 text-xs font-semibold text-ink-600">
+            Diese Sammler halten die Seite mit einer Spende am Laufen – herzlichen Dank!
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {supporter.map((u) => (
+              <Link
+                key={u.id}
+                href={`/sammler?name=${encodeURIComponent(u.name)}`}
+                className="chip gap-1.5 bg-white px-3 py-1.5 text-sm font-bold text-ink-800 ring-1 ring-yellow-300 hover:bg-yellow-100"
+              >
+                <Gem className="h-3.5 w-3.5 text-yellow-500" />
+                {u.name}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       {meinEintrag && (
         <div className="card-soft flex items-center gap-3 border-candy-200 bg-candy-50 px-4 py-3 text-sm font-semibold text-ink-800">
           <Medal className="h-5 w-5 text-candy-500" />
@@ -67,6 +92,8 @@ export function RangApp() {
                   className={cn(
                     "border-b border-cream-100 last:border-0",
                     istIch && "bg-candy-100/60",
+                    e.benutzer.supporter &&
+                      "bg-yellow-50 outline outline-2 outline-yellow-300",
                   )}
                 >
                   <td className="px-4 py-2.5 font-display font-bold text-ink-700">
@@ -92,6 +119,14 @@ export function RangApp() {
                     >
                       {e.benutzer.name}
                     </Link>
+                    {e.benutzer.supporter && (
+                      <span
+                        className="chip ml-2 bg-yellow-400 px-1.5 py-0.5 text-white"
+                        title="Unterstützer: hält die Seite mit einer Spende am Laufen"
+                      >
+                        <Gem className="h-3 w-3" /> Supporter
+                      </span>
+                    )}
                     {istIch && <span className="chip ml-2 bg-candy-500 px-1.5 py-0.5 text-white">Du</span>}
                   </td>
                   <td className="px-4 py-2.5 text-center">
