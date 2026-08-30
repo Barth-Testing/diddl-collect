@@ -1,5 +1,5 @@
 import type { Benutzer, Status, TauschInfo } from "./types";
-import { normalisiereStatuses } from "./types";
+import { normalisiereStatuses, remappeBlattSchluessel } from "./types";
 import { getSupabase, hashPasswort, istHash, supabaseKonfiguriert } from "./supabase";
 
 const USERS_KEY = "diddlcollect:benutzer";
@@ -91,7 +91,16 @@ function loadUsers(): Benutzer[] {
     const users = JSON.parse(raw) as Array<Benutzer & { demo?: boolean }>;
     const ohneDemo = users.filter((u) => !u.demo);
     if (ohneDemo.length !== users.length) saveUsers(ohneDemo);
-    return ohneDemo.map((u) => ({ ...u, statuses: normalisiereStatuses(u.statuses), favoriten: u.favoriten ?? {}, tausch: u.tausch ?? {} })) as Benutzer[];
+    return ohneDemo.map(
+      (u) =>
+        ({
+          ...u,
+          statuses: normalisiereStatuses(u.statuses),
+          beweise: remappeBlattSchluessel(u.beweise ?? {}),
+          favoriten: remappeBlattSchluessel(u.favoriten ?? {}),
+          tausch: remappeBlattSchluessel(u.tausch ?? {}),
+        }) as Benutzer,
+    );
   } catch {
     return [];
   }
@@ -109,9 +118,9 @@ function zeileZuBenutzer(zeile: ProfileRow): Benutzer {
     passwort: zeile.passwort,
     createdAt: new Date(zeile.created_at).getTime(),
     statuses: normalisiereStatuses(zeile.statuses),
-    beweise: zeile.beweise ?? {},
-    favoriten: zeile.favoriten ?? {},
-    tausch: zeile.tausch ?? {},
+    beweise: remappeBlattSchluessel(zeile.beweise ?? {}),
+    favoriten: remappeBlattSchluessel(zeile.favoriten ?? {}),
+    tausch: remappeBlattSchluessel(zeile.tausch ?? {}),
   };
 }
 

@@ -64,8 +64,42 @@ export function normalisiereStatuses(roh: Record<string, unknown> | null | undef
   if (!roh) return out;
   for (const [id, wert] of Object.entries(roh)) {
     const liste = normalisiereStatus(wert);
-    if (liste.length > 0) out[id] = liste;
+    if (liste.length > 0) out[aktuelleBlattId(id)] = liste;
   }
+  return out;
+}
+
+/**
+ * Alte Katalog-IDs der Diddl-is-Back-Sammelverzeichnis-Einträge, die am
+ * 27.08.2026 unter neue diddlback-<kollektion>-IDs umgezogen sind. Die
+ * Benutzer-Zuordnungen (statuses/tausch/beweise/favoriten) hängen in der DB
+ * und in alten localStorage-Caches noch an den alten Keys – ALLE Lese-Pfade
+ * remappen sie auf die aktuelle Katalog-ID, damit nichts unsichtbar wird.
+ * Neue ID = gleiches Blatt (Motiv-Paarung visuell verifiziert).
+ */
+export const ALTE_BLATT_IDS: Record<string, string> = {
+  "A5-463": "diddlback-de-a5-004",
+  "A5-464": "diddlback-de-a5-003",
+  "A5-465": "diddlback-de-a5-006",
+  "A5-466": "diddlback-de-a5-005",
+  "A5-467": "diddlback-de-a5-001",
+  "A5-468": "diddlback-de-a5-002",
+  "A6-229": "diddlback-de-a6-005",
+  "A6-230": "diddlback-de-a6-006",
+  "A6-231": "diddlback-de-a6-002",
+  "A6-232": "diddlback-de-a6-003",
+  "A6-233": "diddlback-de-a6-004",
+  "A6-234": "diddlback-de-a6-001",
+};
+
+export function aktuelleBlattId(id: string): string {
+  return ALTE_BLATT_IDS[id] ?? id;
+}
+
+export function remappeBlattSchluessel<T>(roh: Record<string, T> | null | undefined): Record<string, T> {
+  if (!roh) return {};
+  const out: Record<string, T> = {};
+  for (const [id, wert] of Object.entries(roh)) out[aktuelleBlattId(id)] = wert;
   return out;
 }
 

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Repeat2, SearchX, Trophy } from "lucide-react";
+import { Heart, Mail, Repeat2, SearchX, Trophy } from "lucide-react";
 import { BLAETTER_NACH_ID, blattTitel } from "@/lib/blaetter";
 import { getSession, listBenutzer, zaehle } from "@/lib/store";
 import { useStoreVersion } from "@/lib/useStoreVersion";
@@ -44,6 +44,16 @@ export function SammlerProfilApp() {
 
   const z = zaehle(benutzer);
 
+  const wunschIds = ich
+    ? new Set(Object.keys(ich.statuses).filter((id) => ich.statuses[id]?.includes("wish")))
+    : new Set<string>();
+  const treffer = Object.keys(benutzer.statuses)
+    .filter((id) => benutzer.statuses[id]?.includes("offer") && wunschIds.has(id))
+    .sort((a, b) => a.localeCompare(b));
+  const wunschliste = Object.keys(benutzer.statuses)
+    .filter((id) => benutzer.statuses[id]?.includes("wish"))
+    .sort((a, b) => a.localeCompare(b));
+
   return (
     <div className="mt-6 space-y-5">
       <div className="card-soft flex flex-col gap-4 p-5 sm:flex-row sm:items-center">
@@ -74,7 +84,90 @@ export function SammlerProfilApp() {
         )}
       </div>
 
+      {ich && ich.id !== benutzer.id && treffer.length > 0 && (
+        <div className="card-soft border-mint-200 bg-mint-50 p-5">
+          <h3 className="font-display flex items-center gap-2 text-lg font-bold text-ink-800">
+            <Mail className="h-5 w-5 text-emerald-500" />
+            {treffer.length} {treffer.length === 1 ? "Treffer" : "Treffer"} auf deiner Wunschliste
+          </h3>
+          <p className="mt-1 text-xs font-semibold text-ink-600">
+            Diese angebotenen Blätter von {benutzer.name} fehlen dir noch – perfekt für einen gemeinsamen
+            Brief mit mehreren Blättern, das spart Porto.
+          </p>
+          <div className="no-scrollbar -mx-1 mt-4 flex gap-4 overflow-x-auto px-1 pb-2">
+            {treffer.map((id) => {
+              const b = BLAETTER_NACH_ID.get(id);
+              if (!b) return null;
+              return (
+                <figure key={id} className="w-28 shrink-0 snap-start">
+                  <div className="overflow-hidden rounded-2xl bg-white ring-2 ring-mint-300">
+                    <img
+                      src={b.bild}
+                      alt={blattTitel(b)}
+                      loading="lazy"
+                      className="aspect-square w-full object-contain p-1"
+                    />
+                  </div>
+                  <figcaption
+                    className="mt-1 truncate text-center text-[10px] font-bold text-ink-700"
+                    title={blattTitel(b)}
+                  >
+                    {blattTitel(b)}
+                  </figcaption>
+                  <button
+                    type="button"
+                    onClick={() => setTauschAngebot(id)}
+                    className="mt-1.5 w-full rounded-full bg-emerald-600 py-1 text-[10px] font-bold text-white hover:bg-emerald-700"
+                  >
+                    Angebot machen
+                  </button>
+                </figure>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <SammlerKarussell benutzer={benutzer} titel={`${benutzer.name}s Lieblingsblätter`} />
+
+      {wunschliste.length > 0 && (
+        <div className="card-soft p-5">
+          <h3 className="font-display flex items-center gap-2 text-lg font-bold text-ink-800">
+            <Heart className="h-5 w-5 text-berry-400" />
+            Wunschliste
+            <span className="chip bg-berry-100 px-1.5 py-0.5 text-xs text-berry-400">{z.wish}</span>
+          </h3>
+          <p className="mt-1 text-xs font-semibold text-ink-600">
+            {ich?.id === benutzer.id
+              ? "Deine Wunschblätter – such sie in der Börse als angeboten."
+              : "Das sucht dieser Sammler – vielleicht kannst du helfen."}
+          </p>
+          <div className="no-scrollbar -mx-1 mt-4 flex gap-4 overflow-x-auto px-1 pb-2">
+            {wunschliste.map((id) => {
+              const b = BLAETTER_NACH_ID.get(id);
+              if (!b) return null;
+              return (
+                <figure key={id} className="flex w-28 shrink-0 snap-start flex-col">
+                  <div className="overflow-hidden rounded-2xl bg-white ring-1 ring-candy-100">
+                    <img
+                      src={b.bild}
+                      alt={blattTitel(b)}
+                      loading="lazy"
+                      className="aspect-square w-full object-contain p-1"
+                    />
+                  </div>
+                  <figcaption
+                    className="mt-1 truncate text-center text-[10px] font-bold text-ink-700"
+                    title={blattTitel(b)}
+                  >
+                    {blattTitel(b)}
+                  </figcaption>
+                </figure>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {Object.keys(benutzer.statuses).some((id) => benutzer.statuses[id]?.includes("offer")) && (
         <div className="card-soft p-5">

@@ -32,6 +32,7 @@
 - All profiles are synced server-side into a localStorage cache; components re-render via `useStoreVersion()`.
 - `statuses` is now `Record<string, Status[]>` (multi-select: own/wish/offer parallel, z. B. own+offer). Legacy single-string values are normalized via `normalisiereStatus(es)` in types.ts (old `"offer"` ⇒ `["own","offer"]`). ALWAYS normalize on read paths (loadUsers, zeileZuBenutzer) — never compare `=== "own"` directly; use `.includes()`. Backend jsonb column stays unchanged (no SQL migration needed).
 - Adding ANY field to `Benutzer` requires ALL of: optional in `ProfileRow`, normalize old caches in `loadUsers` (`?? {}`), map it in `zeileZuBenutzer`, set it in `register()`, merge + change-compare it in `syncMitServer`, include it in `pushProfil`. Missing one causes silent data loss or TS errors.
+- **Blatt-IDs in Nutzerdaten sind FREIGESCHALTET (Remap bei jedem Lese-Pfad).** Die 12 alten Sammelverzeichnis-IDs (`A5-463` … `A6-234`, am 27.08.2026 auf `diddlback-de-*` umgezogen) stehen in `ALTE_BLATT_IDS` (types.ts); `normalisiereStatuses` + `remappeBlattSchluessel` mappen statuses/beweise/favoriten/tausch beim Laden. Die SQL-Migration `scripts/didlback-id-migration.sql` zieht auch die DB um. **NIEMALS Katalog-Blätter umbenennen/umbetten** – ein ID-Wechsel macht alle Nutzer-Markierungen (und Tausch-Offerten) unsichtbar. Neue Blätter bekommen neue IDs, alte bleiben stabil.
 
 ## Catalog data pipeline
 

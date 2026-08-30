@@ -1,16 +1,39 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { ArrowLeftRight } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowLeftRight, Heart, Users } from "lucide-react";
 import { BLAETTER_NACH_ID, blattTitel } from "@/lib/blaetter";
-import { getSession, listBenutzer } from "@/lib/store";
+import { getSession, listBenutzer, zaehle } from "@/lib/store";
 import { useStoreVersion } from "@/lib/useStoreVersion";
 import { subscribeTausch, verbindeTausch } from "@/lib/tausch";
+import { aktuelleBlattId, type Blatt, type TauschInfo } from "@/lib/types";
 import { TauschDialog } from "./TauschDialog";
+import { cn } from "@/lib/utils";
 
 function formatBetrag(wert: number | null) {
   return wert === null ? null : wert.toLocaleString("de-DE", { style: "currency", currency: "EUR" });
+}
+
+type AnbieterEintrag = {
+  id: string;
+  name: string;
+  info?: TauschInfo;
+  own: number;
+  offer: number;
+};
+
+type AngebotsGruppe = {
+  blattId: string;
+  blatt: Blatt;
+  anbieter: AnbieterEintrag[];
+};
+
+function suchText(gruppe: AngebotsGruppe) {
+  const { blatt, anbieter } = gruppe;
+  return `${blattTitel(blatt)} ${blatt.name ?? ""} ${blatt.nummer} ${blatt.groesse} ${blatt.farbe} ${
+    blatt.kollektion ?? ""
+  } ${anbieter.map((a) => a.name).join(" ")} ${anbieter.map((a) => a.info?.notiz ?? "").join(" ")}`.toLowerCase();
 }
 
 export function TauschboerseApp() {
@@ -20,6 +43,8 @@ export function TauschboerseApp() {
   const [suche, setSuche] = useState("");
   const [groesse, setGroesse] = useState("");
   const [farbe, setFarbe] = useState("");
+  const [nurWunsch, setNurWunsch] = useState(false);
+  const [gewaehlt, setGewaehlt] = useState<Record<string, string>>({});
   const [dialog, setDialog] = useState<{ blattId: string; anbieter: { id: string; name: string } } | null>(null);
 
   useEffect(() => {
@@ -31,54 +56,42 @@ export function TauschboerseApp() {
     };
   }, []);
 
-  const q = suche.trim().toLowerCase();
-  const karten = listBenutzer()
-    .flatMap((u) =>
-      Object.keys(u.statuses)
-        .filter((id) => u.statuses[id]?.includes("offer"))
-        .map((id) => ({
-          blattId: id,
-          anbieterName: u.name,
-          anbieterId: u.id,
-          info: u.tausch?.[id],
-        })),
-    )
-    .map((k) => ({ ...k, blatt: BLAETTER_NACH_ID.get(k.blattId) }))
-    .filter(({ blatt, anbieterName }) => {
-      if (!blatt) return false;
-      if (groesse && blatt.groesse !== groesse) return false;
-      if (farbe && blatt.farbe !== farbe) return false;
-      if (!q) return true;
-      const text = `${blattTitel(blatt)} ${blatt.name ?? ""} ${blatt.nummer} ${anbieterName}`.toLowerCase();
-      return text.includes(q);
-    })
-    .sort((a, b) => a.anbieterName.localeCompare(b.anbieterName) || a.blattId.localeCompare(b.blattId));
+  const gruppen = useMemo(() => {
+    const map = new Map<string, AngebotsGruppe>();
+    for (const u of listBenutzer()) {
+      const z = zaehle(u);
+      for (const [id, statuse] of Object.entries(u.statuses)) {
+        if (!statuse.includes("offer")) continue;
+        const blattId = aktuelleBlattId(id);
+        const blatt = BLAETTER_NACH_ID.get(blattId);
+        if (!blatt) continue;
+        const gruppe = map.get(blattId) ?? { blattId, blatt, anbieter: [] };
+        if (gruppe.anbieter.every((a) => a.id !== u.id)) {
+          gruppe.anbieter.push({ id: u.id, name: u.name, info: u.tausch?.[id], own: z.own, offer: z.offer });
+        }
+        map.set(blattId, gruppe);
+      }
+    }
+    return [...map.values()].sort((a, b) => blattTitel(a.blatt).localeCompare(blattTitel(b.blatt), "de", { numeric: true }));
+  }, []);
 
-  if (karten.length === 0) {
-    return (
-      <div className="space-y-4">
-        <Filterleiste
-          suche={suche}
-          setSuche={setSuche}
-          groesse={groesse}
-          setGroesse={setGroesse}
-          farbe={farbe}
-          setFarbe={setFarbe}
-        />
-        <div className="card-soft flex flex-col items-center gap-2 p-10 text-center text-ink-600">
-          <ArrowLeftRight className="h-8 w-8 text-candy-300" />
-          <p className="font-display text-lg font-bold">
-            {q || groesse || farbe ? "Nichts gefunden" : "Noch keine Tausch-Blätter"}
-          </p>
-          <p className="text-sm">
-            Markiere Blätter in{" "}
-            <Link href="/konto" className="font-bold text-candy-600 hover:underline">deiner Sammlung</Link>{" "}
-            als „Zum Tauschen“ – dann sehen sie alle in der Börse.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const q = suche.trim().toLowerCase();
+  const wunschIds = useMemo(
+    () => new Set(ich ? Object.keys(ich.statuses).filter((id) => ich.statuses[id]?.includes("wish")) : []),
+    [ich],
+  );
+
+  const gefiltert = useMemo(() => {
+    return gruppen
+      .map((g) => ({ ...g, text: suchText(g) }))
+      .filter((g) => {
+        if (groesse && g.blatt.groesse !== groesse) return false;
+        if (farbe && g.blatt.farbe !== farbe) return false;
+        if (nurWunsch && !wunschIds.has(g.blatt.id)) return false;
+        if (q && !g.text.includes(q)) return false;
+        return true;
+      });
+  }, [gruppen, groesse, farbe, nurWunsch, wunschIds, q]);
 
   return (
     <div className="space-y-4">
@@ -89,6 +102,9 @@ export function TauschboerseApp() {
         setGroesse={setGroesse}
         farbe={farbe}
         setFarbe={setFarbe}
+        nurWunsch={nurWunsch}
+        setNurWunsch={setNurWunsch}
+        wunschAnzahl={wunschIds.size}
       />
       {!ich && (
         <p className="card-soft px-4 py-3 text-sm font-semibold text-ink-600">
@@ -96,61 +112,111 @@ export function TauschboerseApp() {
           und Blätter in deiner Sammlung als Tausch markieren.
         </p>
       )}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-        {karten.map(({ blattId, anbieterName, anbieterId, info, blatt }) => {
-          const istMein = anbieterId === ich?.id;
-          return (
-            <div key={blattId} className="card-soft flex flex-col gap-2 p-3">
-              <img
-                src={blatt!.bild}
-                alt={blattTitel(blatt!)}
-                loading="lazy"
-                className="aspect-square w-full rounded-2xl bg-white object-contain ring-1 ring-candy-100"
-              />
-              <p className="line-clamp-1 text-center text-xs font-bold text-ink-800" title={blattTitel(blatt!)}>
-                {blattTitel(blatt!)}
-              </p>
-              <p className="text-center text-[10px] font-semibold text-ink-600">
-                von{" "}
-                <Link
-                  href={`/sammler?name=${encodeURIComponent(anbieterName)}`}
-                  className="hover:text-candy-600 hover:underline"
-                >
-                  {anbieterName}
-                </Link>
-              </p>
-              {info?.betrag != null && (
-                <p className="text-center text-[10px] font-bold text-candy-700">
-                  Wunschbetrag: {formatBetrag(info.betrag)}
+      {gefiltert.length === 0 ? (
+        <div className="card-soft flex flex-col items-center gap-2 p-10 text-center text-ink-600">
+          <ArrowLeftRight className="h-8 w-8 text-candy-300" />
+          <p className="font-display text-lg font-bold">
+            {q || groesse || farbe
+              ? "Nichts gefunden"
+              : nurWunsch
+                ? "Deine Wunschblätter sind nicht in der Börse"
+                : "Noch keine Tausch-Blätter"}
+          </p>
+          <p className="text-sm">
+            Markiere Blätter in{" "}
+            <Link href="/konto" className="font-bold text-candy-600 hover:underline">deiner Sammlung</Link>{" "}
+            {nurWunsch
+              ? " als „Wunsch“ – die Börse zeigt dir dann, wer sie anbietet."
+              : "als „Zum Tauschen“ – dann sehen sie alle in der Börse."}
+          </p>
+        </div>
+      ) : (
+        <>
+        <p className="text-xs font-bold text-ink-600">
+          {gefiltert.length} Blätter werden aktuell getauscht – je Karte kannst du den passenden Anbieter wählen.
+        </p>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+          {gefiltert.map((gruppe) => {
+            const auswahl = gewaehlt[gruppe.blattId] ?? gruppe.anbieter[0]?.id;
+            const anbieter = gruppe.anbieter.find((a) => a.id === auswahl) ?? gruppe.anbieter[0];
+            const istMein = anbieter?.id === ich?.id;
+            return (
+              <div key={gruppe.blattId} className="card-soft flex flex-col gap-2 p-3">
+                <img
+                  src={gruppe.blatt.bild}
+                  alt={blattTitel(gruppe.blatt)}
+                  loading="lazy"
+                  className="aspect-square w-full rounded-2xl bg-white object-contain ring-1 ring-candy-100"
+                />
+                <p className="line-clamp-1 text-center text-xs font-bold text-ink-800" title={blattTitel(gruppe.blatt)}>
+                  {blattTitel(gruppe.blatt)}
                 </p>
-              )}
-              {info?.notiz && (
-                <p className="line-clamp-2 text-center text-[10px] text-ink-600" title={info.notiz}>
-                  „{info.notiz}“
-                </p>
-              )}
-              <p className="mt-auto">
-                {istMein ? (
-                  <Link
-                    href="/konto"
-                    className="block rounded-full bg-cream-100 py-1.5 text-center text-xs font-bold text-ink-600 hover:bg-cream-200"
-                  >
-                    Verwalten
-                  </Link>
+                {gruppe.anbieter.length > 1 ? (
+                  <label className="flex flex-col gap-0.5">
+                    <span className="flex items-center justify-center gap-1 text-[10px] font-bold uppercase tracking-wide text-ink-600">
+                      <Users className="h-3 w-3" /> {gruppe.anbieter.length} Anbieter
+                    </span>
+                    <select
+                      value={auswahl}
+                      onChange={(e) => setGewaehlt((vorher) => ({ ...vorher, [gruppe.blattId]: e.target.value }))}
+                      className="rounded-full border border-cream-300 bg-white px-2 py-1 text-[10px] font-bold text-ink-800 outline-none focus:border-candy-400"
+                    >
+                      {gruppe.anbieter.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.name} ({a.own} eigenen, {a.offer} zu tauschen)
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() => setDialog({ blattId, anbieter: { id: anbieterId, name: anbieterName } })}
-                    className="w-full rounded-full bg-candy-500 py-1.5 text-xs font-bold text-white hover:bg-candy-600"
-                  >
-                    Angebot machen
-                  </button>
+                  <p className="text-center text-[10px] font-semibold text-ink-600">
+                    von{" "}
+                    <Link
+                      href={`/sammler?name=${encodeURIComponent(anbieter?.name ?? "")}`}
+                      className="hover:text-candy-600 hover:underline"
+                    >
+                      {anbieter?.name}
+                    </Link>{" "}
+                    <span className="text-ink-400">({anbieter?.own} · {anbieter?.offer})</span>
+                  </p>
                 )}
-              </p>
-            </div>
-          );
-        })}
-      </div>
+                {anbieter?.info?.betrag != null && (
+                  <p className="text-center text-[10px] font-bold text-candy-700">
+                    Wunschbetrag: {formatBetrag(anbieter.info.betrag)}
+                  </p>
+                )}
+                {anbieter?.info?.notiz && (
+                  <p className="line-clamp-2 text-center text-[10px] text-ink-600" title={anbieter.info.notiz}>
+                    „{anbieter.info.notiz}“
+                  </p>
+                )}
+                <p className="mt-auto">
+                  {istMein ? (
+                    <Link
+                      href="/konto"
+                      className="block rounded-full bg-cream-100 py-1.5 text-center text-xs font-bold text-ink-600 hover:bg-cream-200"
+                    >
+                      Verwalten
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!anbieter) return;
+                        setDialog({ blattId: gruppe.blattId, anbieter: { id: anbieter.id, name: anbieter.name } });
+                      }}
+                      className="w-full rounded-full bg-candy-500 py-1.5 text-xs font-bold text-white hover:bg-candy-600"
+                    >
+                      Angebot machen
+                    </button>
+                  )}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+        </>
+      )}
 
       {dialog && (
         <TauschDialog
@@ -170,6 +236,9 @@ function Filterleiste({
   setGroesse,
   farbe,
   setFarbe,
+  nurWunsch,
+  setNurWunsch,
+  wunschAnzahl,
 }: {
   suche: string;
   setSuche: (v: string) => void;
@@ -177,6 +246,9 @@ function Filterleiste({
   setGroesse: (v: string) => void;
   farbe: string;
   setFarbe: (v: string) => void;
+  nurWunsch: boolean;
+  setNurWunsch: (v: boolean) => void;
+  wunschAnzahl: number;
 }) {
   return (
     <div className="card-soft flex flex-wrap items-center gap-3 p-4">
@@ -186,6 +258,26 @@ function Filterleiste({
         placeholder="Nach Motiv oder Sammler suchen …"
         className="w-full flex-1 rounded-full border border-cream-300 bg-white px-4 py-2 text-sm font-semibold outline-none focus:border-candy-400 focus:ring-2 focus:ring-candy-200"
       />
+      <button
+        type="button"
+        onClick={() => setNurWunsch(!nurWunsch)}
+        aria-pressed={nurWunsch}
+        className={cn(
+          "flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-bold transition-all",
+          nurWunsch
+            ? "bg-berry-400 text-white shadow-md shadow-berry-300/40"
+            : "bg-white text-ink-700 ring-1 ring-cream-300 hover:ring-berry-300",
+        )}
+        title={wunschAnzahl === 0 ? "Markiere zuerst Blätter in deiner Sammlung als Wunsch." : undefined}
+      >
+        <Heart className="h-4 w-4" />
+        Meine Wunschblätter
+        {wunschAnzahl > 0 && (
+          <span className={cn("rounded-full px-1.5 text-xs", nurWunsch ? "bg-white/25" : "bg-berry-100 text-berry-500")}>
+            {wunschAnzahl}
+          </span>
+        )}
+      </button>
       <select
         value={groesse}
         onChange={(e) => setGroesse(e.target.value)}
