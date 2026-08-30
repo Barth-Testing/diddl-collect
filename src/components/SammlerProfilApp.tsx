@@ -3,13 +3,14 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Heart, Mail, Repeat2, SearchX, Trophy } from "lucide-react";
+import { Heart, Mail, Repeat2, SearchX, Share2, Trophy } from "lucide-react";
 import { BLAETTER_NACH_ID, blattTitel } from "@/lib/blaetter";
 import { getSession, listBenutzer, zaehle } from "@/lib/store";
 import { useStoreVersion } from "@/lib/useStoreVersion";
 import { Punkte } from "./Punkte";
 import { SammlerKarussell } from "./SammlerKarussell";
 import { TauschDialog } from "./TauschDialog";
+import { cn } from "@/lib/utils";
 
 export function SammlerProfilApp() {
   const version = useStoreVersion();
@@ -20,6 +21,8 @@ export function SammlerProfilApp() {
   const [mehrTreffer, setMehrTreffer] = useState(false);
   const [mehrWunsch, setMehrWunsch] = useState(false);
   const [mehrAngebot, setMehrAngebot] = useState(false);
+  const [kopiert, setKopiert] = useState(false);
+  const [teilenFehler, setTeilenFehler] = useState(false);
 
   void version;
   const q = name.toLowerCase();
@@ -46,6 +49,26 @@ export function SammlerProfilApp() {
   }
 
   const z = zaehle(benutzer);
+
+  async function teileProfil(benutzerName: string) {
+    const url = `${window.location.origin}/sammler?name=${encodeURIComponent(benutzerName)}`;
+    const titel = `Diddl-Collect: ${benutzerName}s Sammelgalerie`;
+    if (typeof navigator.share === "function") {
+      try {
+        await navigator.share({ title: titel, url });
+      } catch {
+        /* Nutzer hat abgebrochen – kein Feedback nötig */
+      }
+      return;
+    }
+    if (await kopiereText(url)) {
+      setKopiert(true);
+      setTimeout(() => setKopiert(false), 2500);
+    } else {
+      setTeilenFehler(true);
+      setTimeout(() => setTeilenFehler(false), 2500);
+    }
+  }
 
   const wunschIds = ich
     ? new Set(Object.keys(ich.statuses).filter((id) => ich.statuses[id]?.includes("wish")))
@@ -77,14 +100,35 @@ export function SammlerProfilApp() {
           <Punkte label="Zum Tauschen" wert={z.offer} farbe="text-peach-500" />
           <Punkte label="Bewiesen" wert={z.beweise} farbe="text-emerald-600" />
         </div>
-        {ich?.id === benutzer.id && (
-          <Link
-            href="/konto"
-            className="shrink-0 self-start rounded-full bg-candy-500 px-4 py-2 text-sm font-bold text-white hover:bg-candy-600 sm:self-auto"
+        <div className="flex shrink-0 flex-col items-stretch gap-2 self-start sm:self-auto">
+          {ich?.id === benutzer.id && (
+            <Link
+              href="/konto"
+              className="rounded-full bg-candy-500 px-4 py-2 text-center text-sm font-bold text-white hover:bg-candy-600"
+            >
+              Zur eigenen Sammlung
+            </Link>
+          )}
+          <button
+            type="button"
+            onClick={() => void teileProfil(benutzer.name)}
+            className={cn(
+              "flex items-center justify-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold transition-all",
+              kopiert && !teilenFehler
+                ? "bg-emerald-600 text-white shadow-sm"
+                : teilenFehler
+                  ? "font-semibold text-red-600 ring-1 ring-red-200"
+                  : "bg-white text-ink-700 ring-1 ring-cream-300 hover:bg-candy-100 hover:ring-candy-300",
+            )}
           >
-            Zur eigenen Sammlung
-          </Link>
-        )}
+            <Share2 className="h-4 w-4" />
+            {kopiert && !teilenFehler
+              ? "Link kopiert!"
+              : teilenFehler
+                ? "Teilen fehlgeschlagen"
+                : "Galerie teilen"}
+          </button>
+        </div>
       </div>
 
       {ich && ich.id !== benutzer.id && treffer.length > 0 && (
@@ -280,4 +324,27 @@ export function SammlerProfilApp() {
       </p>
     </div>
   );
+}
+
+async function kopiereText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    /* Fallback für Browser ohne Clipboard-Berechtigung */
+    try {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(textarea);
+      return ok;
+    } catch {
+      return false;
+    }
+  }
 }
