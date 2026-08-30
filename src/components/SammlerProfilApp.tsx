@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Gem, Heart, Mail, Repeat2, SearchX, Share2, Trophy } from "lucide-react";
 import { BLAETTER_NACH_ID, blattTitel } from "@/lib/blaetter";
-import { getSession, listBenutzer, zaehle } from "@/lib/store";
+import { aktualisiereSupporter, getSession, listBenutzer, zaehle } from "@/lib/store";
 import { useStoreVersion } from "@/lib/useStoreVersion";
 import { Punkte } from "./Punkte";
 import { SammlerKarussell } from "./SammlerKarussell";
@@ -23,6 +23,10 @@ export function SammlerProfilApp() {
   const [mehrAngebot, setMehrAngebot] = useState(false);
   const [kopiert, setKopiert] = useState(false);
   const [teilenFehler, setTeilenFehler] = useState(false);
+
+  useEffect(() => {
+    void aktualisiereSupporter();
+  }, []);
 
   void version;
   const q = name.toLowerCase();

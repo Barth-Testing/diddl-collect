@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
 import { Gem, HeartHandshake, Medal, ShieldAlert, ShieldCheck } from "lucide-react";
-import { berechneRangliste, getSession, listBenutzer } from "@/lib/store";
+import { aktualisiereSupporter, berechneRangliste, getSession, listBenutzer } from "@/lib/store";
 import { useStoreVersion } from "@/lib/useStoreVersion";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +12,10 @@ export function RangApp() {
   const benutzer = getSession();
   const eintraege = berechneRangliste();
   const supporter = listBenutzer().filter((u) => u.supporter);
+
+  useEffect(() => {
+    void aktualisiereSupporter();
+  }, []);
 
   const meinEintrag = benutzer ? eintraege.find((e) => e.benutzer.id === benutzer.id) : null;
 

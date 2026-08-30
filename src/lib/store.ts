@@ -318,6 +318,30 @@ export function listBenutzer(): Benutzer[] {
   return loadUsers();
 }
 
+/** Leichter Supporter-Abgleich (~200 Bytes): holt nur die Spender-Markierungen
+ *  und merkt sie im Cache – unabhängig vom 12h-Sync-Fenster. No-op, solange
+ *  die Spalte (noch) nicht existiert. */
+export async function aktualisiereSupporter(): Promise<void> {
+  const supabase = getSupabase<ProfileDb>();
+  if (!supabase) return;
+  const { data, error } = await supabase
+    .from("profile")
+    .select("id, supporter")
+    .eq("supporter", true);
+  if (error || !data || data.length === 0) return;
+  const users = loadUsers();
+  const vorhanden = new Map(users.map((u) => [u.id, u]));
+  let geaendert = false;
+  for (const reihe of data as unknown as { id: string }[]) {
+    const user = vorhanden.get(reihe.id);
+    if (user && !user.supporter) {
+      user.supporter = true;
+      geaendert = true;
+    }
+  }
+  if (geaendert) saveUsers(users);
+}
+
 export function getSession(): Benutzer | null {
   if (typeof window === "undefined") return null;
   starteSync();
