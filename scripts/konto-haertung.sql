@@ -55,7 +55,7 @@ revoke insert, update, delete on table public.beweis_fotos from anon, authentica
 /** User-ID zu einem gültigen Session-Token (sonst NULL). */
 create or replace function public.sitzung_benutzer(p_token text)
 returns text
-language sql stable security definer set search_path = public
+language sql stable security definer set search_path = public, extensions
 as $$
   select benutzer_id
   from public.sitzungen
@@ -66,7 +66,7 @@ $$;
 /** Legt einen neuen Session-Eintrag an und liefert den rohen Token. */
 create or replace function public.neue_sitzung(p_benutzer_id text)
 returns text
-language plpgsql security definer set search_path = public
+language plpgsql security definer set search_path = public, extensions
 as $$
 declare
   token text := encode(gen_random_bytes(32), 'hex');
@@ -79,7 +79,7 @@ end $$;
 /** Profil-Zeile als JSON ohne Passwort/E-Mail an die App geben. */
 create or replace function public.profil_json(p_zeile public.profile)
 returns json
-language sql immutable set search_path = public
+language sql immutable set search_path = public, extensions
 as $$
   select json_build_object(
     'id', p_zeile.id,
@@ -99,7 +99,7 @@ $$;
 
 create or replace function public.anmelden(p_name text, p_passwort text)
 returns json
-language plpgsql security definer set search_path = public
+language plpgsql security definer set search_path = public, extensions
 as $$
 declare
   zeile public.profile%rowtype;
@@ -132,7 +132,7 @@ create or replace function public.registrieren(
   p_email text default null
 )
 returns json
-language plpgsql security definer set search_path = public
+language plpgsql security definer set search_path = public, extensions
 as $$
 declare
   zeile public.profile%rowtype;
@@ -179,7 +179,7 @@ create or replace function public.profil_schreiben(
   p_tausch jsonb
 )
 returns void
-language plpgsql security definer set search_path = public
+language plpgsql security definer set search_path = public, extensions
 as $$
 declare
   benutzer_id text := public.sitzung_benutzer(p_token);
@@ -202,7 +202,7 @@ create or replace function public.beweis_hochladen(
   p_bild text
 )
 returns void
-language plpgsql security definer set search_path = public
+language plpgsql security definer set search_path = public, extensions
 as $$
 declare
   benutzer_id text := public.sitzung_benutzer(p_token);
@@ -221,7 +221,7 @@ create or replace function public.beweis_loeschen(
   p_blatt_id text
 )
 returns void
-language plpgsql security definer set search_path = public
+language plpgsql security definer set search_path = public, extensions
 as $$
 declare
   benutzer_id text := public.sitzung_benutzer(p_token);
@@ -244,7 +244,7 @@ create or replace function public.angebot_anlegen(
   p_nachricht text default null
 )
 returns json
-language plpgsql security definer set search_path = public
+language plpgsql security definer set search_path = public, extensions
 as $$
 declare
   benutzer_id text := public.sitzung_benutzer(p_token);
@@ -276,7 +276,7 @@ create or replace function public.angebot_status(
   p_status text
 )
 returns void
-language plpgsql security definer set search_path = public
+language plpgsql security definer set search_path = public, extensions
 as $$
 declare
   benutzer_id text := public.sitzung_benutzer(p_token);
@@ -302,7 +302,7 @@ create or replace function public.post_senden(
   p_text text
 )
 returns json
-language plpgsql security definer set search_path = public
+language plpgsql security definer set search_path = public, extensions
 as $$
 declare
   benutzer_id text := public.sitzung_benutzer(p_token);
@@ -329,7 +329,7 @@ create or replace function public.forum_posten(
   p_text text
 )
 returns json
-language plpgsql security definer set search_path = public
+language plpgsql security definer set search_path = public, extensions
 as $$
 declare
   benutzer_id text := public.sitzung_benutzer(p_token);
@@ -357,7 +357,7 @@ create or replace function public.passwort_aendern(
   p_neues_passwort text
 )
 returns void
-language plpgsql security definer set search_path = public
+language plpgsql security definer set search_path = public, extensions
 as $$
 declare
   benutzer_id text := public.sitzung_benutzer(p_token);
@@ -389,7 +389,7 @@ end $$;
 
 create or replace function public.lese_eigene_email(p_token text)
 returns text
-language sql stable security definer set search_path = public
+language sql stable security definer set search_path = public, extensions
 as $$
   select email
   from public.profile
@@ -398,7 +398,7 @@ $$;
 
 create or replace function public.email_setzen(p_token text, p_email text)
 returns void
-language plpgsql security definer set search_path = public
+language plpgsql security definer set search_path = public, extensions
 as $$
 declare
   benutzer_id text := public.sitzung_benutzer(p_token);
@@ -417,7 +417,7 @@ end $$;
 
 create or replace function public.email_entfernen(p_token text)
 returns void
-language plpgsql security definer set search_path = public
+language plpgsql security definer set search_path = public, extensions
 as $$
 declare
   benutzer_id text := public.sitzung_benutzer(p_token);
@@ -430,7 +430,7 @@ end $$;
 
 create or replace function public.abmelden(p_token text)
 returns void
-language sql security definer set search_path = public
+language sql security definer set search_path = public, extensions
 as $$
   delete from public.sitzungen where token_hash = encode(sha256(p_token::bytea), 'hex')
 $$;
