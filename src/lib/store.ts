@@ -176,6 +176,7 @@ let syncLaeuft = false;
 let syncErneut = false;
 let favoritenUnterstuetzt = true;
 let tauschUnterstuetzt = true;
+let supporterUnterstuetzt = true;
 
 function istSchemaFehler(error: { code?: string } | null | undefined) {
   return error?.code === "PGRST204" || error?.code === "42703";
@@ -186,6 +187,7 @@ function profilSpalten(): string {
   const spalten = ["id", "name", "passwort", "created_at", "statuses", "beweise"];
   if (favoritenUnterstuetzt) spalten.push("favoriten");
   if (tauschUnterstuetzt) spalten.push("tausch");
+  if (supporterUnterstuetzt) spalten.push("supporter");
   return spalten.join(", ");
 }
 
@@ -195,6 +197,10 @@ async function ladeProfileZeilen(): Promise<ProfileRow[] | null> {
   const erste = await supabase.from("profile").select(profilSpalten());
   if (!erste.error && erste.data) return erste.data as unknown as ProfileRow[];
   if (istSchemaFehler(erste.error)) {
+    if (supporterUnterstuetzt) {
+      supporterUnterstuetzt = false;
+      return ladeProfileZeilen();
+    }
     if (tauschUnterstuetzt) {
       tauschUnterstuetzt = false;
       return ladeProfileZeilen();
