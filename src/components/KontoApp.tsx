@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowDownUp, AtSign, Check, Camera, Egg, Heart, Images, KeyRound, LogIn, PartyPopper, Repeat2, Share2, ShieldCheck, Trash2, UserPlus, UserRound } from "lucide-react";
 import { BLAETTER, BLAETTER_NACH_ID, blattTitel, sortiereSammlung, type SammlungSortierung } from "@/lib/blaetter";
-import { aenderePasswort, entferneEmail, getSession, leseEigeneEmail, login, logout, register, setBeweis, setFavorit, setStatus, setzeEmail, setzeTauschInfo, speichereBeweisFoto, zaehle } from "@/lib/store";
+import { aenderePasswort, entferneEmail, getSession, holSessionToken, leseEigeneEmail, login, logout, register, setBeweis, setFavorit, setStatus, setzeEmail, setzeTauschInfo, speichereBeweisFoto, zaehle } from "@/lib/store";
 import type { Benutzer, Blatt, Status, TauschInfo } from "@/lib/types";
 import { useStoreVersion } from "@/lib/useStoreVersion";
 import { BlattKarte } from "./BlattKarte";
@@ -291,6 +291,11 @@ export function KontoApp() {
           <p className="max-w-52 text-right text-xs font-semibold text-ink-600">
             Fortschritt: {z.own} von {BLAETTER.length} ({Math.round((z.own / BLAETTER.length) * 100)} %)
           </p>
+          {!holSessionToken() && benutzer && (
+            <p className="max-w-52 text-right text-xs font-bold text-peach-500">
+              Nur lokal gespeichert – bitte einmal neu anmelden, damit alles in der Cloud gesichert wird.
+            </p>
+          )}
         </div>
       </div>
 
