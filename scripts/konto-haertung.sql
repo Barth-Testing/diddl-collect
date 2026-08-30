@@ -360,13 +360,13 @@ returns void
 language plpgsql security definer set search_path = public, extensions
 as $$
 declare
-  benutzer_id text := public.sitzung_benutzer(p_token);
+  vid text := public.sitzung_benutzer(p_token);
   zeile public.profile%rowtype;
 begin
-  if benutzer_id is null then
+  if vid is null then
     raise exception 'Sitzung abgelaufen – bitte neu anmelden.' using errcode = '28000';
   end if;
-  select * into zeile from public.profile where id = benutzer_id;
+  select * into zeile from public.profile where id = vid;
   if lower(zeile.name) <> lower(trim(p_name)) then
     raise exception 'Der Benutzername passt nicht zum angemeldeten Konto.' using errcode = '42501';
   end if;
@@ -379,9 +379,9 @@ begin
   end if;
   update public.profile
      set passwort = crypt(p_neues_passwort, gen_salt('bf', 10))
-   where id = benutzer_id;
+   where id = vid;
   delete from public.sitzungen
-   where benutzer_id = benutzer_id
+   where benutzer_id = vid
      and token_hash <> encode(sha256(p_token::bytea), 'hex');
 end $$;
 
