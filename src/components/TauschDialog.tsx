@@ -3,8 +3,10 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Repeat2, Search, Send, X } from "lucide-react";
+import { Gift, Sparkles } from "lucide-react";
+import type { Blatt } from "@/lib/types";
 import { BLAETTER_NACH_ID, blattTitel } from "@/lib/blaetter";
-import { getSession } from "@/lib/store";
+import { getSession, listBenutzer } from "@/lib/store";
 import { useStoreVersion } from "@/lib/useStoreVersion";
 import { erstelleAngebot } from "@/lib/tausch";
 import { cn } from "@/lib/utils";
@@ -33,6 +35,46 @@ export function TauschDialog({ blattId, anbieter, aufSchliessen }: Props) {
       .map((id) => BLAETTER_NACH_ID.get(id))
       .filter((b): b is NonNullable<typeof b> => b !== undefined);
   }, [benutzer]);
+
+  /* Treffer: welche meiner Tauschblätter wünscht der Anbieter? Und umgekehrt –
+     was bietet ER, das auf MEINER Wunschliste steht? (Paket-Tausch, Porto sparen) */
+  const anbieterDaten = useMemo(
+    () => listBenutzer().find((u) => u.id === anbieter.id) ?? null,
+    [anbieter.id],
+  );
+  const treffer = useMemo(() => {
+    if (!benutzer || !anbieterDaten) return { meine: [] as Blatt[], seine: [] as Blatt[] };
+    const seineWunsch = new Set(
+      Object.keys(anbieterDaten.statuses).filter((id) => anbieterDaten.statuses[id]?.includes("wish")),
+    );
+    const meineWunsch = new Set(
+      Object.keys(benutzer.statuses).filter((id) => benutzer.statuses[id]?.includes("wish")),
+    );
+    const meine = eigene
+      .filter((b) => seineWunsch.has(b.id))
+      .sort((a, b) => blattTitel(a).localeCompare(blattTitel(b), "de", { numeric: true }));
+    const seine = Object.keys(anbieterDaten.statuses)
+      .filter((id) => anbieterDaten.statuses[id]?.includes("offer") && meineWunsch.has(id))
+      .map((id) => BLAETTER_NACH_ID.get(id))
+      .filter((b): b is Blatt => !!b)
+      .sort((a, b) => blattTitel(a).localeCompare(blattTitel(b), "de", { numeric: true }));
+    return { meine, seine };
+  }, [benutzer, anbieterDaten, eigene]);
+
+  function paketVorschlag() {
+    const teile = [
+      treffer.meine.length > 0
+        ? `Ich biete dir dafür: ${treffer.meine.map((b) => `„${blattTitel(b)}“`).join(", ")}.`
+        : "",
+      treffer.seine.length > 0
+        ? `Von dir interessieren mich zusätzlich: ${treffer.seine
+            .map((b) => `„${blattTitel(b)}“`)
+            .join(", ")}.`
+        : "",
+    ].filter(Boolean);
+    if (teile.length === 0) return;
+    setNachricht(`Hallo! ${teile.join(" ")} Das alles in einem Brief – spart Porto!`);
+  }
 
   const gefiltert = useMemo(() => {
     const q = suche.trim().toLowerCase();
@@ -138,6 +180,39 @@ export function TauschDialog({ blattId, anbieter, aufSchliessen }: Props) {
         ) : (
           <>
             <div className="space-y-4 overflow-y-auto p-4">
+              {(treffer.meine.length > 0 || treffer.seine.length > 0 || anbieterDaten) && (
+                <div className="rounded-2xl bg-mint-50 p-3 ring-1 ring-mint-200">
+                  <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-emerald-700">
+                    <Sparkles className="h-3.5 w-3.5" /> Passende Wünsche
+                  </p>
+                  {treffer.meine.length > 0 ? (
+                    <p className="mt-1.5 text-xs font-semibold text-ink-700">
+                      Diese Blätter von dir wünscht sich {anbieter.name}:{" "}
+                      {treffer.meine.map((b) => `„${blattTitel(b)}“`).join(", ")}
+                    </p>
+                  ) : (
+                    <p className="mt-1.5 text-xs font-semibold text-ink-600">
+                      Keines deiner Tauschblätter steht bei {anbieter.name} auf der Wunschliste –
+                      vielleicht überzeugt ein Geldbetrag.
+                    </p>
+                  )}
+                  {treffer.seine.length > 0 ? (
+                    <>
+                      <p className="mt-1.5 text-xs font-semibold text-ink-700">
+                        Und du wünschst dir von ihm:{" "}
+                        {treffer.seine.map((b) => `„${blattTitel(b)}“`).join(", ")}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={paketVorschlag}
+                        className="mt-2 flex items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700"
+                      >
+                        <Gift className="h-3.5 w-3.5" /> Paket-Vorschlag in die Nachricht
+                      </button>
+                    </>
+                  ) : null}
+                </div>
+              )}
               <div>
                 <p className="mb-1 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-ink-600">
                   <Search className="h-3.5 w-3.5" /> Eigene Blätter bieten (mehrere möglich)
@@ -176,6 +251,11 @@ export function TauschDialog({ blattId, anbieter, aufSchliessen }: Props) {
                           className={cn("h-6 w-6 rounded-full object-contain", aktiv ? "bg-white/20" : "bg-white")}
                         />
                         <span className="max-w-24 truncate">{blattTitel(b)}</span>
+                        {anbieterDaten?.statuses[b.id]?.includes("wish") && (
+                          <span title="Steht bei diesem Sammler auf der Wunschliste" aria-hidden="true">
+                            ✨
+                          </span>
+                        )}
                       </button>
                     );
                   })}

@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Gem, Heart, Mail, Repeat2, SearchX, Share2, Trophy } from "lucide-react";
-import { BLAETTER_NACH_ID, blattTitel } from "@/lib/blaetter";
 import { aktualisiereSupporter, getSession, listBenutzer, zaehle } from "@/lib/store";
 import { useStoreVersion } from "@/lib/useStoreVersion";
+import { BlattLeiste } from "./BlattLeiste";
 import { Punkte } from "./Punkte";
 import { SammlerKarussell } from "./SammlerKarussell";
 import { TauschDialog } from "./TauschDialog";
@@ -18,9 +18,6 @@ export function SammlerProfilApp() {
   const name = (params.get("name") ?? "").trim();
   const ich = getSession();
   const [tauschAngebot, setTauschAngebot] = useState<string | null>(null);
-  const [mehrTreffer, setMehrTreffer] = useState(false);
-  const [mehrWunsch, setMehrWunsch] = useState(false);
-  const [mehrAngebot, setMehrAngebot] = useState(false);
   const [kopiert, setKopiert] = useState(false);
   const [teilenFehler, setTeilenFehler] = useState(false);
 
@@ -155,46 +152,7 @@ export function SammlerProfilApp() {
             Diese angebotenen Blätter von {benutzer.name} fehlen dir noch – perfekt für einen gemeinsamen
             Brief mit mehreren Blättern, das spart Porto.
           </p>
-          <div className="no-scrollbar -mx-1 mt-4 flex gap-4 overflow-x-auto px-1 pb-2">
-            {(mehrTreffer ? treffer : treffer.slice(0, 60)).map((id) => {
-              const b = BLAETTER_NACH_ID.get(id);
-              if (!b) return null;
-              return (
-                <figure key={id} className="w-28 shrink-0 snap-start">
-                  <div className="overflow-hidden rounded-2xl bg-white ring-2 ring-mint-300">
-                    <img
-                      src={b.bild}
-                      alt={blattTitel(b)}
-                      loading="lazy"
-                      className="aspect-square w-full object-contain p-1"
-                    />
-                  </div>
-                  <figcaption
-                    className="mt-1 truncate text-center text-[10px] font-bold text-ink-700"
-                    title={blattTitel(b)}
-                  >
-                    {blattTitel(b)}
-                  </figcaption>
-                  <button
-                    type="button"
-                    onClick={() => setTauschAngebot(id)}
-                    className="mt-1.5 w-full rounded-full bg-emerald-600 py-1 text-[10px] font-bold text-white hover:bg-emerald-700"
-                  >
-                    Angebot machen
-                  </button>
-                </figure>
-              );
-            })}
-          </div>
-          {!mehrTreffer && treffer.length > 60 && (
-            <button
-              type="button"
-              onClick={() => setMehrTreffer(true)}
-              className="mt-2 rounded-full bg-mint-100 px-4 py-1.5 text-xs font-bold text-emerald-700 hover:bg-mint-200"
-            >
-              Mehr Treffer anzeigen ({treffer.length} insgesamt)
-            </button>
-          )}
+          <BlattLeiste ids={treffer} knopfStil="gruen" aufBlatt={(id) => setTauschAngebot(id)} />
         </div>
       )}
 
@@ -212,39 +170,7 @@ export function SammlerProfilApp() {
               ? "Deine Wunschblätter – such sie in der Börse als angeboten."
               : "Das sucht dieser Sammler – vielleicht kannst du helfen."}
           </p>
-          <div className="no-scrollbar -mx-1 mt-4 flex gap-4 overflow-x-auto px-1 pb-2">
-            {(mehrWunsch ? wunschliste : wunschliste.slice(0, 60)).map((id) => {
-              const b = BLAETTER_NACH_ID.get(id);
-              if (!b) return null;
-              return (
-                <figure key={id} className="flex w-28 shrink-0 snap-start flex-col">
-                  <div className="overflow-hidden rounded-2xl bg-white ring-1 ring-candy-100">
-                    <img
-                      src={b.bild}
-                      alt={blattTitel(b)}
-                      loading="lazy"
-                      className="aspect-square w-full object-contain p-1"
-                    />
-                  </div>
-                  <figcaption
-                    className="mt-1 truncate text-center text-[10px] font-bold text-ink-700"
-                    title={blattTitel(b)}
-                  >
-                    {blattTitel(b)}
-                  </figcaption>
-                </figure>
-              );
-            })}
-          </div>
-          {!mehrWunsch && wunschliste.length > 60 && (
-            <button
-              type="button"
-              onClick={() => setMehrWunsch(true)}
-              className="mt-2 rounded-full bg-berry-100 px-4 py-1.5 text-xs font-bold text-berry-500 hover:bg-berry-200"
-            >
-              Mehr Wunschblätter anzeigen ({wunschliste.length} insgesamt)
-            </button>
-          )}
+          <BlattLeiste ids={wunschliste} />
         </div>
       )}
 
@@ -262,61 +188,25 @@ export function SammlerProfilApp() {
               ? "Diese Blätter hast du zum Tausch markiert. Wunschbetrag und Notiz hinterlegst du im Konto."
               : "Mach ein Angebot: eigene Blätter wählen oder einen Geldbetrag vorschlagen."}
           </p>
-          <div className="no-scrollbar -mx-1 mt-4 flex gap-4 overflow-x-auto px-1 pb-2">
-            {(() => {
-              const ids = Object.keys(benutzer.statuses)
-                .filter((id) => benutzer.statuses[id]?.includes("offer"))
-                .sort((a, b) => a.localeCompare(b));
-              return (mehrAngebot ? ids : ids.slice(0, 60)).map((id) => {
-                const b = BLAETTER_NACH_ID.get(id);
-                if (!b) return null;
-                const info = benutzer.tausch?.[id];
-                return (
-                  <figure key={id} className="w-28 shrink-0 snap-start">
-                    <div className="overflow-hidden rounded-2xl bg-white ring-1 ring-candy-100">
-                      <img
-                        src={b.bild}
-                        alt={blattTitel(b)}
-                        loading="lazy"
-                        className="aspect-square w-full object-contain p-1"
-                      />
-                    </div>
-                    <figcaption
-                      className="mt-1 truncate text-center text-[10px] font-bold text-ink-700"
-                      title={blattTitel(b)}
-                    >
-                      {blattTitel(b)}
-                    </figcaption>
-                    {(info?.betrag != null || info?.notiz) && (
-                      <p className="mt-0.5 line-clamp-2 text-center text-[9px] font-semibold text-candy-700">
-                        {info.betrag != null &&
-                          `€ ${info.betrag.toLocaleString("de-DE", { minimumFractionDigits: 2 })}`}
-                        {info.notiz ? ` · ${info.notiz}` : ""}
-                      </p>
-                    )}
-                    {ich?.id !== benutzer.id && (
-                      <button
-                        type="button"
-                        onClick={() => setTauschAngebot(id)}
-                        className="mt-1.5 w-full rounded-full bg-candy-500 py-1 text-[10px] font-bold text-white hover:bg-candy-600"
-                      >
-                        Angebot machen
-                      </button>
-                    )}
-                  </figure>
-                );
-              });
-            })()}
-          </div>
-          {!mehrAngebot && z.offer > 60 && (
-            <button
-              type="button"
-              onClick={() => setMehrAngebot(true)}
-              className="mt-2 rounded-full bg-peach-100 px-4 py-1.5 text-xs font-bold text-peach-500 hover:bg-peach-200"
-            >
-              Mehr Angebote anzeigen ({z.offer} insgesamt)
-            </button>
-          )}
+          <BlattLeiste
+            ids={Object.keys(benutzer.statuses)
+              .filter((id) => benutzer.statuses[id]?.includes("offer"))
+              .sort((a, b) => a.localeCompare(b))}
+            knopfStil={ich?.id !== benutzer.id ? "rosa" : undefined}
+            aufBlatt={ich?.id !== benutzer.id ? (id) => setTauschAngebot(id) : undefined}
+            zusatz={(id) => {
+              const info = benutzer.tausch?.[id];
+              if (!info || (info.betrag == null && !info.notiz)) return null;
+              return [
+                info.betrag != null
+                  ? `€ ${info.betrag.toLocaleString("de-DE", { minimumFractionDigits: 2 })}`
+                  : null,
+                info.notiz ?? null,
+              ]
+                .filter(Boolean)
+                .join(" · ");
+            }}
+          />
         </div>
       )}
 
