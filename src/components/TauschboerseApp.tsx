@@ -195,7 +195,7 @@ export function TauschboerseApp() {
                   <p className="text-center text-[10px] font-semibold text-ink-600">
                     von{" "}
                     <Link
-                      href={`/sammler?name=${encodeURIComponent(anbieter?.name ?? "")}`}
+                      href={`/sammler?id=${encodeURIComponent(anbieter?.id ?? "")}&name=${encodeURIComponent(anbieter?.name ?? "")}&ht=1`}
                       className="hover:text-candy-600 hover:underline"
                     >
                       {anbieter?.name}

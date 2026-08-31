@@ -54,7 +54,7 @@ export function RangApp() {
             {supporter.map((u) => (
               <Link
                 key={u.id}
-                href={`/sammler?name=${encodeURIComponent(u.name)}`}
+                href={`/sammler?id=${encodeURIComponent(u.id)}&name=${encodeURIComponent(u.name)}&ht=1`}
                 className="chip gap-1.5 bg-white px-3 py-1.5 text-sm font-bold text-ink-800 ring-1 ring-yellow-300 hover:bg-yellow-100"
               >
                 <Gem className="h-3.5 w-3.5 text-yellow-500" />
@@ -148,12 +148,12 @@ export function RangApp() {
                     )}
                   </td>
                   <td className="px-4 py-2.5 font-bold text-ink-800">
-                    <Link
-                      href={`/sammler?name=${encodeURIComponent(e.benutzer.name)}`}
-                      className="hover:text-candy-600 hover:underline"
-                    >
-                      {e.benutzer.name}
-                    </Link>
+                  <Link
+                    href={`/sammler?id=${encodeURIComponent(e.benutzer.id)}&name=${encodeURIComponent(e.benutzer.name)}&ht=1`}
+                    className="hover:text-candy-600 hover:underline"
+                  >
+                    {e.benutzer.name}
+                  </Link>
                     {e.benutzer.supporter && (
                       <span
                         className="chip ml-2 bg-yellow-400 px-1.5 py-0.5 text-white"

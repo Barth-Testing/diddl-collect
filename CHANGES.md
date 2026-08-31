@@ -3,6 +3,24 @@
 > Dieses Log wird bei jeder Änderung gepflegt (neuen Eintrag oben einfügen).
 > Beim initialen Laden durchlesen, um den aktuellen Stand zu verstehen.
 
+## 2026-08-31 — Rangliste & Tauschbörse: Klick-Links auf ID-Link umgestellt
+
+**Ziel:** Auch Klicks aus der Rangliste und der Tauschbörse führen eindeutig auf
+das richtige Sammlerprofil — nicht über den reinen Namen (der bei „alina.“ mit
+abgeschnittenem Punkt kollidiert), sondern über die ID.
+
+- **`RangApp.tsx`:** Namen-Spalte (Tabellenzeile, Zeile ~152) und Supporter-Chips
+  nutzen jetzt `/sammler?id=…&name=…&ht=1` statt `/sammler?name=…`. Damit zeigt
+  ein Klick auf „alina.“ exakt deren Konto, selbst wenn ein Messenger den Punkt
+  abschneiden würde.
+- **`TauschboerseApp.tsx`:** Anbieter-Link (Zeile ~198) auf denselben ID-Link
+  umgestellt.
+- Keine reinen `/sammler?name=`-Links für Profile mehr im Code (sammlerLink/ID
+  überall, wo geklickt/geteilt wird).
+
+**Verifikation:** Build OK, `out/rangliste.html` enthält keine reinen
+`?name=`-Links mehr; Lint nur vorbestehender `SpendeButton.tsx`-Error.
+
 ## 2026-08-31 — Namens-Verbot (Punkt) – Kollision „Alina“/„alina.“ über ID-Link
 
 **Ziel:** Die Punkt-Kollision nachhaltig beheben (neue Fälle unmöglich; geteilte
