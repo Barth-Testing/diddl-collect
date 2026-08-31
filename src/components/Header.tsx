@@ -15,7 +15,7 @@ export function Header() {
             Diddl-<span className="text-candy-500">Collect</span>
           </span>
         </Link>
-        <nav className="no-scrollbar -mx-1 flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto px-1 sm:gap-2">
+        <nav className="no-scrollbar -mx-1 flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto px-1 pr-2 sm:gap-2">
           <Link
             href="/katalog"
             className="flex shrink-0 items-center gap-1.5 rounded-full px-2 py-2 text-sm font-bold text-ink-700 hover:bg-candy-100 sm:px-3"
@@ -51,6 +51,8 @@ export function Header() {
             <HeartHandshake className="h-4 w-4" />
             <span className="hidden lg:inline">Meine Sammlung</span>
           </Link>
+        </nav>
+        <div className="flex shrink-0 items-center gap-1 bg-white pl-1">
           <Link
             href="/shop"
             className="flex shrink-0 items-center gap-1.5 rounded-full bg-peach-100 px-1.5 py-2 text-sm font-bold text-peach-500 hover:bg-peach-200 sm:px-3"
@@ -58,8 +60,6 @@ export function Header() {
             <ShoppingBag className="h-4 w-4" />
             <span className="hidden lg:inline">Shop</span>
           </Link>
-        </nav>
-        <div className="flex shrink-0 items-center gap-1">
           <AppInstallieren className="flex shrink-0 items-center gap-1.5 rounded-full bg-mint-200 px-1.5 py-2 text-sm font-bold text-emerald-800 hover:bg-mint-300 sm:px-3" />
           <PostfachLink />
           <HeaderBenutzer />
