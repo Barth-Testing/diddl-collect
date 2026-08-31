@@ -1,27 +1,47 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { Gem, HeartHandshake, Medal, ShieldAlert, ShieldCheck } from "lucide-react";
+import { getSupabase } from "@/lib/supabase";
 import { aktualisiereSupporter, berechneRangliste, getSession, listBenutzer } from "@/lib/store";
 import { useStoreVersion } from "@/lib/useStoreVersion";
 import { cn } from "@/lib/utils";
+
+type EhrungsDb = {
+  public: {
+    Tables: {
+      spender_ehrungen: {
+        Row: { id: number; name: string; erstellt_am: string };
+        Insert: { name: string };
+        Update: never;
+        Relationships: [];
+      };
+    };
+  };
+};
 
 export function RangApp() {
   useStoreVersion();
   const benutzer = getSession();
   const eintraege = berechneRangliste();
   const supporter = listBenutzer().filter((u) => u.supporter);
+  const [ehrungen, setEhrungen] = useState<string[]>([]);
 
   useEffect(() => {
     void aktualisiereSupporter();
+    const supabase = getSupabase<EhrungsDb>();
+    if (supabase) {
+      ladeEhrungen(supabase).then((namen) => setEhrungen(namen));
+    }
   }, []);
 
   const meinEintrag = benutzer ? eintraege.find((e) => e.benutzer.id === benutzer.id) : null;
 
   return (
     <div className="mt-6 space-y-4">
-      {supporter.length > 0 && (
+      {(supporter.length > 0 || ehrungen.length > 0) && (
         <div className="card-soft border-yellow-200 bg-gradient-to-r from-yellow-50 via-amber-50 to-yellow-50 p-5">
           <h2 className="font-display flex items-center gap-2 text-lg font-bold text-ink-800">
             <HeartHandshake className="h-5 w-5 text-yellow-500" />
@@ -40,6 +60,16 @@ export function RangApp() {
                 <Gem className="h-3.5 w-3.5 text-yellow-500" />
                 {u.name}
               </Link>
+            ))}
+            {ehrungen.map((name) => (
+              <span
+                key={name}
+                className="chip gap-1.5 bg-white px-3 py-1.5 text-sm font-bold text-ink-800 ring-1 ring-yellow-300"
+                title="Spender ohne Konto – von der Seite geehrt"
+              >
+                <Gem className="h-3.5 w-3.5 text-yellow-500" />
+                {name}
+              </span>
             ))}
           </div>
         </div>
@@ -185,4 +215,13 @@ export function RangApp() {
       </p>
     </div>
   );
+}
+/** Freitext-Spender (Spenden ohne Konto) laden – Tabelle fehlt? → leere Liste. */
+async function ladeEhrungen(supabase: SupabaseClient<EhrungsDb>): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("spender_ehrungen")
+    .select("name")
+    .order("erstellt_am", { ascending: true });
+  if (error || !data) return [];
+  return (data as unknown as { name: string }[]).map((r) => r.name);
 }
