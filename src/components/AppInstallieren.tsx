@@ -50,7 +50,7 @@ export function AppInstallieren({ className }: { className?: string }) {
         className={className}
       >
         <Download className="h-4 w-4" />
-        <span className="hidden sm:inline">App</span>
+        <span className="hidden 2xl:inline">App</span>
       </button>
       {iosHinweis && (
         <div className="fixed inset-x-3 top-20 z-50 mx-auto max-w-sm rounded-2xl bg-white p-4 shadow-xl ring-2 ring-candy-200">

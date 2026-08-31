@@ -34,7 +34,7 @@ export function PostfachLink() {
       className="relative flex shrink-0 items-center gap-1.5 rounded-full px-1.5 py-2 text-sm font-bold text-ink-700 hover:bg-candy-100 sm:px-3"
     >
       <Mail className="h-4 w-4" />
-      <span className="hidden sm:inline">Postfach</span>
+      <span className="hidden 2xl:inline">Postfach</span>
       {ungelesen > 0 && (
         <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-peach-400 px-1 text-[10px] font-black text-white">
           {ungelesen}

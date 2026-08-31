@@ -16,7 +16,7 @@ export function HeaderBenutzer() {
         className="flex items-center gap-1.5 rounded-full bg-candy-500 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-candy-600"
       >
         <UserCircle2 className="h-4 w-4" />
-        <span className="hidden sm:inline">Anmelden</span>
+        <span className="hidden 2xl:inline">Anmelden</span>
       </Link>
     );
   }
@@ -31,7 +31,7 @@ export function HeaderBenutzer() {
         <span className="flex shrink-0 h-5 w-5 items-center justify-center rounded-full bg-candy-400 text-[10px] font-black text-white">
           {benutzer.name.slice(0, 1).toUpperCase()}
         </span>
-        <span className="hidden max-w-28 truncate lg:inline">{benutzer.name}</span>
+        <span className="hidden max-w-28 truncate 2xl:inline">{benutzer.name}</span>
       </Link>
       <button
         onClick={() => logout()}
