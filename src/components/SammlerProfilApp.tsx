@@ -10,12 +10,13 @@ import { BlattLeiste } from "./BlattLeiste";
 import { Punkte } from "./Punkte";
 import { SammlerKarussell } from "./SammlerKarussell";
 import { TauschDialog } from "./TauschDialog";
-import { cn, kopiereText } from "@/lib/utils";
+import { cn, kopiereText, sammlerLink } from "@/lib/utils";
 
 export function SammlerProfilApp() {
   const version = useStoreVersion();
   const params = useSearchParams();
   const name = (params.get("name") ?? "").trim();
+  const idParam = (params.get("id") ?? "").trim();
   const ich = getSession();
   const [tauschAngebot, setTauschAngebot] = useState<string | null>(null);
   const [kopiert, setKopiert] = useState(false);
@@ -27,15 +28,26 @@ export function SammlerProfilApp() {
 
   void version;
   const q = name.toLowerCase();
-  const benutzer = name ? (listBenutzer().find((u) => u.name.toLowerCase() === q) ?? null) : null;
+  /* Eindeutige ID hat Vorrang (robust gegen Namens-Kollisionen wie "alina."
+     vs. "Alina" – getrennte Konten werden nie verwechselt, egal was mit dem
+     Namen beim Teilen passiert). Der Name bleibt als Fallback für ältere
+     Links (?name=...) und nicht-ID-basierte Einstiege. */
+  const kandidaten = name || idParam ? listBenutzer() : [];
+  const benutzer = idParam
+    ? (kandidaten.find((u) => u.id === idParam) ?? null)
+    : name
+      ? (kandidaten.find((u) => u.name.toLowerCase() === q) ?? null)
+      : null;
 
-  if (!name || !benutzer) {
+  if ((!name && !idParam) || !benutzer) {
     return (
       <div className="mt-6 space-y-4">
         <div className="card-soft flex flex-col items-center gap-2 p-10 text-center text-ink-600">
           <SearchX className="h-8 w-8 text-candy-300" />
           <p className="font-display text-lg font-bold">
-            {name ? `Kein Profil für „${name}“ gefunden.` : "Kein Sammler ausgewählt."}
+            {name
+              ? `Kein Profil für „${name}“ gefunden.`
+              : "Kein Sammler ausgewählt."}
           </p>
           <p className="text-sm">
             Vielleicht lädt die Seite noch – oder du schaust direkt in der{" "}
@@ -51,8 +63,8 @@ export function SammlerProfilApp() {
 
   const z = zaehle(benutzer);
 
-  async function teileProfil(benutzerName: string) {
-    const url = `${window.location.origin}/sammler?name=${encodeURIComponent(benutzerName)}`;
+  async function teileProfil(kontenId: string, benutzerName: string) {
+    const url = sammlerLink(kontenId, benutzerName);
     const titel = `Diddl-Collect: ${benutzerName}s Sammelgalerie`;
     if (typeof navigator.share === "function") {
       try {
@@ -128,7 +140,7 @@ export function SammlerProfilApp() {
           )}
           <button
             type="button"
-            onClick={() => void teileProfil(benutzer.name)}
+            onClick={() => void teileProfil(benutzer.id, benutzer.name)}
             className={cn(
               "flex items-center justify-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold transition-all",
               kopiert && !teilenFehler

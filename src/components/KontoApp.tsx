@@ -11,7 +11,7 @@ import { Lupe } from "./Lupe";
 import { Punkte } from "./Punkte";
 import { SammlerKarussell } from "./SammlerKarussell";
 import { SelectBasis } from "./SelectBasis";
-import { cn, kopiereText } from "@/lib/utils";
+import { cn, kopiereText, sammlerLink } from "@/lib/utils";
 
 type Tab = "sammlung" | "wunsch" | "tausch" | "beweise" | "konto";
 
@@ -46,7 +46,7 @@ export function KontoApp() {
 
   async function teileGalerie() {
     const name = benutzer!.name;
-    const url = `${window.location.origin}/sammler?name=${encodeURIComponent(name)}`;
+    const url = sammlerLink(benutzer!.id, name);
     const titel = `Diddl-Collect: ${name}s Sammelgalerie`;
     if (typeof navigator.share === "function") {
       try {

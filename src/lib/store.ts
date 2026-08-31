@@ -358,17 +358,34 @@ type KontoAntwort = {
   nurLokal?: boolean;
 };
 
-/** Anmelde-Ergebnis in die Ladensicht übernehmen (Token + Profil in Cache). */
+/** Anmelde-Ergebnis in die Ladensicht übernehmen (Token + Profil in Cache).
+ *  WICHTIG: Der Server-Stand ersetzt den lokalen Cache NICHT blind. Lokale
+ *  Änderungen, die mangels Session noch nicht auf den Server gelangt sind
+ *  (z. B. vor einer Abmeldung gesammelte Blätter), werden mit dem Server-Stand
+ *  gemergt und danach wieder hochgeladen – sonst geht eine offline gepflegte
+ *  Galerie bei erneutem Login verloren. */
 function uebernimmAnmeldung(ergebnis: KontoAntwort): { ok: boolean; fehler?: string; nurLokal?: boolean } {
   if (!ergebnis.ok || !ergebnis.token || !ergebnis.profil) {
     return { ok: false, fehler: ergebnis.fehler ?? "Das hat nicht geklappt – schau später noch einmal vorbei." };
   }
-  const benutzer = zeileZuBenutzer(ergebnis.profil);
-  const vorhanden = loadUsers().find((u) => u.id === benutzer.id);
-  if (vorhanden?.supporter) benutzer.supporter = true;
+  const server = zeileZuBenutzer(ergebnis.profil);
+  const lok = loadUsers().find((u) => u.id === server.id);
+  /* Lokale Feld-Werte gewinnen über den Server-Stand (lok hat mehr, wenn etwas
+     nur lokal vorliegt); der Server wird anschließend nachgezogen. */
+  const benutzer: Benutzer = {
+    ...server,
+    statuses: { ...(server.statuses ?? {}), ...(lok?.statuses ?? {}) },
+    beweise: { ...(server.beweise ?? {}), ...(lok?.beweise ?? {}) },
+    favoriten: { ...(server.favoriten ?? {}), ...(lok?.favoriten ?? {}) },
+    tausch: { ...(server.tausch ?? {}), ...(lok?.tausch ?? {}) },
+  };
+  if (lok?.supporter) benutzer.supporter = true;
   const rest = loadUsers().filter((u) => u.id !== benutzer.id);
   saveUsers([...rest, benutzer]);
   setzeSession(ergebnis.token, benutzer.id);
+  /* Gemergte (evtl. lokal angereicherte) Daten wieder zum Server hochladen,
+     damit nichts nur im Browser-Cache hängen bleibt. */
+  void pushProfil(benutzer);
   emitChange();
   return { ok: true };
 }
