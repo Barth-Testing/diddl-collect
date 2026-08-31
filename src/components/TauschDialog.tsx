@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Repeat2, Search, Send, X } from "lucide-react";
-import { Gift, Sparkles } from "lucide-react";
+import { Gift, Sparkles, Star } from "lucide-react";
 import type { Blatt } from "@/lib/types";
 import { BLAETTER_NACH_ID, blattTitel } from "@/lib/blaetter";
 import { getSession, listBenutzer } from "@/lib/store";
@@ -41,6 +41,15 @@ export function TauschDialog({ blattId, anbieter, aufSchliessen }: Props) {
   const anbieterDaten = useMemo(
     () => listBenutzer().find((u) => u.id === anbieter.id) ?? null,
     [anbieter.id],
+  );
+  const wunschIds = useMemo(
+    () =>
+      new Set(
+        anbieterDaten
+          ? Object.keys(anbieterDaten.statuses).filter((id) => anbieterDaten.statuses[id]?.includes("wish"))
+          : [],
+      ),
+    [anbieterDaten],
   );
   const treffer = useMemo(() => {
     if (!benutzer || !anbieterDaten) return { meine: [] as Blatt[], seine: [] as Blatt[] };
@@ -226,6 +235,7 @@ export function TauschDialog({ blattId, anbieter, aufSchliessen }: Props) {
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {gefiltert.map((b) => {
                     const aktiv = auswahl.includes(b.id);
+                    const aufWunsch = wunschIds.has(b.id);
                     return (
                       <button
                         key={b.id}
@@ -238,24 +248,32 @@ export function TauschDialog({ blattId, anbieter, aufSchliessen }: Props) {
                           )
                         }
                         aria-pressed={aktiv}
+                        title={
+                          aufWunsch
+                            ? `Steht bei ${anbieter.name} auf der Wunschliste`
+                            : undefined
+                        }
                         className={cn(
                           "flex items-center gap-1.5 rounded-full py-1 pl-1 pr-2.5 text-xs font-bold transition-all",
                           aktiv
                             ? "bg-candy-500 text-white shadow-sm"
                             : "bg-white text-ink-700 ring-1 ring-cream-300 hover:ring-candy-300",
+                          aufWunsch &&
+                            !aktiv &&
+                            "bg-yellow-50 ring-2 ring-yellow-400 hover:ring-yellow-500",
                         )}
                       >
                         <img
                           src={b.bild}
                           alt=""
-                          className={cn("h-6 w-6 rounded-full object-contain", aktiv ? "bg-white/20" : "bg-white")}
+                          className={cn("h-6 w-6 shrink-0 rounded-full object-contain", aktiv ? "bg-white/20" : "bg-white")}
                         />
-                        <span className="max-w-24 truncate">{blattTitel(b)}</span>
-                        {anbieterDaten?.statuses[b.id]?.includes("wish") && (
-                          <span title="Steht bei diesem Sammler auf der Wunschliste" aria-hidden="true">
-                            ✨
-                          </span>
-                        )}
+                        <span className="line-clamp-2 max-w-36 text-left leading-4">
+                          {blattTitel(b)}
+                          {aufWunsch && (
+                            <Star className="ml-1 inline h-3 w-3 -translate-y-px fill-yellow-400 text-yellow-400" />
+                          )}
+                        </span>
                       </button>
                     );
                   })}
