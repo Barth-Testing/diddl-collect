@@ -442,7 +442,7 @@ export async function register(
       if (error.code === "PGRST202" || (error.message ?? "").includes("not found")) {
         /* Übergangsphase: Cloud-Funktionen noch nicht angelegt → lokales Konto (altes Verhalten). */
         const users = loadUsers();
-        if (users.some((u) => u.name.toLowerCase() === trimmed.toLowerCase()))
+        if (users.some((u) => u.name.toLowerCase() === trimmed.toLowerCase() || u.name.toLowerCase().replace(/\.+$/, "") === trimmed.toLowerCase().replace(/\.+$/, "")))
           return { ok: false, fehler: "Diesen Sammlernamen gibt es schon – versuch einen anderen." };
         const user: Benutzer = {
           id: `u-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -481,7 +481,7 @@ export async function register(
 
   /* Ohne Supabase-Konfiguration (Demo/Lokal): altes Verhalten. */
   const users = loadUsers();
-  if (users.some((u) => u.name.toLowerCase() === trimmed.toLowerCase()))
+  if (users.some((u) => u.name.toLowerCase() === trimmed.toLowerCase() || u.name.toLowerCase().replace(/\.+$/, "") === trimmed.toLowerCase().replace(/\.+$/, "")))
     return { ok: false, fehler: "Diesen Sammlernamen gibt es schon – versuch einen anderen." };
   const user: Benutzer = {
     id: `u-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,

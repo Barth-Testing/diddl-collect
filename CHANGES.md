@@ -3,6 +3,27 @@
 > Dieses Log wird bei jeder Änderung gepflegt (neuen Eintrag oben einfügen).
 > Beim initialen Laden durchlesen, um den aktuellen Stand zu verstehen.
 
+## 2026-08-31 — Registrierung: Kollision über End-Punkt-Varianten + Case jetzt geblockt
+
+**Ziel:** Namens-Überschneidungen dauerhaft verhindern – nicht nur `Toni`/`toni`
+(bereits serverseitig case-insensitiv geblockt), sondern auch Varianten, die sich
+nur durch einen abschließenden Punkt unterscheiden (`alina.` vs. `alina`).
+
+- **DB-Funktion `registrieren` (`konto-haertung.sql`):** Zusätzlich zur
+  bestehenden Case-Prüfung (`lower(name) = lower(p_name)`) wird jetzt auch
+  `lower(rtrim(name,'.')) = lower(rtrim(p_name,'.'))` geprüft – blockt also auch
+  Namen, die sich nur um einen End-Punkt unterscheiden (Errortype 23505).
+  Bestehende Punkt-Konten (z. B. `alina.`) bleiben unangetastet.
+- **Client (`store.ts` `register`):** Lokale/Demo-Pfade prüfen dieselbe
+  Bedingung, damit die Kollision auch ohne Server-Roundtrip erkannt wird.
+  (Der Cloud-Pfad verlässt sich korrekt auf das RPC als Quelle.)
+- Zusammen mit dem Punkt-Verbot (Namen dürfen nicht auf `.` enden) können keine
+  neuen mehrdeutigen Namenspaare mehr entstehen.
+
+**Verifikation:** Build OK, Lint nur vorbestehender `SpendeButton.tsx`-Error.
+**DB-Deploy:** `konto-haertung.sql` (mindestens die `registrieren`-Funktion) in
+der Produktions-DB erneut ausführen, damit die neue Prüfung aktiv ist.
+
 ## 2026-08-31 — Rangliste erzwingt frischen Server-Sync (neue Konten sofort sichtbar)
 
 **Ziel:** Neu registrierte Konten (z. B. „alina.“) erscheinen in der Rangliste sofort

@@ -150,6 +150,15 @@ begin
   if exists (select 1 from public.profile where lower(name) = lower(p_name)) then
     raise exception 'Diesen Sammlernamen gibt es schon – versuch einen anderen.' using errcode = '23505';
   end if;
+  -- Auch variante mit abweichendem End-Punkt blockieren (z. B. "alina" neben
+  -- "alina."): case-insensitiv nach Entfernen eines abschließenden Punkts.
+  -- Bestehende Paare mit Punkt (z. B. Alina / alina.) bleiben unangetastet.
+  if exists (
+    select 1 from public.profile
+    where lower(rtrim(name, '.')) = lower(rtrim(p_name, '.'))
+  ) then
+    raise exception 'Diesen Sammlernamen gibt es schon – versuch einen anderen.' using errcode = '23505';
+  end if;
   if p_email is not null then
     if p_email !~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$' then
       raise exception 'Bitte eine gültige E-Mail-Adresse angeben.' using errcode = '23514';
