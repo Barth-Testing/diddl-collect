@@ -3,24 +3,32 @@
 > Dieses Log wird bei jeder Änderung gepflegt (neuen Eintrag oben einfügen).
 > Beim initialen Laden durchlesen, um den aktuellen Stand zu verstehen.
 
-## 2026-08-31 — Namens-Verbot (Punkt) + Einzelfall-Bereinigung Alina/alina.
+## 2026-08-31 — Namens-Verbot (Punkt) – Kollision „Alina“/„alina.“ über ID-Link
 
-**Ziel:** Die Punkt-Kollision nachhaltig beheben (neue Fälle unmöglich, alter Fall bereinigt).
+**Ziel:** Die Punkt-Kollision nachhaltig beheben (neue Fälle unmöglich; geteilte
+Links eindeutig, auch wenn ein abschließender Punkt abgeschnitten wird).
+
+**Befund:** `Alina` (u-1787685572265-xkvief) und `alina.` (u-1788180960-16f730)
+sind **zwei echte, getrennte Konten mit eigenen Sammlungen** (Alina: 383
+status_keys; alina.: 1037). Sie werden NICHT umbenannt oder zusammengeführt –
+das wäre ein schwerer Eingriff in ein aktives Konto. Die Namens-Kollision wird
+nicht per Datenänderung aufgelöst, sondern über eindeutige IDs beim Teilen.
 
 - **Verbot in der Registrierung:** Namen, die mit einem Punkt enden, werden
   abgelehnt – im Client (`store.ts` `register`, schnelles Feedback) und in der
   DB-Funktion `registrieren` (`scripts/konto-haertung.sql`, source of truth,
   Errortype 23514). Verhindert künftig Punkt-Konten, die beim Teilen kollidieren.
-- **Einzelfall-Bereinigung:** `scripts/alina-konto-bereinigen.sql` benennt das
-  leere Konto `Alina` (u-1787685572265-xkvief) in `Alina.alt` um – nur falls es
-  wirklich leer ist und der Zielname frei ist (kein Datenverlust, Konto bleibt).
-- **Lookup-Toleranz:** `SammlerProfilApp.tsx` ignoriert beim Namensabgleich einen
-  abschließenden Punkt (als letzte Stufe nach exaktem Match). Dadurch findet
-  `?name=alina` eindeutig das Konto `alina.` (sicher, weil keine neuen
-  Punkt-Konten mehr entstehen).
-
-**Reihenfolge für den Betreiber:** Deploy (Code) → dann `alina-konto-bereinigen.sql`
-ausführen → danach greift `?name=alina` eindeutig auf `alina.`.
+- **ID-basierter Teilen-Link** (`sammlerLink(id, name)` → `?id=…&name=…&ht=1`):
+  geteilte Links zeigen dank ID immer exakt auf das richtige Konto (`alina.`),
+  selbst wenn der Punkt in der URL verloren geht. Bereits in Commit `237efb7`
+  umgesetzt.
+- **Lookup-Toleranz:** `SammlerProfilApp.tsx` ignoriert einen abschließenden
+  Punkt beim Namensabgleich (als letzte Stufe nach exaktem Match). Da ein
+  exaktes Konto `Alina` existiert, zeigt die mehrdeutige Hand-Eingabe
+  `?name=alina` weiterhin exakt `Alina` – korrekt, weil nicht auflösbar. Für
+  geteilte Links ist alles eindeutig.
+- `scripts/alina-konto-bereinigen.sql` wurde **entfernt**: Es wäre ein Eingriff
+  in ein echtes, gefülltes Konto (383 status_keys) gewesen und ist nicht anwendbar.
 
 **Verifikation:** Build + Lint OK (nur vorbestehender Error in `SpendeButton.tsx`).
 
