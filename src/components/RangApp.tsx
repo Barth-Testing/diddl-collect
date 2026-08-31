@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { Gem, HeartHandshake, Medal, ShieldAlert, ShieldCheck } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
-import { aktualisiereSupporter, berechneRangliste, getSession, listBenutzer } from "@/lib/store";
+import { aktualisiereSupporter, berechneRangliste, erzwingeSync, getSession, listBenutzer } from "@/lib/store";
 import { useStoreVersion } from "@/lib/useStoreVersion";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +31,7 @@ export function RangApp() {
 
   useEffect(() => {
     void aktualisiereSupporter();
+    erzwingeSync();
     const supabase = getSupabase<EhrungsDb>();
     if (supabase) {
       ladeEhrungen(supabase).then((namen) => setEhrungen(namen));

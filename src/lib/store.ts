@@ -235,6 +235,25 @@ function starteSync() {
     });
 }
 
+/** Server-Sync sofort erzwingen (ignoriert den 12h-TTL) – z. B. für die
+ *  Rangliste, damit neu registrierte Konten ohne Verzögerung sichtbar sind.
+ *  Merge-Logik bleibt identisch zu syncMitServer (lokale Daten gehen nicht
+ *  verloren, nur das eigene Konto wird hochgeladen). */
+export function erzwingeSync() {
+  if (typeof window === "undefined") return;
+  if (!supabaseKonfiguriert() || syncLaeuft) return;
+  syncLaeuft = true;
+  syncMitServer()
+    .catch(() => {})
+    .finally(() => {
+      syncLaeuft = false;
+      if (syncErneut) {
+        syncErneut = false;
+        starteSync();
+      }
+    });
+}
+
 /** Server-Konten in den Cache laden, lokale Änderungen hochladen. */
 async function syncMitServer() {
   const data = await ladeProfileZeilen();

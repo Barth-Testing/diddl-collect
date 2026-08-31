@@ -3,6 +3,21 @@
 > Dieses Log wird bei jeder Änderung gepflegt (neuen Eintrag oben einfügen).
 > Beim initialen Laden durchlesen, um den aktuellen Stand zu verstehen.
 
+## 2026-08-31 — Rangliste erzwingt frischen Server-Sync (neue Konten sofort sichtbar)
+
+**Ziel:** Neu registrierte Konten (z. B. „alina.“) erscheinen in der Rangliste sofort
+statt erst nach Ablauf des 12h-Cache-TTL (`SYNC_TTL`).
+
+- **`store.ts`:** Neue Funktion `erzwingeSync()` – führt `syncMitServer()` sofort
+  aus und ignoriert den 12h-TTL. Merge-Logik bleibt identisch (lokale Daten gehen
+  nicht verloren, nur das eigene Konto wird hochgeladen) – kein Datenverlustrisiko.
+- **`RangApp.tsx`:** Beim Öffnen der Rangliste wird `erzwingeSync()` aufgerufen;
+  `useStoreVersion()` sorgt dafür, dass die Liste nach dem Sync neu rendert.
+- Behebt das Symptom, dass ein veralteter lokaler Cache neue Konten bis zu 12h
+  verbirgt (vorher nur über manuelles Cache-Löschen/Inkognito sichtbar).
+
+**Verifikation:** Build OK, Lint nur vorbestehender `SpendeButton.tsx`-Error.
+
 ## 2026-08-31 — Rangliste & Tauschbörse: Klick-Links auf ID-Link umgestellt
 
 **Ziel:** Auch Klicks aus der Rangliste und der Tauschbörse führen eindeutig auf
