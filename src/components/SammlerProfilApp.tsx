@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Gem, Heart, Mail, Repeat2, SearchX, Share2, Trophy } from "lucide-react";
+import { Gem, Heart, HeartHandshake, Mail, Repeat2, SearchX, Share2, Trophy } from "lucide-react";
 import { aktualisiereSupporter, getSession, listBenutzer, zaehle } from "@/lib/store";
 import { useStoreVersion } from "@/lib/useStoreVersion";
 import { BlattLeiste } from "./BlattLeiste";
@@ -80,6 +80,12 @@ export function SammlerProfilApp() {
   const wunschliste = Object.keys(benutzer.statuses)
     .filter((id) => benutzer.statuses[id]?.includes("wish"))
     .sort((a, b) => a.localeCompare(b));
+  /* Umgekehrt: Blätter, die ER sich wünscht und die ICH zum Tausch markiert habe. */
+  const umgekehrt = ich && ich.id !== benutzer.id
+    ? Object.keys(benutzer.statuses)
+        .filter((id) => benutzer.statuses[id]?.includes("wish") && ich.statuses[id]?.includes("offer"))
+        .sort((a, b) => a.localeCompare(b))
+    : [];
 
   return (
     <div className="mt-6 space-y-5">
@@ -153,6 +159,25 @@ export function SammlerProfilApp() {
             Brief mit mehreren Blättern, das spart Porto.
           </p>
           <BlattLeiste ids={treffer} knopfStil="gruen" aufBlatt={(id) => setTauschAngebot(id)} />
+        </div>
+      )}
+
+      {ich && ich.id !== benutzer.id && umgekehrt.length > 0 && (
+        <div className="card-soft border-berry-200 bg-berry-50 p-5">
+          <h3 className="font-display flex items-center gap-2 text-lg font-bold text-ink-800">
+            <HeartHandshake className="h-5 w-5 text-berry-400" />
+            {umgekehrt.length} {umgekehrt.length === 1 ? "Blatt hast" : "Blätter hast"} du, das sich
+            {benutzer.name} wünscht
+          </h3>
+          <p className="mt-1 text-xs font-semibold text-ink-600">
+            Diese Blätter hast du zum Tauschen markiert und {benutzer.name} steht auf seiner Wunschliste –
+            der perfekte Anlass für ein Angebot:{" "}
+            <Link href="/tausch" className="font-bold text-candy-600 hover:underline">
+              zur Tauschbörse
+            </Link>
+            .
+          </p>
+          <BlattLeiste ids={umgekehrt} />
         </div>
       )}
 
