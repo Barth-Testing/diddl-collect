@@ -403,6 +403,7 @@ export async function register(
 ): Promise<{ ok: boolean; fehler?: string; nurLokal?: boolean }> {
   const trimmed = name.trim();
   if (trimmed.length < 2) return { ok: false, fehler: "Der Sammlername braucht mindestens 2 Zeichen." };
+  if (/\.$/.test(trimmed)) return { ok: false, fehler: "Der Sammlername darf nicht mit einem Punkt enden." };
   if (passwort.length < 4) return { ok: false, fehler: "Das Passwort braucht mindestens 4 Zeichen." };
   const mail = email?.trim() || null;
 

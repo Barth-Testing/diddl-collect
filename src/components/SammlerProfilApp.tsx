@@ -31,12 +31,17 @@ export function SammlerProfilApp() {
   /* Eindeutige ID hat Vorrang (robust gegen Namens-Kollisionen wie "alina."
      vs. "Alina" – getrennte Konten werden nie verwechselt, egal was mit dem
      Namen beim Teilen passiert). Der Name bleibt als Fallback für ältere
-     Links (?name=...) und nicht-ID-basierte Einstiege. */
+     Links (?name=...) und nicht-ID-basierte Einstiege.
+     Ein abschließender Punkt wird beim Abgleich ignoriert: Er kann beim Teilen
+     verloren gehen, und neue Konten dürfen ohnehin nicht mehr mit einem Punkt
+     enden – dadurch ist die Zuordnung eindeutig. */
   const kandidaten = name || idParam ? listBenutzer() : [];
   const benutzer = idParam
     ? (kandidaten.find((u) => u.id === idParam) ?? null)
     : name
-      ? (kandidaten.find((u) => u.name.toLowerCase() === q) ?? null)
+      ? (kandidaten.find((u) => u.name.toLowerCase() === q) ??
+        kandidaten.find((u) => u.name.toLowerCase().replace(/\.+$/, "") === q.replace(/\.+$/, "")) ??
+        null)
       : null;
 
   if ((!name && !idParam) || !benutzer) {
