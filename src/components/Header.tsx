@@ -52,7 +52,7 @@ export function Header() {
             <span className="hidden lg:inline">Meine Sammlung</span>
           </Link>
         </nav>
-        <div className="flex shrink-0 items-center gap-1 bg-white pl-1">
+        <div className="flex shrink-0 items-center gap-0.5 bg-white pl-1 sm:gap-1">
           <Link
             href="/shop"
             className="flex shrink-0 items-center gap-1.5 rounded-full bg-peach-100 px-1.5 py-2 text-sm font-bold text-peach-500 hover:bg-peach-200 sm:px-3"
