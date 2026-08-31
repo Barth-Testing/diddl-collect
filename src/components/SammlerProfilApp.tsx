@@ -166,7 +166,7 @@ export function SammlerProfilApp() {
         <div className="card-soft border-berry-200 bg-berry-50 p-5">
           <h3 className="font-display flex items-center gap-2 text-lg font-bold text-ink-800">
             <HeartHandshake className="h-5 w-5 text-berry-400" />
-            {umgekehrt.length} {umgekehrt.length === 1 ? "Blatt hast" : "Blätter hast"} du, das sich
+            {umgekehrt.length} {umgekehrt.length === 1 ? "Blatt hast" : "Blätter hast"} du, das sich{" "}
             {benutzer.name} wünscht
           </h3>
           <p className="mt-1 text-xs font-semibold text-ink-600">
