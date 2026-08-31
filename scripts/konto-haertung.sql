@@ -141,8 +141,8 @@ begin
   if length(trim(p_name)) < 2 then
     raise exception 'Der Sammlername braucht mindestens 2 Zeichen.' using errcode = '23514';
   end if;
-  if trim(p_name) ~ '\.$' then
-    raise exception 'Der Sammlername darf nicht mit einem Punkt enden.' using errcode = '23514';
+  if trim(p_name) !~ '^.*[A-Za-z0-9äöüÄÖÜß]$' then
+    raise exception 'Der Sammlername darf nicht mit einem Sonderzeichen enden.' using errcode = '23514';
   end if;
   if length(p_passwort) < 4 then
     raise exception 'Das Passwort braucht mindestens 4 Zeichen.' using errcode = '23514';

@@ -3,26 +3,33 @@
 > Dieses Log wird bei jeder Änderung gepflegt (neuen Eintrag oben einfügen).
 > Beim initialen Laden durchlesen, um den aktuellen Stand zu verstehen.
 
-## 2026-08-31 — Registrierung: Kollision über End-Punkt-Varianten + Case jetzt geblockt
+## 2026-08-31 — Registrierung: Namensende nur mit Buchstabe/Ziffer (alle End-Sonderzeichen geblockt)
 
-**Ziel:** Namens-Überschneidungen dauerhaft verhindern – nicht nur `Toni`/`toni`
-(bereits serverseitig case-insensitiv geblockt), sondern auch Varianten, die sich
-nur durch einen abschließenden Punkt unterscheiden (`alina.` vs. `alina`).
+**Ziel:** Namens-Überschneidungen dauerhaft verhindern. Drei Ebenen greifen jetzt
+zusammen, sodass künftig weder `Toni`/`toni`, noch `alina`/`alina.`, noch Namen,
+die auf `? ! = “ ` ` und ähnliche URL-reservierte Zeichen enden, neu entstehen
+können.
 
-- **DB-Funktion `registrieren` (`konto-haertung.sql`):** Zusätzlich zur
-  bestehenden Case-Prüfung (`lower(name) = lower(p_name)`) wird jetzt auch
-  `lower(rtrim(name,'.')) = lower(rtrim(p_name,'.'))` geprüft – blockt also auch
-  Namen, die sich nur um einen End-Punkt unterscheiden (Errortype 23505).
-  Bestehende Punkt-Konten (z. B. `alina.`) bleiben unangetastet.
-- **Client (`store.ts` `register`):** Lokale/Demo-Pfade prüfen dieselbe
-  Bedingung, damit die Kollision auch ohne Server-Roundtrip erkannt wird.
-  (Der Cloud-Pfad verlässt sich korrekt auf das RPC als Quelle.)
-- Zusammen mit dem Punkt-Verbot (Namen dürfen nicht auf `.` enden) können keine
-  neuen mehrdeutigen Namenspaare mehr entstehen.
+**Grund-Logik:** Ein Sammlername darf **nicht mit einem Sonderzeichen enden** – nur
+mit einem Buchstaben oder einer Ziffer. Das deckt den Punkt ebenso ab wie `?`, `!`,
+`=`, Anführungszeichen, Backtick, Komma u. v. m. Da geteilte Links ohnehin die ID
+nutzen (`?id=…&name=…&ht=1`) und den Namen immer mit `encodeURIComponent` + `&ht=1`
+abschließen, ist der Abschneide-Mechanismus für alle Anhänge neutralisiert; das
+Verbot verhindert zusätzlich verwirrende „Link-Schrott“-Namen.
+
+- **DB-Funktion `registrieren` (`konto-haertung.sql`):**
+  - `trim(p_name) !~ '^.*[A-Za-z0-9äöüÄÖÜß]$'` → Endet der Name nicht auf einen
+    Buchstaben oder eine Ziffer, wird abgelehnt (Errortype 23514).
+  - Case-prüfung `lower(name) = lower(p_name)` (blockt `Toni`/`toni`, 23505).
+  - End-Punkt-Variante `lower(rtrim(name,'.')) = lower(rtrim(p_name,'.'))`
+    (blockt `alina` neben `alina.`, 23505).
+  - Bestehende Konten (z. B. `alina.`) bleiben unangetastet.
+- **Client (`store.ts` `register`):** Entsprechende Prüfungen für sofortiges
+  Feedback; lokale/Demo-Pfade prüfen dieselben Bedingungen.
 
 **Verifikation:** Build OK, Lint nur vorbestehender `SpendeButton.tsx`-Error.
-**DB-Deploy:** `konto-haertung.sql` (mindestens die `registrieren`-Funktion) in
-der Produktions-DB erneut ausführen, damit die neue Prüfung aktiv ist.
+**DB-Deploy:** `konto-haertung.sql` (mindestens die `registrieren`-Funktion) in der
+Produktions-DB erneut ausführen, damit alle neuen Prüfungen aktiv sind.
 
 ## 2026-08-31 — Rangliste erzwingt frischen Server-Sync (neue Konten sofort sichtbar)
 
