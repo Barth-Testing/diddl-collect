@@ -24,16 +24,24 @@ export default function ImpressumSeite() {
             Diddl-Collect
             <br />
             Toni Barth
-            <br />
-            <span className="text-ink-500">(Anschrift auf Anfrage)</span>
           </p>
         </div>
 
         <div>
           <h2 className="font-display text-lg font-bold text-ink-800">Kontakt</h2>
           <p className="mt-2 text-ink-700">
-            E-Mail-Anfragen über das Kontaktformular der jeweiligen Plattform oder direkt über die
-            im Impressum hinterlegten Wege.
+            E-Mail:{" "}
+            <a
+              href="mailto:math.tricks.mail@gmail.com"
+              className="text-candy-600 underline decoration-candy-200 underline-offset-2 hover:text-candy-700"
+            >
+              math.tricks.mail@gmail.com
+            </a>
+            <br />
+            oder über das{" "}
+            <Link href="/kontakt" className="text-candy-600 underline decoration-candy-200 underline-offset-2 hover:text-candy-700">
+              Kontaktformular
+            </Link>
           </p>
         </div>
 
@@ -41,8 +49,6 @@ export default function ImpressumSeite() {
           <h2 className="font-display text-lg font-bold text-ink-800">Verantwortlich für den Inhalt</h2>
           <p className="mt-2 text-ink-700">
             Toni Barth
-            <br />
-            <span className="text-ink-500">(Anschrift auf Anfrage)</span>
           </p>
         </div>
 

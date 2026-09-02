@@ -8,6 +8,7 @@ import { aenderePasswort, entferneEmail, getSession, holSessionToken, leseEigene
 import type { Benutzer, Blatt, Status, TauschInfo } from "@/lib/types";
 import { useStoreVersion } from "@/lib/useStoreVersion";
 import { BlattKarte } from "./BlattKarte";
+import { KontaktInbox } from "./KontaktInbox";
 import { Lupe } from "./Lupe";
 import { Punkte } from "./Punkte";
 import { SammlerKarussell } from "./SammlerKarussell";
@@ -300,6 +301,8 @@ export function KontoApp() {
           )}
         </div>
       </div>
+
+      {benutzer.name.toLowerCase() === "malarky" && <KontaktInbox />}
 
       {ueb && (
         <div className="card-soft flex flex-col gap-3 p-4">

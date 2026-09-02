@@ -95,6 +95,9 @@ export function Footer() {
           Alle Angaben werden nur lokal in deinem Browser gespeichert.
         </p>
         <div className="flex flex-wrap gap-x-5 gap-y-1 pt-1">
+          <Link href="/kontakt" className="font-semibold text-candy-600 underline decoration-candy-200 underline-offset-2 hover:text-candy-700">
+            Kontakt
+          </Link>
           <Link href="/impressum" className="font-semibold text-candy-600 underline decoration-candy-200 underline-offset-2 hover:text-candy-700">
             Impressum
           </Link>

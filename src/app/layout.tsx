@@ -4,6 +4,7 @@ import Script from "next/script";
 import { Header, Footer } from "@/components/Header";
 import { PwaRegistrierung } from "@/components/PwaRegistrierung";
 import { SpendeButton } from "@/components/SpendeButton";
+import { SupportButton } from "@/components/SupportButton";
 import "./globals.css";
 
 const nunito = Nunito({
@@ -82,6 +83,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {children}
         <Footer />
         <SpendeButton />
+        <SupportButton />
         <PwaRegistrierung />
         <script
           type="application/ld+json"

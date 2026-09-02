@@ -144,8 +144,15 @@ export default function DatenschutzSeite() {
           <p className="mt-2 text-sm leading-relaxed text-ink-700">
             Du hast das Recht, Auskunft über die dich betreffenden personenbezogenen Daten zu
             erhalten, sowie das Recht auf Berichtigung, Löschung, Einschränkung der Verarbeitung,
-            Datenübertragbarkeit und Widerspruch. Zur Ausübung dieser Rechte wende dich an den im
-            Impressum genannten Betreiber. Du hast außerdem das Recht, dich bei einer
+            Datenübertragbarkeit und Widerspruch. Zur Ausübung dieser Rechte wende dich an den
+            Betreiber per E-Mail an{" "}
+            <a
+              href="mailto:math.tricks.mail@gmail.com"
+              className="text-candy-600 underline decoration-candy-200 underline-offset-2 hover:text-candy-700"
+            >
+              math.tricks.mail@gmail.com
+            </a>{" "}
+            (Details im Impressum). Du hast außerdem das Recht, dich bei einer
             Datenschutz-Aufsichtsbehörde zu beschweren.
           </p>
         </div>
