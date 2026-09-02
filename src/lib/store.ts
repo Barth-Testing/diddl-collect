@@ -328,25 +328,90 @@ async function syncMitServer() {
   window.localStorage.setItem(SYNCZEIT_KEY, String(Date.now()));
 }
 
-/** Die eigene Sammlung serverseitig sichern – via Session-Token (RPC). */
-async function pushProfil(benutzer: Benutzer): Promise<boolean> {
-  const token = holSessionToken();
-  if (!token) return true;
-  const { error } = await rpcAufruf("profil_schreiben", {
-    p_token: token,
-    p_statuses: benutzer.statuses,
-    p_beweise: benutzer.beweise,
-    p_favoriten: benutzer.favoriten ?? {},
-    p_tausch: benutzer.tausch ?? {},
-  });
-  if (error) {
-    if (istSessionFehler(error.code)) {
-      loescheSession();
-      emitChange();
+/** Eigene Profil-Zeile frisch vom Server holen (nur dieses Konto, klein). */
+async function ladeEigeneZeile(id: string): Promise<ProfileRow | null> {
+  const supabase = getSupabase<ProfileDb>();
+  if (!supabase) return null;
+  const erste = await supabase
+    .from("profile")
+    .select(profilSpalten())
+    .eq("id", id)
+    .maybeSingle();
+  if (!erste.error && erste.data) return erste.data as unknown as ProfileRow;
+  if (istSchemaFehler(erste.error)) {
+    if (supporterUnterstuetzt) {
+      supporterUnterstuetzt = false;
+      return ladeEigeneZeile(id);
     }
-    return true;
+    if (tauschUnterstuetzt) {
+      tauschUnterstuetzt = false;
+      return ladeEigeneZeile(id);
+    }
+    if (favoritenUnterstuetzt) {
+      favoritenUnterstuetzt = false;
+      return ladeEigeneZeile(id);
+    }
   }
-  return true;
+  return null;
+}
+
+/* Verlustfreier Upload: Server-Keys, die der lokale (evtl. veraltete) Stand
+   diesmal NICHT kennt, werden vom Server mit übernommen, damit ein einzelnes
+   Gerät nie Markierungen wegwischt, die es nie geladen hat. Keys, die lokal
+   vorhanden sind (bewusst gesetzter Zustand inkl. Löschung), bleiben die
+   Autorität – so geht keine Abhak-/Editier-Semantik verloren. */
+function schuetzeServerKeys<T>(lokal: Record<string, T>, server: Record<string, T> | null | undefined): Record<string, T> {
+  if (!server) return lokal;
+  const out: Record<string, T> = { ...server };
+  for (const [key, wert] of Object.entries(lokal)) out[key] = wert;
+  return out;
+}
+
+/** Uploads serialisieren – nie laufen zwei RPCs mit unterschiedlichen
+ *  Snapshots parallel, sodass der neueste lokale Stand gewinnt. */
+let uploadKette: Promise<void> = Promise.resolve();
+
+/** Die eigene Sammlung serverseitig sichern – via Session-Token (RPC).
+ *  Härtung gegen Datenverlust: (1) vor dem Upload wird der frische eigene
+ *  Server-Stand geholt und verlustfrei vereinigt, (2) Uploads laufen
+ *  serialisiert (Mutex), (3) Fehlschläge werden einmalig erneut versucht,
+ *  statt still verschluckt zu werden. */
+function pushProfil(benutzer: Benutzer): Promise<boolean> {
+  const token = holSessionToken();
+  if (!token) return Promise.resolve(true);
+  const letzter = uploadKette.then(async () => {
+    const server = await ladeEigeneZeile(benutzer.id);
+    const senden: Benutzer = server
+      ? (() => {
+          const s = zeileZuBenutzer(server);
+          return {
+            ...benutzer,
+            statuses: schuetzeServerKeys(benutzer.statuses, s.statuses),
+            beweise: schuetzeServerKeys(benutzer.beweise, s.beweise),
+            favoriten: schuetzeServerKeys(benutzer.favoriten ?? {}, s.favoriten),
+            tausch: schuetzeServerKeys(benutzer.tausch ?? {}, s.tausch),
+          };
+        })()
+      : benutzer;
+    for (let versuch = 0; versuch < 2; versuch++) {
+      const { error } = await rpcAufruf("profil_schreiben", {
+        p_token: token,
+        p_statuses: senden.statuses,
+        p_beweise: senden.beweise,
+        p_favoriten: senden.favoriten,
+        p_tausch: senden.tausch,
+      });
+      if (!error) return;
+      if (istSessionFehler(error.code)) {
+        loescheSession();
+        emitChange();
+        return;
+      }
+      if (versuch === 0) await new Promise((r) => setTimeout(r, 800));
+    }
+  });
+  uploadKette = letzter.catch(() => {});
+  return letzter.then(() => true);
 }
 
 export function listBenutzer(): Benutzer[] {
