@@ -13,9 +13,9 @@ export function HeaderBenutzer() {
     return (
       <Link
         href="/konto"
-        className="flex items-center gap-1.5 rounded-full bg-candy-500 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-candy-600"
+        className="flex items-center gap-1 rounded-full bg-candy-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-candy-600"
       >
-        <UserCircle2 className="h-4 w-4" />
+        <UserCircle2 className="h-3.5 w-3.5" />
         <span className="hidden 2xl:inline">Anmelden</span>
       </Link>
     );
@@ -25,7 +25,7 @@ export function HeaderBenutzer() {
     <div className="flex items-center gap-1">
       <Link
         href="/konto"
-        className="flex items-center gap-1.5 rounded-full bg-candy-100 px-3 py-2 text-sm font-bold text-candy-700 hover:bg-candy-200"
+        className="flex items-center gap-1 rounded-full bg-candy-100 px-2.5 py-1.5 text-xs font-bold text-candy-700 hover:bg-candy-200"
         title="Angemeldet als"
       >
         <span className="flex shrink-0 h-5 w-5 items-center justify-center rounded-full bg-candy-400 text-[10px] font-black text-white">

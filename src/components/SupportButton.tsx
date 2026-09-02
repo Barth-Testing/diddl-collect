@@ -43,7 +43,7 @@ export function SupportButton() {
         onClick={() => setOffen(!offen)}
         aria-label="Hilfe und Kontakt"
         title="Hilfe und Kontakt"
-        className="flex h-12 items-center justify-center gap-1.5 rounded-full bg-berry-400 px-4 text-sm font-bold text-white shadow-lg shadow-berry-300/40 transition-transform hover:scale-105 hover:bg-berry-500"
+        className="flex h-12 w-36 items-center justify-center gap-1.5 rounded-full bg-berry-400 px-4 text-sm font-bold text-white shadow-lg shadow-berry-300/40 transition-transform hover:scale-105 hover:bg-berry-500"
       >
         <Headset className="h-4 w-4" />
         <span className={offen ? "hidden" : "inline"}>Hilfe</span>

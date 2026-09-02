@@ -31,9 +31,9 @@ export function PostfachLink() {
       href="/postfach"
       aria-label={`Postfach${ungelesen > 0 ? ` – ${ungelesen} ungelesen` : ""}`}
       title="Postfach"
-      className="relative flex shrink-0 items-center gap-1.5 rounded-full px-1.5 py-2 text-sm font-bold text-ink-700 hover:bg-candy-100 sm:px-3"
+      className="relative flex shrink-0 items-center gap-1 rounded-full px-1.5 py-1.5 text-xs font-bold text-ink-700 hover:bg-candy-100 sm:px-2.5"
     >
-      <Mail className="h-4 w-4" />
+      <Mail className="h-3.5 w-3.5" />
       <span className="hidden 2xl:inline">Postfach</span>
       {ungelesen > 0 && (
         <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-peach-400 px-1 text-[10px] font-black text-white">

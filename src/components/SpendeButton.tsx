@@ -91,7 +91,7 @@ export function SpendeButton() {
         onClick={() => setOffen(!offen)}
         aria-label="Spenden"
         title="Spenden"
-        className="flex h-12 items-center justify-center gap-1.5 rounded-full bg-candy-500 px-4 text-sm font-bold text-white shadow-lg shadow-candy-300/40 transition-transform hover:scale-105 hover:bg-candy-600"
+        className="flex h-12 w-36 items-center justify-center gap-1.5 rounded-full bg-candy-500 px-4 text-sm font-bold text-white shadow-lg shadow-candy-300/40 transition-transform hover:scale-105 hover:bg-candy-600"
       >
         <Heart className="h-4 w-4 fill-white" />
         <span className={offen ? "hidden" : "inline"}>Spenden</span>
