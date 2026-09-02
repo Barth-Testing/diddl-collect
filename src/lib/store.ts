@@ -254,6 +254,23 @@ export function erzwingeSync() {
     });
 }
 
+/* Cross-Device-Sync: Sobald die Seite geladen wird oder das Browser-Tab wieder
+   in den Vordergrund kommt (Fokus/Visibility), wird ein frischer Server-Download
+   erzwungen. Damit werden Markierungen, die auf einem anderen Gerät gesetzt wurden
+   (z. B. PC), hier sofort sichtbar – der 12h-TTL-Cache wird dabei umgangen. */
+let focusSyncEingerichtet = false;
+function richteFocusSyncEin() {
+  if (typeof window === "undefined" || focusSyncEingerichtet) return;
+  focusSyncEingerichtet = true;
+  const beiSichtbar = () => erzwingeSync();
+  window.addEventListener("focus", beiSichtbar);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") beiSichtbar();
+  });
+}
+richteFocusSyncEin();
+erzwingeSync();
+
 /** Server-Konten in den Cache laden, lokale Änderungen hochladen. */
 async function syncMitServer() {
   const data = await ladeProfileZeilen();
