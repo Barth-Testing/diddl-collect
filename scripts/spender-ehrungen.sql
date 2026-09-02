@@ -25,3 +25,9 @@ end $$;
 
 -- Beispiel-Eintrag (Name anpassen):
 -- insert into public.spender_ehrungen (name) values ('Spender via PayPal');
+
+-- Aktive Ehrung: anonymer Spender "Stephanie D." (kein Konto) – erscheint
+-- ganz oben in der Ranglisten-Danksagung. Wurde per SQL vom Betreiber eingefügt.
+insert into public.spender_ehrungen (name)
+select 'Stephanie D.'
+where not exists (select 1 from public.spender_ehrungen where name = 'Stephanie D.');
