@@ -168,8 +168,8 @@ export default function VerzeichnisSeite() {
         <section key={titel} className="mt-6">
           <h2 className="font-display text-xl font-bold text-ink-800">{titel}</h2>
           <p className="text-xs font-semibold text-ink-600">{liste.length} Blätter</p>
-          <div className="card-soft mt-3 overflow-x-auto p-2">
-            <table className="w-full min-w-[560px] text-sm">
+          <div className="card-soft mt-3 overflow-x-auto p-2 print:overflow-visible print:p-0 print:shadow-none">
+            <table className="w-full min-w-[560px] text-sm print:min-w-0">
               <thead>
                 <tr className="border-b border-candy-100 text-left text-xs uppercase tracking-wide text-ink-600">
                   <th className="px-3 py-2">Blatt</th>
@@ -206,6 +206,26 @@ export default function VerzeichnisSeite() {
           </div>
         </section>
       ))}
+
+      {benutzer && zeilen.length > 0 && (
+        <div className="card-soft mt-8 border-emerald-300 bg-emerald-50 p-4 text-center print:break-inside-avoid">
+          <p className="font-display text-base font-bold text-emerald-800">
+            Diddl-Collect – das kostenlose Sammelalbum für Diddl-Blätter
+          </p>
+          <p className="mt-1 text-xs font-semibold text-emerald-700">
+            Katalog, Wunschliste, Tauschbörse, Rangliste &amp; Verzeichnis – alles kostenlos unter{" "}
+            <a
+              href="https://diddl-collect.de"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-bold underline underline-offset-2 hover:text-emerald-900"
+            >
+              diddl-collect.de
+            </a>
+            . Sammle mit, hänge deine Funde an und tausche Doppelte mit der Stube!
+          </p>
+        </div>
+      )}
     </main>
   );
 }
