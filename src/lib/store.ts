@@ -6,6 +6,7 @@ const USERS_KEY = "diddlcollect:benutzer";
 const SESSION_KEY = "diddlcollect:session";
 const USERID_KEY = "diddlcollect:userid";
 const SYNCZEIT_KEY = "diddlcollect:synczeit";
+const DIRTY_KEY = "diddlcollect:dirty";
 const SYNC_TTL = 12 * 60 * 60 * 1000;
 
 /**
@@ -114,6 +115,109 @@ function loadUsers(): Benutzer[] {
 function saveUsers(users: Benutzer[]) {
   window.localStorage.setItem(USERS_KEY, JSON.stringify(users));
   emitChange();
+}
+
+/* -------- "Dirty"-Tracking (pro Blatt-Schlüssel, Multi-Device-sicher) --------
+   Problem: Ein Gerät mit veraltetem Cache darf beim Login/Sync NICHT die
+   frischen Markierungen anderer Geräte wegwaschen. Deshalb wird pro Feld
+   (statuses/beweise/favoriten/tausch) gemerkt, WELCHE Blatt-Schlüssel lokal
+   wirklich geändert (und noch nicht bestätigt hochgeladen) wurden.
+
+   Nur diese "dirty" Schlüssel gewinnen beim Merge über den Server; alle
+   übrigen Schlüssel kommen unverändert vom Server. Damit ist es egal, ob ein
+   anderes Gerät zwischenzeitlich etwas geändert hat – dessen Änderungen
+   bleiben erhalten, nur die eigenen, gezielten Änderungen setzen sich durch. */
+
+type DirtyFeld = "statuses" | "beweise" | "favoriten" | "tausch";
+type DirtyFelder = Record<DirtyFeld, Record<string, true>>;
+
+const LEERES_DIRTY: DirtyFelder = { statuses: {}, beweise: {}, favoriten: {}, tausch: {} };
+
+function leseDirty(): DirtyFelder {
+  if (typeof window === "undefined") return { ...LEERES_DIRTY };
+  try {
+    const raw = window.localStorage.getItem(DIRTY_KEY);
+    if (!raw) return { ...LEERES_DIRTY };
+    const parsed = JSON.parse(raw) as Partial<DirtyFelder>;
+    return {
+      statuses: parsed.statuses ?? {},
+      beweise: parsed.beweise ?? {},
+      favoriten: parsed.favoriten ?? {},
+      tausch: parsed.tausch ?? {},
+    };
+  } catch {
+    return { ...LEERES_DIRTY };
+  }
+}
+
+function schreibeDirty(d: DirtyFelder) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(DIRTY_KEY, JSON.stringify(d));
+}
+
+function markiereDirty(feld: DirtyFeld, blattId: string) {
+  if (typeof window === "undefined") return;
+  const d = leseDirty();
+  d[feld][blattId] = true;
+  schreibeDirty(d);
+}
+
+function loescheDirty() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(DIRTY_KEY);
+}
+
+function hatDirty(d: DirtyFelder = leseDirty()): boolean {
+  return (
+    Object.keys(d.statuses).length > 0 ||
+    Object.keys(d.beweise).length > 0 ||
+    Object.keys(d.favoriten).length > 0 ||
+    Object.keys(d.tausch).length > 0
+  );
+}
+
+/** Vereint EIN Feld: Server-Stand ist die Basis. Dirty Schlüssel gewinnen
+ *  (lokal gesetzt oder gelöscht), alle anderen bleiben Serverseitig. */
+function vereinigeFeld<T>(
+  lok: Record<string, T> | null | undefined,
+  server: Record<string, T> | null | undefined,
+  dirty: Record<string, true> | undefined,
+): Record<string, T> {
+  const out: Record<string, T> = { ...(server ?? {}) };
+  const l = lok ?? {};
+  for (const [k, v] of Object.entries(l)) {
+    if (dirty?.[k]) out[k] = v;
+  }
+  for (const k of Object.keys(dirty ?? {})) {
+    if (!(k in l)) delete out[k];
+  }
+  return out;
+}
+
+/** Eigenes Konto korrekt zusammenführen: Server-Basis + gezielte lokale
+ *  (dirty) Änderungen. Ist das Konto lokal unbekannt → reiner Server-Stand.
+ *  `dirty` wird explizit übergeben, damit lok & dirty zum selben Zeitpunkt
+ *  gelesen werden (kein Auseinanderlaufen bei asynchronen Uploads). */
+function mergeEigenesKonto(lok: Benutzer | undefined, server: Benutzer, dirty: DirtyFelder): Benutzer {
+  if (!lok) return server;
+  return {
+    ...server,
+    statuses: vereinigeFeld(lok.statuses, server.statuses, dirty.statuses),
+    beweise: vereinigeFeld(lok.beweise, server.beweise, dirty.beweise),
+    favoriten: vereinigeFeld(lok.favoriten, server.favoriten, dirty.favoriten),
+    tausch: vereinigeFeld(lok.tausch, server.tausch, dirty.tausch),
+  };
+}
+
+/** Entfernt genau die übergebenen dirty-Schlüssel (nicht neu hinzugekommene),
+ *  damit ein während des Uploads gesetzter neuer Eintrag nicht verloren geht. */
+function entferneDirtySchluessel(d: DirtyFelder) {
+  const aktuell = leseDirty();
+  for (const feld of ["statuses", "beweise", "favoriten", "tausch"] as DirtyFeld[]) {
+    for (const k of Object.keys(d[feld])) delete aktuell[feld][k];
+  }
+  if (hatDirty(aktuell)) schreibeDirty(aktuell);
+  else loescheDirty();
 }
 
 function zeileZuBenutzer(zeile: ProfileRow): Benutzer {
@@ -292,23 +396,15 @@ async function syncMitServer() {
       geaendert = true;
       continue;
     }
-    const statuses = { ...lok.statuses, ...server.statuses };
-    const beweise = { ...lok.beweise, ...server.beweise };
-    const favoriten = { ...lok.favoriten, ...server.favoriten };
-    const tausch = { ...lok.tausch, ...server.tausch };
-    const gemergt: Benutzer = { ...server, statuses, beweise, favoriten, tausch };
+    /* Eigenes Konto: gezielte (dirty) lokale Änderungen gewinnen, Rest kommt
+       vom Server. Andere Konten sind reine Spiegel → Server gewinnt immer. */
+    const istEigen = zeile.id === sessionNutzerId();
+    const gemergt = istEigen ? mergeEigenesKonto(lok, server, leseDirty()) : server;
     ergebnis.set(zeile.id, gemergt);
-    /* Hochladen nur für das EIGENE Konto (Session-Token gehört dem Nutzer);
-       bei anderen Konten gibt es keine lokalen Änderungen – nur anfassen,
-       wenn sich durch die Server-Daten etwas geändert hat. */
-    if (
-      zeile.id === sessionNutzerId() &&
-      (JSON.stringify(statuses) !== JSON.stringify(lok.statuses) ||
-        JSON.stringify(beweise) !== JSON.stringify(lok.beweise) ||
-        JSON.stringify(favoriten) !== JSON.stringify(lok.favoriten) ||
-        JSON.stringify(tausch) !== JSON.stringify(lok.tausch))
-    ) {
-      pushProfil(gemergt);
+    geaendert = true;
+    /* Lokale (dirty) Änderungen des eigenen Kontos zum Server nachziehen. */
+    if (istEigen && hatDirty()) {
+      pushProfil();
     }
   }
 
@@ -321,7 +417,7 @@ async function syncMitServer() {
     if (id !== sessionId) continue;
     ergebnis.set(id, lok);
     geaendert = true;
-    if ((await pushProfil(lok)) === false) ergebnis.delete(id);
+    if ((await pushProfil()) === false) ergebnis.delete(id);
   }
 
   if (geaendert) saveUsers([...ergebnis.values()]);
@@ -355,44 +451,30 @@ async function ladeEigeneZeile(id: string): Promise<ProfileRow | null> {
   return null;
 }
 
-/* Verlustfreier Upload: Server-Keys, die der lokale (evtl. veraltete) Stand
-   diesmal NICHT kennt, werden vom Server mit übernommen, damit ein einzelnes
-   Gerät nie Markierungen wegwischt, die es nie geladen hat. Keys, die lokal
-   vorhanden sind (bewusst gesetzter Zustand inkl. Löschung), bleiben die
-   Autorität – so geht keine Abhak-/Editier-Semantik verloren. */
-function schuetzeServerKeys<T>(lokal: Record<string, T>, server: Record<string, T> | null | undefined): Record<string, T> {
-  if (!server) return lokal;
-  const out: Record<string, T> = { ...server };
-  for (const [key, wert] of Object.entries(lokal)) out[key] = wert;
-  return out;
-}
-
 /** Uploads serialisieren – nie laufen zwei RPCs mit unterschiedlichen
  *  Snapshots parallel, sodass der neueste lokale Stand gewinnt. */
 let uploadKette: Promise<void> = Promise.resolve();
 
 /** Die eigene Sammlung serverseitig sichern – via Session-Token (RPC).
- *  Härtung gegen Datenverlust: (1) vor dem Upload wird der frische eigene
- *  Server-Stand geholt und verlustfrei vereinigt, (2) Uploads laufen
- *  serialisiert (Mutex), (3) Fehlschläge werden einmalig erneut versucht,
- *  statt still verschluckt zu werden. */
-function pushProfil(benutzer: Benutzer): Promise<boolean> {
+ *  Liest IMMER den aktuellen lokalen Stand und holt den frischen Server-Stand
+ *  des eigenen Kontos. Der Merge ist pro Schlüssel "dirty"-gesteuert (nur
+ *  gezielte lokale Änderungen gewinnen, alles andere kommt vom Server), damit
+ *  andere Geräte nichts verlieren. Uploads laufen serialisiert (Mutex), und
+ *  Fehlschläge werden einmalig erneut versucht. Bei Erfolg wird der Cache auf
+ *  den gemergten Stand aktualisiert und dirty zurückgesetzt. */
+function pushProfil(): Promise<boolean> {
   const token = holSessionToken();
   if (!token) return Promise.resolve(true);
+  const id = sessionNutzerId();
+  if (!id) return Promise.resolve(true);
   const letzter = uploadKette.then(async () => {
-    const server = await ladeEigeneZeile(benutzer.id);
-    const senden: Benutzer = server
-      ? (() => {
-          const s = zeileZuBenutzer(server);
-          return {
-            ...benutzer,
-            statuses: schuetzeServerKeys(benutzer.statuses, s.statuses),
-            beweise: schuetzeServerKeys(benutzer.beweise, s.beweise),
-            favoriten: schuetzeServerKeys(benutzer.favoriten ?? {}, s.favoriten),
-            tausch: schuetzeServerKeys(benutzer.tausch ?? {}, s.tausch),
-          };
-        })()
-      : benutzer;
+    const lok = loadUsers().find((u) => u.id === id);
+    if (!lok) return;
+    /* lok UND dirty zum selben Zeitpunkt lesen – so bleibt der Upload auch bei
+       parallel eintreffenden neuen Markierungen konsistent. */
+    const dirty = leseDirty();
+    const server = await ladeEigeneZeile(id);
+    const senden: Benutzer = server ? mergeEigenesKonto(lok, zeileZuBenutzer(server), dirty) : lok;
     for (let versuch = 0; versuch < 2; versuch++) {
       const { error } = await rpcAufruf("profil_schreiben", {
         p_token: token,
@@ -401,7 +483,10 @@ function pushProfil(benutzer: Benutzer): Promise<boolean> {
         p_favoriten: senden.favoriten,
         p_tausch: senden.tausch,
       });
-      if (!error) return;
+      if (!error) {
+        entferneDirtySchluessel(dirty);
+        return;
+      }
       if (istSessionFehler(error.code)) {
         loescheSession();
         emitChange();
@@ -471,22 +556,17 @@ function uebernimmAnmeldung(ergebnis: KontoAntwort): { ok: boolean; fehler?: str
   }
   const server = zeileZuBenutzer(ergebnis.profil);
   const lok = loadUsers().find((u) => u.id === server.id);
-  /* Lokale Feld-Werte gewinnen über den Server-Stand (lok hat mehr, wenn etwas
-     nur lokal vorliegt); der Server wird anschließend nachgezogen. */
-  const benutzer: Benutzer = {
-    ...server,
-    statuses: { ...(server.statuses ?? {}), ...(lok?.statuses ?? {}) },
-    beweise: { ...(server.beweise ?? {}), ...(lok?.beweise ?? {}) },
-    favoriten: { ...(server.favoriten ?? {}), ...(lok?.favoriten ?? {}) },
-    tausch: { ...(server.tausch ?? {}), ...(lok?.tausch ?? {}) },
-  };
+  /* Server ist die Basis; nur gezielte lokale (dirty) Änderungen gewinnen.
+     Ein veralteter Cache verliert dagegen korrekt gegen den Server – sonst
+     wäscht ein zweites Gerät beim Login frische Markierungen weg. */
+  const benutzer: Benutzer = mergeEigenesKonto(lok, server, leseDirty());
   if (lok?.supporter) benutzer.supporter = true;
   const rest = loadUsers().filter((u) => u.id !== benutzer.id);
   saveUsers([...rest, benutzer]);
   setzeSession(ergebnis.token, benutzer.id);
-  /* Gemergte (evtl. lokal angereicherte) Daten wieder zum Server hochladen,
-     damit nichts nur im Browser-Cache hängen bleibt. */
-  void pushProfil(benutzer);
+  /* Nur hochladen, wenn es wirklich lokale (dirty) Änderungen nachzuziehen
+     gibt; ansonsten ist der Server-Stand bereits die Quelle der Wahrheit. */
+  if (hatDirty()) void pushProfil();
   emitChange();
   return { ok: true };
 }
@@ -720,7 +800,8 @@ export function setStatus(blattId: string, status: Status, aktiv: boolean) {
   else delete statuses[blattId];
   user.statuses = statuses;
   saveUsers(users);
-  pushProfil(user);
+  markiereDirty("statuses", blattId);
+  pushProfil();
 }
 
 export function setBeweis(blattId: string, wert: string | boolean | null) {
@@ -738,7 +819,8 @@ export function setBeweis(blattId: string, wert: string | boolean | null) {
     user.beweise[blattId] = wert;
   }
   saveUsers(users);
-  pushProfil(user);
+  markiereDirty("beweise", blattId);
+  pushProfil();
 }
 
 /** Speichert ein Beweisfoto in der eigenen Tabelle und setzt den dünnen Zähler-Wert.
@@ -768,7 +850,8 @@ export function setFavorit(blattId: string, istFavorit: boolean) {
   if (istFavorit) user.favoriten[blattId] = true;
   else delete user.favoriten[blattId];
   saveUsers(users);
-  pushProfil(user);
+  markiereDirty("favoriten", blattId);
+  pushProfil();
 }
 
 export function setzeTauschInfo(blattId: string, info: TauschInfo | null) {
@@ -780,7 +863,8 @@ export function setzeTauschInfo(blattId: string, info: TauschInfo | null) {
   if (info === null || (!info.betrag && !info.notiz)) delete user.tausch[blattId];
   else user.tausch[blattId] = info;
   saveUsers(users);
-  pushProfil(user);
+  markiereDirty("tausch", blattId);
+  pushProfil();
 }
 
 export function zaehle(user: Benutzer) {
