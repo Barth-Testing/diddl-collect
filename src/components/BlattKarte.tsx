@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Check, Heart, Repeat2, Camera, Star } from "lucide-react";
+import { Check, Heart, Repeat2, Camera, Star, Box, Minus, Plus } from "lucide-react";
 import type { Blatt, Status } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { farbBadge, blattTitel } from "@/lib/blaetter";
@@ -14,11 +14,15 @@ type Props = {
   bewiesen?: boolean;
   bildOverride?: string;
   favorit?: boolean;
+  hatBlock?: boolean;
+  anzahl?: number;
   tauschAngebote?: number;
   aufToggle: (status: BlattAktion) => void;
   aufBild: () => void;
   aufBeweis?: () => void;
   aufFavorit?: () => void;
+  aufBlock?: () => void;
+  aufAnzahl?: (delta: number) => void;
 };
 
 export function BlattKarte({
@@ -27,11 +31,15 @@ export function BlattKarte({
   bewiesen,
   bildOverride,
   favorit,
+  hatBlock,
+  anzahl,
   tauschAngebote = 0,
   aufToggle,
   aufBild,
   aufBeweis,
   aufFavorit,
+  aufBlock,
+  aufAnzahl,
 }: Props) {
   return (
     <div
@@ -43,6 +51,9 @@ export function BlattKarte({
         !status.includes("own") && !status.includes("offer") && status.includes("wish") && "ring-2 ring-berry-300",
       )}
     >
+      {hatBlock && (
+        <span className="pointer-events-none absolute inset-0 z-10 rounded-2xl border-[3px] border-emerald-400" />
+      )}
       <button
         onClick={aufBild}
         className="group relative block aspect-square w-full overflow-hidden bg-white"
@@ -101,10 +112,58 @@ export function BlattKarte({
             <span className="chip bg-candy-100 px-1.5 py-0.5 text-candy-700">{blatt.jahr}</span>
           )}
           <span className={cn("chip px-1.5 py-0.5", farbBadge(blatt.farbe))}>{blatt.farbe}</span>
+          {hatBlock && (
+            <span className="chip bg-emerald-500 px-1.5 py-0.5 text-[10px] text-white">Block ✓</span>
+          )}
           {bewiesen && (
             <span className="chip bg-mint-200 px-1.5 py-0.5 text-[10px] text-emerald-800">✓ Beweis</span>
           )}
         </div>
+
+        {(aufBlock || aufAnzahl) && (status.includes("own") || hatBlock) && (
+          <div className="flex items-center justify-between gap-1">
+            {aufBlock && (
+              <button
+                type="button"
+                onClick={aufBlock}
+                title={hatBlock ? "Block besessen – entfernen" : "Besitzt du den ganzen Block dazu?"}
+                aria-pressed={hatBlock}
+                className={cn(
+                  "chip gap-1 px-1.5 py-0.5 text-[10px] font-bold transition-colors",
+                  hatBlock ? "bg-emerald-500 text-white" : "bg-white text-ink-600 ring-1 ring-cream-300 hover:ring-emerald-300",
+                )}
+              >
+                <Box className="h-3 w-3" />
+                Block
+              </button>
+            )}
+            {aufAnzahl && status.includes("own") && (
+              <div className="flex items-center gap-0.5 rounded-full bg-cream-100 px-0.5 py-0.5">
+                <button
+                  type="button"
+                  onClick={() => aufAnzahl(-1)}
+                  title="Ein Blatt weniger"
+                  aria-label="Stückzahl verringern"
+                  className="flex h-5 w-5 items-center justify-center rounded-full text-ink-600 transition-colors hover:bg-white"
+                >
+                  <Minus className="h-3 w-3" />
+                </button>
+                <span className="min-w-[2ch] text-center text-xs font-bold text-ink-800">
+                  ×{anzahl ?? 1}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => aufAnzahl(1)}
+                  title="Ein Blatt mehr"
+                  aria-label="Stückzahl erhöhen"
+                  className="flex h-5 w-5 items-center justify-center rounded-full text-ink-600 transition-colors hover:bg-white"
+                >
+                  <Plus className="h-3 w-3" />
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="mt-auto flex items-center justify-between gap-1 border-t border-candy-100 pt-1.5">
           <div className="flex gap-1">

@@ -112,6 +112,10 @@ export type Benutzer = {
   beweise: Record<string, string | boolean>;
   favoriten: Record<string, boolean>;
   tausch: Record<string, TauschInfo>;
+  /** "Block besessen" je Blatt – der ganze Produktionsblock mit dem Blatt. */
+  blocks: Record<string, boolean>;
+  /** Stückzahl je Blatt (Mehrfach-Exemplare für den Tausch); fehlt = 1. */
+  anzahl: Record<string, number>;
   /** Spender/Unterstützer – wird NUR serverseitig gesetzt (SQL), nie vom Client. */
   supporter?: boolean;
 };

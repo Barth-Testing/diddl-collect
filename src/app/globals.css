@@ -124,3 +124,20 @@ body {
 @utility animate-pop {
   animation: pop-in 0.22s ease-out both;
 }
+
+@media print {
+  html,
+  body {
+    background: #fff;
+    overflow-x: visible;
+  }
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .card-soft {
+    background: #fff;
+    box-shadow: none;
+    break-inside: avoid;
+  }
+}

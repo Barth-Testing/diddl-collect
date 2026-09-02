@@ -1,7 +1,7 @@
 import rohDaten from "../data/blaetter.json";
 import diddlBackRoh from "../data/diddl-back.json";
 import reliefRoh from "../data/relief.json";
-import { FARBREIHENFOLGE, type Blatt } from "./types";
+import { FARBREIHENFOLGE, type Benutzer, type Blatt } from "./types";
 
 export const BLAETTER: Blatt[] = [...(rohDaten as Blatt[]), ...(diddlBackRoh as Blatt[]), ...(reliefRoh as Blatt[])];
 
@@ -49,6 +49,28 @@ export function blattTitel(blatt: Blatt): string {
   if (blatt.kategorie === "relief") return `Relief-${blatt.nummer}`;
   const basis = `${blatt.jahr}-${blatt.groesse}-${blatt.nummer}`;
   return blatt.kollektion ? `${basis} (${blatt.kollektion})` : basis;
+}
+
+/** Sammlungs-Übersicht: Blöcke (markiert), eigene Blätter (ohne Relief),
+ *  eigene Reliefblätter und Exemplare gesamt (inkl. Mehrfach-Stückzahlen). */
+export function uebersichtSammlung(benutzer: Benutzer) {
+  const { statuses, anzahl, blocks } = benutzer;
+  let blaetter = 0;
+  let reliefs = 0;
+  let exemplare = 0;
+  for (const [id, statusListe] of Object.entries(statuses)) {
+    if (!statusListe.includes("own")) continue;
+    const blatt = BLAETTER_NACH_ID.get(id);
+    if (blatt?.kategorie === "relief") reliefs++;
+    else blaetter++;
+    exemplare += anzahl?.[id] ?? 1;
+  }
+  return {
+    bloecke: Object.keys(blocks ?? {}).length,
+    blaetter,
+    reliefs,
+    exemplare,
+  };
 }
 
 export type SammlungSortierung =

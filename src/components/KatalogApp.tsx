@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowDownUp, Check, Heart, LogIn, Repeat2, Search, SlidersHorizontal, X } from "lucide-react";
 import { BLAETTER, DIDDLBACK_KOLLEKTIONEN, VERFÜGBARE_FARBEN, blattTitel } from "@/lib/blaetter";
-import { getSession, listBenutzer, setStatus } from "@/lib/store";
+import { getSession, listBenutzer, setAnzahlDelta, setBlock, setStatus } from "@/lib/store";
 import { FARBREIHENFOLGE, type Status } from "@/lib/types";
 import { BlattKarte } from "./BlattKarte";
 import { Lupe } from "./Lupe";
@@ -308,9 +308,13 @@ export function KatalogApp() {
             blatt={b}
             status={statuses[b.id] ?? []}
             bewiesen={!!beweise[b.id]}
+            hatBlock={benutzer?.blocks?.[b.id] === true}
+            anzahl={benutzer?.anzahl?.[b.id]}
             tauschAngebote={tauschAngebote.get(b.id) ?? 0}
             aufToggle={(s) => togglen(b.id, s)}
             aufBild={() => setLupe(b.id)}
+            aufBlock={() => setBlock(b.id, benutzer?.blocks?.[b.id] !== true)}
+            aufAnzahl={(delta) => setAnzahlDelta(b.id, delta)}
           />
         ))}
       </div>

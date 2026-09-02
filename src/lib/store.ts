@@ -26,6 +26,8 @@ type ProfileRow = {
   beweise: Record<string, string | boolean> | null;
   favoriten?: Record<string, boolean> | null;
   tausch?: Record<string, TauschInfo> | null;
+  blocks?: Record<string, boolean> | null;
+  anzahl?: Record<string, number> | null;
   supporter?: boolean | null;
 };
 
@@ -42,6 +44,8 @@ type ProfileDb = {
           beweise: Record<string, string | boolean>;
           favoriten?: Record<string, boolean>;
           tausch?: Record<string, TauschInfo>;
+          blocks?: Record<string, boolean>;
+          anzahl?: Record<string, number>;
         };
         Update: Partial<ProfileRow>;
         Relationships: [];
@@ -104,6 +108,8 @@ function loadUsers(): Benutzer[] {
           beweise: remappeBlattSchluessel(u.beweise ?? {}),
           favoriten: remappeBlattSchluessel(u.favoriten ?? {}),
           tausch: remappeBlattSchluessel(u.tausch ?? {}),
+          blocks: remappeBlattSchluessel(u.blocks ?? {}),
+          anzahl: remappeBlattSchluessel(u.anzahl ?? {}),
           supporter: u.supporter === true,
         }) as Benutzer,
     );
@@ -128,10 +134,10 @@ function saveUsers(users: Benutzer[]) {
    anderes Gerät zwischenzeitlich etwas geändert hat – dessen Änderungen
    bleiben erhalten, nur die eigenen, gezielten Änderungen setzen sich durch. */
 
-type DirtyFeld = "statuses" | "beweise" | "favoriten" | "tausch";
+type DirtyFeld = "statuses" | "beweise" | "favoriten" | "tausch" | "blocks" | "anzahl";
 type DirtyFelder = Record<DirtyFeld, Record<string, true>>;
 
-const LEERES_DIRTY: DirtyFelder = { statuses: {}, beweise: {}, favoriten: {}, tausch: {} };
+const LEERES_DIRTY: DirtyFelder = { statuses: {}, beweise: {}, favoriten: {}, tausch: {}, blocks: {}, anzahl: {} };
 
 function leseDirty(): DirtyFelder {
   if (typeof window === "undefined") return { ...LEERES_DIRTY };
@@ -144,6 +150,8 @@ function leseDirty(): DirtyFelder {
       beweise: parsed.beweise ?? {},
       favoriten: parsed.favoriten ?? {},
       tausch: parsed.tausch ?? {},
+      blocks: parsed.blocks ?? {},
+      anzahl: parsed.anzahl ?? {},
     };
   } catch {
     return { ...LEERES_DIRTY };
@@ -172,7 +180,9 @@ function hatDirty(d: DirtyFelder = leseDirty()): boolean {
     Object.keys(d.statuses).length > 0 ||
     Object.keys(d.beweise).length > 0 ||
     Object.keys(d.favoriten).length > 0 ||
-    Object.keys(d.tausch).length > 0
+    Object.keys(d.tausch).length > 0 ||
+    Object.keys(d.blocks).length > 0 ||
+    Object.keys(d.anzahl).length > 0
   );
 }
 
@@ -206,6 +216,8 @@ function mergeEigenesKonto(lok: Benutzer | undefined, server: Benutzer, dirty: D
     beweise: vereinigeFeld(lok.beweise, server.beweise, dirty.beweise),
     favoriten: vereinigeFeld(lok.favoriten, server.favoriten, dirty.favoriten),
     tausch: vereinigeFeld(lok.tausch, server.tausch, dirty.tausch),
+    blocks: vereinigeFeld(lok.blocks, server.blocks, dirty.blocks),
+    anzahl: vereinigeFeld(lok.anzahl, server.anzahl, dirty.anzahl),
   };
 }
 
@@ -213,7 +225,7 @@ function mergeEigenesKonto(lok: Benutzer | undefined, server: Benutzer, dirty: D
  *  damit ein während des Uploads gesetzter neuer Eintrag nicht verloren geht. */
 function entferneDirtySchluessel(d: DirtyFelder) {
   const aktuell = leseDirty();
-  for (const feld of ["statuses", "beweise", "favoriten", "tausch"] as DirtyFeld[]) {
+  for (const feld of ["statuses", "beweise", "favoriten", "tausch", "blocks", "anzahl"] as DirtyFeld[]) {
     for (const k of Object.keys(d[feld])) delete aktuell[feld][k];
   }
   if (hatDirty(aktuell)) schreibeDirty(aktuell);
@@ -230,6 +242,8 @@ function zeileZuBenutzer(zeile: ProfileRow): Benutzer {
     beweise: remappeBlattSchluessel(zeile.beweise ?? {}),
     favoriten: remappeBlattSchluessel(zeile.favoriten ?? {}),
     tausch: remappeBlattSchluessel(zeile.tausch ?? {}),
+    blocks: remappeBlattSchluessel(zeile.blocks ?? {}),
+    anzahl: remappeBlattSchluessel(zeile.anzahl ?? {}),
     supporter: zeile.supporter === true,
   };
 }
@@ -281,6 +295,8 @@ let syncErneut = false;
 let favoritenUnterstuetzt = true;
 let tauschUnterstuetzt = true;
 let supporterUnterstuetzt = true;
+let blocksUnterstuetzt = true;
+let anzahlUnterstuetzt = true;
 
 function istSchemaFehler(error: { code?: string } | null | undefined) {
   return error?.code === "PGRST204" || error?.code === "42703";
@@ -291,6 +307,8 @@ function profilSpalten(): string {
   const spalten = ["id", "name", "passwort", "created_at", "statuses", "beweise"];
   if (favoritenUnterstuetzt) spalten.push("favoriten");
   if (tauschUnterstuetzt) spalten.push("tausch");
+  if (blocksUnterstuetzt) spalten.push("blocks");
+  if (anzahlUnterstuetzt) spalten.push("anzahl");
   if (supporterUnterstuetzt) spalten.push("supporter");
   return spalten.join(", ");
 }
@@ -303,6 +321,14 @@ async function ladeProfileZeilen(): Promise<ProfileRow[] | null> {
   if (istSchemaFehler(erste.error)) {
     if (supporterUnterstuetzt) {
       supporterUnterstuetzt = false;
+      return ladeProfileZeilen();
+    }
+    if (anzahlUnterstuetzt) {
+      anzahlUnterstuetzt = false;
+      return ladeProfileZeilen();
+    }
+    if (blocksUnterstuetzt) {
+      blocksUnterstuetzt = false;
       return ladeProfileZeilen();
     }
     if (tauschUnterstuetzt) {
@@ -439,6 +465,14 @@ async function ladeEigeneZeile(id: string): Promise<ProfileRow | null> {
       supporterUnterstuetzt = false;
       return ladeEigeneZeile(id);
     }
+    if (anzahlUnterstuetzt) {
+      anzahlUnterstuetzt = false;
+      return ladeEigeneZeile(id);
+    }
+    if (blocksUnterstuetzt) {
+      blocksUnterstuetzt = false;
+      return ladeEigeneZeile(id);
+    }
     if (tauschUnterstuetzt) {
       tauschUnterstuetzt = false;
       return ladeEigeneZeile(id);
@@ -475,13 +509,17 @@ function pushProfil(): Promise<boolean> {
     const dirty = leseDirty();
     const server = await ladeEigeneZeile(id);
     const senden: Benutzer = server ? mergeEigenesKonto(lok, zeileZuBenutzer(server), dirty) : lok;
-    for (let versuch = 0; versuch < 2; versuch++) {
+    /* Neuere Spalten erst senden, wenn die SQL-Funktion sie kennt – sonst
+       PGRST202 und Fallback auf die alte Signatur. */
+    const mitZusatz = blocksUnterstuetzt && anzahlUnterstuetzt;
+    for (let versuch = 0; versuch < 3; versuch++) {
       const { error } = await rpcAufruf("profil_schreiben", {
         p_token: token,
         p_statuses: senden.statuses,
         p_beweise: senden.beweise,
         p_favoriten: senden.favoriten,
         p_tausch: senden.tausch,
+        ...(mitZusatz ? { p_blocks: senden.blocks, p_anzahl: senden.anzahl } : {}),
       });
       if (!error) {
         entferneDirtySchluessel(dirty);
@@ -492,7 +530,12 @@ function pushProfil(): Promise<boolean> {
         emitChange();
         return;
       }
-      if (versuch === 0) await new Promise((r) => setTimeout(r, 800));
+      if ((error.code === "PGRST202" || (error.message ?? "").includes("not found")) && mitZusatz) {
+        blocksUnterstuetzt = false;
+        anzahlUnterstuetzt = false;
+        continue;
+      }
+      if (versuch < 2) await new Promise((r) => setTimeout(r, 800));
     }
   });
   uploadKette = letzter.catch(() => {});
@@ -616,6 +659,8 @@ export async function register(
           beweise: {},
           favoriten: {},
           tausch: {},
+          blocks: {},
+          anzahl: {},
         };
         const supabase = getSupabase<ProfileDb>();
         if (supabase) {
@@ -629,6 +674,8 @@ export async function register(
             beweise: {},
             ...(favoritenUnterstuetzt ? { favoriten: {} } : {}),
             ...(tauschUnterstuetzt ? { tausch: {} } : {}),
+            ...(blocksUnterstuetzt ? { blocks: {} } : {}),
+            ...(anzahlUnterstuetzt ? { anzahl: {} } : {}),
           });
         }
         users.push(user);
@@ -655,6 +702,8 @@ export async function register(
     beweise: {},
     favoriten: {},
     tausch: {},
+    blocks: {},
+    anzahl: {},
     supporter: false,
   };
   users.push(user);
@@ -864,6 +913,36 @@ export function setzeTauschInfo(blattId: string, info: TauschInfo | null) {
   else user.tausch[blattId] = info;
   saveUsers(users);
   markiereDirty("tausch", blattId);
+  pushProfil();
+}
+
+/** "Block besessen" je Blatt setzen/entfernen (besonderer Rahmen in der Karte). */
+export function setBlock(blattId: string, hatBlock: boolean) {
+  const users = loadUsers();
+  const id = sessionNutzerId();
+  const user = users.find((u) => u.id === id);
+  if (!user) return;
+  if (!user.blocks) user.blocks = {};
+  if (hatBlock) user.blocks[blattId] = true;
+  else delete user.blocks[blattId];
+  saveUsers(users);
+  markiereDirty("blocks", blattId);
+  pushProfil();
+}
+
+/** Stückzahl je Blatt erhöhen/verringern (Minimum 1 = kein Eintrag nötig). */
+export function setAnzahlDelta(blattId: string, delta: number) {
+  const users = loadUsers();
+  const id = sessionNutzerId();
+  const user = users.find((u) => u.id === id);
+  if (!user) return;
+  if (!user.anzahl) user.anzahl = {};
+  const bisher = user.anzahl[blattId] ?? 1;
+  const neu = Math.max(1, Math.min(99, bisher + delta));
+  if (neu <= 1) delete user.anzahl[blattId];
+  else user.anzahl[blattId] = neu;
+  saveUsers(users);
+  markiereDirty("anzahl", blattId);
   pushProfil();
 }
 

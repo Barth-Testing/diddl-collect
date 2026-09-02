@@ -1,9 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDownUp, AtSign, Check, Camera, Egg, Heart, Images, KeyRound, LogIn, PartyPopper, Repeat2, Share2, ShieldCheck, Trash2, UserPlus, UserRound } from "lucide-react";
-import { BLAETTER, BLAETTER_NACH_ID, blattTitel, sortiereSammlung, type SammlungSortierung } from "@/lib/blaetter";
-import { aenderePasswort, entferneEmail, getSession, holSessionToken, leseEigeneEmail, login, logout, register, setBeweis, setFavorit, setStatus, setzeEmail, setzeTauschInfo, speichereBeweisFoto, zaehle } from "@/lib/store";
+import { ArrowDownUp, AtSign, Check, Camera, Egg, Heart, Images, KeyRound, LogIn, PartyPopper, Repeat2, Share2, ShieldCheck, Trash2, UserPlus, UserRound, BookOpenCheck } from "lucide-react";
+import { BLAETTER, BLAETTER_NACH_ID, blattTitel, sortiereSammlung, uebersichtSammlung, type SammlungSortierung } from "@/lib/blaetter";
+import { aenderePasswort, entferneEmail, getSession, holSessionToken, leseEigeneEmail, login, logout, register, setAnzahlDelta, setBlock, setBeweis, setFavorit, setStatus, setzeEmail, setzeTauschInfo, speichereBeweisFoto, zaehle } from "@/lib/store";
 import type { Benutzer, Blatt, Status, TauschInfo } from "@/lib/types";
 import { useStoreVersion } from "@/lib/useStoreVersion";
 import { BlattKarte } from "./BlattKarte";
@@ -66,6 +67,7 @@ export function KontoApp() {
   }
 
   const z = useMemo(() => (benutzer ? zaehle(benutzer) : null), [benutzer]);
+  const ueb = useMemo(() => (benutzer ? uebersichtSammlung(benutzer) : null), [benutzer]);
 
   const listeAb: Array<{ id: string; status: Status[] }> = useMemo(() => {
     if (!benutzer) return [];
@@ -299,6 +301,31 @@ export function KontoApp() {
         </div>
       </div>
 
+      {ueb && (
+        <div className="card-soft flex flex-col gap-3 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-display text-lg font-bold text-ink-800">Dein Bestand</h2>
+            <Link
+              href="/verzeichnis"
+              className="flex items-center gap-1.5 rounded-full bg-mint-200 px-3.5 py-1.5 text-xs font-bold text-emerald-800 transition hover:bg-mint-300"
+            >
+              <BookOpenCheck className="h-4 w-4" />
+              Verzeichnis drucken
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <Punkte label="Blöcke" wert={ueb.bloecke} farbe="text-emerald-600" />
+            <Punkte label="Eigene Blätter" wert={ueb.blaetter} farbe="text-candy-500" />
+            <Punkte label="Reliefblätter" wert={ueb.reliefs} farbe="text-peach-500" />
+            <Punkte label="Exemplare gesamt" wert={ueb.exemplare} farbe="text-berry-400" />
+          </div>
+          <p className="text-xs font-semibold text-ink-600">
+            „Block“ setzt du direkt am Blatt – erscheint mit grünem Rahmen. „×“ dahinter zählt
+            Mehrfach-Exemplare, z. B. für den Tausch aus deinem Block.
+          </p>
+        </div>
+      )}
+
       {mailVollstaendig === false && (
         <div className="animate-pop card-soft flex items-center gap-3 border-berry-200 bg-berry-50 px-4 py-3 text-sm font-semibold text-ink-800">
           <AtSign className="h-5 w-5 shrink-0 text-berry-400" />
@@ -490,10 +517,14 @@ export function KontoApp() {
                 status,
                 bewiesen: !!benutzer.beweise[id],
                 favorit: !!benutzer.favoriten?.[id],
+                hatBlock: benutzer.blocks?.[id] === true,
+                anzahl: benutzer.anzahl?.[id],
                 aufToggle: (s: "own" | "wish" | "offer") => togglen(id, s),
                 aufBild: () => setLupe(id),
                 aufBeweis: () => hochladenStarten(id),
                 aufFavorit: () => setFavorit(id, !benutzer.favoriten?.[id]),
+                aufBlock: () => setBlock(id, benutzer.blocks?.[id] !== true),
+                aufAnzahl: (delta: number) => setAnzahlDelta(id, delta),
               };
               if (tab === "tausch") {
                 return (

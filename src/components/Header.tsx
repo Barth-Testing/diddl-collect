@@ -7,7 +7,7 @@ import { PostfachLink } from "./PostfachLink";
 
 export function Header() {
   return (
-    <header className="sticky top-0 z-40 border-b border-candy-100 bg-white/80 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-candy-100 bg-white/80 backdrop-blur print:hidden">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-2 px-3 sm:px-4">
         <Link href="/" className="flex shrink-0 items-center gap-2 text-ink-800 hover:opacity-80">
           <MausKlein className="h-9 w-9 sm:h-10 sm:w-10" />
@@ -71,7 +71,7 @@ export function Header() {
 
 export function Footer() {
   return (
-    <footer className="mt-20 border-t border-candy-100 bg-white/70">
+    <footer className="mt-20 border-t border-candy-100 bg-white/70 print:hidden">
       <div className="mx-auto max-w-6xl space-y-3 px-4 py-10 text-sm text-ink-600">
         <div className="flex items-center gap-2">
           <PawPrint className="h-4 w-4 text-candy-400" />
