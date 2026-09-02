@@ -94,6 +94,14 @@ export function Footer() {
           Goletz) und werden hier ausschließlich als Verlinkung zu Katalog-Zwecken angezeigt.
           Alle Angaben werden nur lokal in deinem Browser gespeichert.
         </p>
+        <div className="flex flex-wrap gap-x-5 gap-y-1 pt-1">
+          <Link href="/impressum" className="font-semibold text-candy-600 underline decoration-candy-200 underline-offset-2 hover:text-candy-700">
+            Impressum
+          </Link>
+          <Link href="/datenschutz" className="font-semibold text-candy-600 underline decoration-candy-200 underline-offset-2 hover:text-candy-700">
+            Datenschutz
+          </Link>
+        </div>
       </div>
     </footer>
   );
