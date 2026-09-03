@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeftRight, Heart, Users } from "lucide-react";
 import { BLAETTER_NACH_ID, blattTitel } from "@/lib/blaetter";
@@ -39,6 +39,7 @@ function suchText(gruppe: AngebotsGruppe) {
 
 export function TauschboerseApp() {
   useStoreVersion();
+  const router = useRouter();
   const params = useSearchParams();
   const blattParam = params.get("blatt");
   const [, setVersion] = useState(0);
@@ -50,12 +51,22 @@ export function TauschboerseApp() {
   const [nurBlatt, setNurBlatt] = useState<string | null>(blattParam);
   const [groesse, setGroesse] = useState("");
   const [farbe, setFarbe] = useState("");
-  const [nurWunsch, setNurWunsch] = useState(false);
+  /* Wunsch-Filter bleibt über URL-Parameter ?wunsch=1 erhalten. */
+  const [nurWunsch, setNurWunsch] = useState(() => params.get("wunsch") === "1");
   const [gewaehlt, setGewaehlt] = useState<Record<string, string>>({});
   const [dialog, setDialog] = useState<{ blattId: string; anbieter: { id: string; name: string } } | null>(null);
   const [sichtbar, setSichtbar] = useState(120);
 
   const zuruecksetzen = () => setNurBlatt(null);
+
+  const wechsleWunsch = (v: boolean) => {
+    setNurWunsch(v);
+    zuruecksetzen();
+    const bestehende = new URLSearchParams(window.location.search);
+    if (v) bestehende.set("wunsch", "1");
+    else bestehende.delete("wunsch");
+    router.replace(`/tausch?${bestehende.toString()}`, { scroll: false });
+  };
 
   useEffect(() => {
     const cleanup = verbindeTausch();
@@ -123,10 +134,7 @@ export function TauschboerseApp() {
           zuruecksetzen();
         }}
         nurWunsch={nurWunsch}
-        setNurWunsch={(v) => {
-          setNurWunsch(v);
-          zuruecksetzen();
-        }}
+        setNurWunsch={wechsleWunsch}
         wunschAnzahl={wunschIds.size}
       />
       {!ich && (

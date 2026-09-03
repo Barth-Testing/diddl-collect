@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { Handshake, Lock, Repeat2, Send, X } from "lucide-react";
+import { Handshake, Lock, Pencil, Repeat2, Send, X } from "lucide-react";
 import { BLAETTER_NACH_ID, blattTitel } from "@/lib/blaetter";
 import { getSession } from "@/lib/store";
 import { useStoreVersion } from "@/lib/useStoreVersion";
@@ -19,6 +19,7 @@ import {
   verbindeTausch,
   type TauschAngebot,
 } from "@/lib/tausch";
+import { TauschBearbeitenDialog } from "./TauschBearbeitenDialog";
 import { cn } from "@/lib/utils";
 
 function formatiereZeit(ts: number) {
@@ -54,40 +55,64 @@ function StatusChip({ status }: { status: string }) {
   );
 }
 
-/** Zeigt beiden Parteien, um welches Blatt es geht und was offeriert wurde. */
-function AngebotVorschau({ angebot }: { angebot: TauschAngebot }) {
-  const gewuenscht = BLAETTER_NACH_ID.get(angebot.blattId);
+/** Zeigt beiden Parteien, welche Wunschblätter angefragt wurden und was angeboten wurde. */
+function AngebotVorschau({ angebot, ich }: { angebot: TauschAngebot; ich: { id: string } }) {
+  const wunschBlaetter = angebot.wunschBlatter
+    .map((id) => BLAETTER_NACH_ID.get(id))
+    .filter((b): b is NonNullable<typeof b> => b !== undefined);
   const geboten = angebot.angebotBlaetter
     .map((id) => BLAETTER_NACH_ID.get(id))
     .filter((b): b is NonNullable<typeof b> => b !== undefined);
   const betrag = formatBetrag(angebot.angebotBetrag);
+  const alsAnbieter = angebot.anbieterId === ich.id;
   return (
     <div className="mx-4 mt-3 rounded-2xl bg-candy-50 p-3.5 ring-1 ring-candy-200">
       <p className="mb-2 flex flex-wrap items-baseline gap-x-1 gap-y-0.5 text-xs font-bold text-candy-700">
-        Angebot von {angebot.interessentName}
-        <span className="font-semibold text-ink-500">für {angebot.anbieterName}</span>
+        {alsAnbieter ? "Angefragt von" : "Deine Anfrage an"}{" "}
+        <span className="font-semibold text-ink-500">
+          {alsAnbieter ? angebot.interessentName : angebot.anbieterName}
+        </span>
       </p>
-      {gewuenscht && (
+      {wunschBlaetter.length > 0 && (
         <div className="flex items-center gap-3">
           <img
-            src={gewuenscht.bild}
+            src={wunschBlaetter[0].bild}
             alt=""
             className="h-14 w-14 shrink-0 rounded-xl bg-white object-contain ring-1 ring-cream-200"
           />
           <div className="min-w-0">
-            <p className="truncate text-sm font-bold text-ink-800">{blattTitel(gewuenscht)}</p>
+            <p className="truncate text-sm font-bold text-ink-800">{blattTitel(wunschBlaetter[0])}</p>
             <p className="text-xs font-semibold text-ink-600">
-              {gewuenscht.groesse} · Nr. {gewuenscht.nummer}
-              {gewuenscht.jahr !== null ? <> · Jahr {gewuenscht.jahr}</> : null} · {gewuenscht.farbe}
+              {wunschBlaetter[0].groesse} · Nr. {wunschBlaetter[0].nummer}
+              {wunschBlaetter[0].jahr !== null ? <> · Jahr {wunschBlaetter[0].jahr}</> : null} ·{" "}
+              {wunschBlaetter[0].farbe}
             </p>
-            <p className="text-xs font-semibold text-ink-500">Gewünschtes Blatt</p>
+            <p className="text-xs font-semibold text-ink-500">
+              {wunschBlaetter.length === 1
+                ? "Gewünschtes Blatt"
+                : `Gewünscht zusammen mit ${wunschBlaetter.length - 1} weiteren Blättern`}
+            </p>
           </div>
+        </div>
+      )}
+      {wunschBlaetter.length > 1 && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {wunschBlaetter.slice(1).map((b) => (
+            <span
+              key={b.id}
+              title={`${blattTitel(b)} · ${b.groesse}${b.jahr !== null ? ` · ${b.jahr}` : ""}`}
+              className="flex items-center gap-1.5 rounded-full bg-white py-1 pl-1 pr-2.5 text-xs font-bold text-ink-700 ring-1 ring-cream-300"
+            >
+              <img src={b.bild} alt="" className="h-5 w-5 rounded-full bg-white object-contain" />
+              {blattTitel(b)}
+            </span>
+          ))}
         </div>
       )}
       {(geboten.length > 0 || betrag) && (
         <div className="mt-2.5 border-t border-candy-200/60 pt-2.5">
           <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-ink-600">
-            {angebot.interessentName} bietet an:
+            {alsAnbieter ? `${angebot.interessentName} bietet an:` : "Du bietest an:"}
           </p>
           <div className="flex flex-wrap gap-1.5">
             {geboten.map((b) => (
@@ -125,6 +150,7 @@ export function PostfachApp() {
   const [text, setText] = useState("");
   const [sendet, setSendet] = useState(false);
   const [nurOffen, setNurOffen] = useState(false);
+  const [bearbeiten, setBearbeiten] = useState(false);
   const endeRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -220,7 +246,7 @@ export function PostfachApp() {
           </button>
         </div>
         {angebote.map((a) => {
-          const blatt = BLAETTER_NACH_ID.get(a.blattId);
+          const blatt = BLAETTER_NACH_ID.get(a.wunschBlatter[0] ?? a.blattId);
           const alsAnbieter = a.anbieterId === ich.id;
           const gegenueber = alsAnbieter ? a.interessentName : a.anbieterName;
           return (
@@ -240,12 +266,18 @@ export function PostfachApp() {
               />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-xs font-bold text-ink-800">
-                  {alsAnbieter ? "Angebot von " : "Geboten: "}
+                  {alsAnbieter ? "Angefragt von " : "Deine Anfrage an "}
                   {gegenueber}
                 </span>
                 <span className="block truncate text-[10px] font-semibold text-ink-600">
                   {blatt ? blattTitel(blatt) : "Blatt"}
+                  {a.wunschBlatter.length > 1 ? ` +${a.wunschBlatter.length - 1}` : ""}
                 </span>
+                {a.runde > 1 && (
+                  <span className="block text-[9px] font-semibold text-ink-500">
+                    Runde {a.runde}
+                  </span>
+                )}
               </span>
               <StatusChip status={a.status} />
             </button>
@@ -271,7 +303,7 @@ export function PostfachApp() {
               </p>
             </div>
 
-            <AngebotVorschau angebot={gewaehlt} />
+            <AngebotVorschau angebot={gewaehlt} ich={ich} />
 
             <div className="max-h-[430px] space-y-2 overflow-y-auto bg-cream-50/60 p-4">
               {nachrichten.length === 0 && (
@@ -281,6 +313,19 @@ export function PostfachApp() {
               )}
               {nachrichten.map((m) => {
                 const vonMir = m.autor === ich.name || m.autor === "";
+                if (m.typ === "aenderung") {
+                  return (
+                    <p
+                      key={m.id}
+                      className="mx-auto max-w-[90%] rounded-2xl bg-yellow-50 px-3 py-2 text-xs font-semibold text-amber-800 ring-1 ring-yellow-200"
+                    >
+                      {m.text}
+                      <span className="mt-0.5 block text-right text-[9px] font-bold text-amber-600">
+                        {formatiereZeit(m.erstelltAm)}
+                      </span>
+                    </p>
+                  );
+                }
                 return (
                   <div
                     key={m.id}
@@ -302,58 +347,68 @@ export function PostfachApp() {
               <div ref={endeRef} />
             </div>
 
-            {gewaehlt.status === "offen" && (
-              <>
-                <form
-                  className="flex items-end gap-2 border-t border-candy-100 bg-white p-3"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    void sende(gewaehlt);
-                  }}
-                >
-                  <input
-                    value={text}
-                    onChange={(e) => setText(e.target.value.slice(0, 500))}
-                    placeholder="Nachricht an den Tauschpartner …"
-                    className="w-full flex-1 rounded-2xl border border-cream-300 bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-candy-400 focus:ring-2 focus:ring-candy-200"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!text.trim() || sendet}
-                    aria-label="Senden"
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-candy-500 text-white shadow-sm hover:bg-candy-600 disabled:opacity-40"
-                  >
-                    <Send className="h-4 w-4" />
-                  </button>
-                </form>
-
-                {gewaehlt.anbieterId === ich.id ? (
-                  <div className="flex gap-2 border-t border-candy-100 bg-white px-4 py-3">
-                    <button
-                      type="button"
-                      onClick={() => void setzeAngebotStatus(gewaehlt.id, "abgelehnt")}
-                      className="flex items-center gap-1.5 rounded-full bg-peach-100 px-4 py-2 text-sm font-bold text-peach-600 hover:bg-peach-200"
+                {gewaehlt.status === "offen" && (
+                  <>
+                    <div className="flex flex-wrap items-center gap-2 border-t border-candy-100 bg-white px-4 py-3">
+                      <button
+                        type="button"
+                        onClick={() => void setzeAngebotStatus(gewaehlt.id, "storniert")}
+                        className="flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-bold text-ink-600 ring-1 ring-cream-300 hover:bg-cream-100"
+                      >
+                        <Repeat2 className="h-4 w-4" /> Tausch beenden
+                      </button>
+                      {gewaehlt.anbieterId === ich.id && (
+                        <button
+                          type="button"
+                          onClick={() => void setzeAngebotStatus(gewaehlt.id, "abgelehnt")}
+                          className="flex items-center gap-1.5 rounded-full bg-peach-100 px-4 py-2 text-sm font-bold text-peach-600 hover:bg-peach-200"
+                        >
+                          <X className="h-4 w-4" /> Ablehnen
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setBearbeiten(true)}
+                        className="ml-auto flex items-center gap-1.5 rounded-full bg-candy-500 px-4 py-2 text-sm font-bold text-white hover:bg-candy-600"
+                      >
+                        <Pencil className="h-4 w-4" /> Angebot bearbeiten
+                      </button>
+                    </div>
+                    <form
+                      className="flex items-end gap-2 border-t border-candy-100 bg-white p-3"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        void sende(gewaehlt);
+                      }}
                     >
-                      <X className="h-4 w-4" /> Ablehnen
-                    </button>
-                  </div>
-                ) : (
-                  <div className="border-t border-candy-100 bg-white px-4 py-3">
-                    <button
-                      type="button"
-                      onClick={() => void setzeAngebotStatus(gewaehlt.id, "storniert")}
-                      className="rounded-full bg-white px-4 py-2 text-sm font-bold text-ink-600 ring-1 ring-cream-300 hover:bg-cream-100"
-                    >
-                      <Repeat2 className="mr-1 inline h-4 w-4" /> Stornieren
-                    </button>
-                  </div>
+                      <input
+                        value={text}
+                        onChange={(e) => setText(e.target.value.slice(0, 500))}
+                        placeholder="Nur Nachricht – z. B. über Porto, Zustand oder eine Frage …"
+                        className="w-full flex-1 rounded-2xl border border-cream-300 bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-candy-400 focus:ring-2 focus:ring-candy-200"
+                      />
+                      <button
+                        type="submit"
+                        disabled={!text.trim() || sendet}
+                        aria-label="Senden"
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-candy-500 text-white shadow-sm hover:bg-candy-600 disabled:opacity-40"
+                      >
+                        <Send className="h-4 w-4" />
+                      </button>
+                    </form>
+                  </>
                 )}
-              </>
-            )}
             {gewaehlt.status !== "offen" && (
               <div className="border-t border-candy-100 bg-white px-4 py-3 text-xs font-semibold text-ink-600">
                 Dieser Thread ist abgeschlossen.
               </div>
+            )}
+            {bearbeiten && gewaehlt.status === "offen" && (
+              <TauschBearbeitenDialog
+                angebot={gewaehlt}
+                ich={ich}
+                aufSchliessen={() => setBearbeiten(false)}
+              />
             )}
           </>
         )}

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Repeat2, Search, Send, X } from "lucide-react";
+import { ArrowRight, Repeat2, Search, Send, X } from "lucide-react";
 import { Gift, Sparkles, Star } from "lucide-react";
 import type { Blatt } from "@/lib/types";
 import { BLAETTER_NACH_ID, blattTitel } from "@/lib/blaetter";
@@ -21,6 +21,8 @@ export function TauschDialog({ blattId, anbieter, aufSchliessen }: Props) {
   useStoreVersion();
   const benutzer = getSession();
   const blatt = BLAETTER_NACH_ID.get(blattId);
+  const [stufe, setStufe] = useState(1);
+  const [wunschAuswahl, setWunschAuswahl] = useState<string[]>([blattId]);
   const [auswahl, setAuswahl] = useState<string[]>([]);
   const [suche, setSuche] = useState("");
   const [betrag, setBetrag] = useState("");
@@ -28,75 +30,58 @@ export function TauschDialog({ blattId, anbieter, aufSchliessen }: Props) {
   const [gesendet, setGesendet] = useState(false);
   const [fehler, setFehler] = useState<string | null>(null);
 
-  const eigene = useMemo(() => {
-    if (!benutzer) return [];
-    return Object.keys(benutzer.statuses)
-      .filter((id) => benutzer.statuses[id]?.includes("own"))
-      .map((id) => BLAETTER_NACH_ID.get(id))
-      .filter((b): b is NonNullable<typeof b> => b !== undefined);
-  }, [benutzer]);
-
-  /* Treffer: welche meiner Tauschblätter wünscht der Anbieter? Und umgekehrt –
-     was bietet ER, das auf MEINER Wunschliste steht? (Paket-Tausch, Porto sparen) */
   const anbieterDaten = useMemo(
     () => listBenutzer().find((u) => u.id === anbieter.id) ?? null,
     [anbieter.id],
   );
-  const wunschIds = useMemo(
-    () =>
-      new Set(
-        anbieterDaten
-          ? Object.keys(anbieterDaten.statuses).filter((id) => anbieterDaten.statuses[id]?.includes("wish"))
-          : [],
-      ),
-    [anbieterDaten],
-  );
-  const treffer = useMemo(() => {
-    if (!benutzer || !anbieterDaten) return { meine: [] as Blatt[], seine: [] as Blatt[] };
-    const seineWunsch = new Set(
-      Object.keys(anbieterDaten.statuses).filter((id) => anbieterDaten.statuses[id]?.includes("wish")),
-    );
-    const meineWunsch = new Set(
-      Object.keys(benutzer.statuses).filter((id) => benutzer.statuses[id]?.includes("wish")),
-    );
-    const meine = eigene
-      .filter((b) => seineWunsch.has(b.id))
-      .sort((a, b) => blattTitel(a).localeCompare(blattTitel(b), "de", { numeric: true }));
-    const seine = Object.keys(anbieterDaten.statuses)
-      .filter((id) => anbieterDaten.statuses[id]?.includes("offer") && meineWunsch.has(id))
+
+  /* Stufe 1: alles, was der Anbieter zum Tauschen markiert hat. */
+  const anbieterBlaetter = useMemo(() => {
+    if (!anbieterDaten) return [];
+    return Object.keys(anbieterDaten.statuses)
+      .filter((id) => anbieterDaten.statuses[id]?.includes("offer"))
       .map((id) => BLAETTER_NACH_ID.get(id))
       .filter((b): b is Blatt => !!b)
       .sort((a, b) => blattTitel(a).localeCompare(blattTitel(b), "de", { numeric: true }));
-    return { meine, seine };
-  }, [benutzer, anbieterDaten, eigene]);
+  }, [anbieterDaten]);
+
+  /* Stufe 2: NUR Blätter, die ich selbst zum Tauschen markiert habe. */
+  const meineTauschblaetter = useMemo(() => {
+    if (!benutzer) return [];
+    return Object.keys(benutzer.statuses)
+      .filter((id) => benutzer.statuses[id]?.includes("offer"))
+      .map((id) => BLAETTER_NACH_ID.get(id))
+      .filter((b): b is Blatt => !!b)
+      .sort((a, b) => blattTitel(a).localeCompare(blattTitel(b), "de", { numeric: true }));
+  }, [benutzer]);
+
+  /* Treffer: welche meiner Tauschblätter wünscht sich der Anbieter? Erinnerung an vorherige Einstufung. */
+  const treffer = useMemo(() => {
+    if (!benutzer || !anbieterDaten) return [] as Blatt[];
+    const seineWunsch = new Set(
+      Object.keys(anbieterDaten.statuses).filter((id) => anbieterDaten.statuses[id]?.includes("wish")),
+    );
+    return meineTauschblaetter.filter((b) => seineWunsch.has(b.id));
+  }, [benutzer, anbieterDaten, meineTauschblaetter]);
 
   function paketVorschlag() {
-    const teile = [
-      treffer.meine.length > 0
-        ? `Ich biete dir dafür: ${treffer.meine.map((b) => `„${blattTitel(b)}“`).join(", ")}.`
-        : "",
-      treffer.seine.length > 0
-        ? `Von dir interessieren mich zusätzlich: ${treffer.seine
-            .map((b) => `„${blattTitel(b)}“`)
-            .join(", ")}.`
-        : "",
-    ].filter(Boolean);
-    if (teile.length === 0) return;
-    setNachricht(`Hallo! ${teile.join(" ")} Das alles in einem Brief – spart Porto!`);
+    if (treffer.length === 0) return;
+    setNachricht(`Hallo! Ich biete dir dafür: ${treffer.map((b) => `„${blattTitel(b)}“`).join(", ")}. Das alles in einem Brief – spart Porto!`);
   }
 
   const gefiltert = useMemo(() => {
     const q = suche.trim().toLowerCase();
-    if (!q) return eigene;
-    return eigene.filter((b) =>
+    if (!q) return meineTauschblaetter;
+    return meineTauschblaetter.filter((b) =>
       `${blattTitel(b)} ${b.name ?? ""} ${b.nummer} ${b.groesse}`.toLowerCase().includes(q),
     );
-  }, [eigene, suche]);
+  }, [meineTauschblaetter, suche]);
 
   if (!blatt || !benutzer) return null;
 
   const istMein = benutzer.id === anbieter.id;
   const betragZahl = betrag.trim() === "" ? null : Number(betrag.replace(",", "."));
+  const kannWeiter = wunschAuswahl.length > 0;
   const kannSenden =
     !istMein &&
     (auswahl.length > 0 || (betragZahl !== null && !Number.isNaN(betragZahl))) &&
@@ -111,12 +96,13 @@ export function TauschDialog({ blattId, anbieter, aufSchliessen }: Props) {
     setFehler(null);
     setGesendet(true);
     await erstelleAngebot({
-      blattId,
+      blattId: wunschAuswahl[0] ?? blattId,
       anbieter,
       ich: benutzer,
       eigeneBlatter: auswahl,
       betrag: betragZahl,
       nachricht: nachricht.trim() === "" ? null : nachricht.trim(),
+      wunschBlatter: wunschAuswahl,
     });
   }
 
@@ -126,7 +112,7 @@ export function TauschDialog({ blattId, anbieter, aufSchliessen }: Props) {
       onClick={aufSchliessen}
       role="dialog"
       aria-modal="true"
-      aria-label={`Tauschangebot für ${blattTitel(blatt)}`}
+      aria-label={`Tauschanfrage bei ${anbieter.name}`}
     >
       <div
         className="animate-pop card-soft flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden"
@@ -135,10 +121,20 @@ export function TauschDialog({ blattId, anbieter, aufSchliessen }: Props) {
         <div className="flex items-center justify-between border-b border-candy-100 px-4 py-3">
           <div className="min-w-0">
             <p className="truncate font-display text-lg font-bold text-ink-800">
-              Tausch-Angebot: {blattTitel(blatt)}
+              {stufe === 1 ? "Was willst du haben?" : "Dein Gegenvorschlag"}
             </p>
             <p className="text-xs font-semibold text-ink-600">
-              Blatt von <span className="font-bold text-candy-600">{anbieter.name}</span>
+              {stufe === 1 ? (
+                <>
+                  Tausch mit <span className="font-bold text-candy-600">{anbieter.name}</span>
+                </>
+              ) : (
+                <>
+                  Wunschblätter: {wunschAuswahl.length} · (
+                  {wunschAuswahl.map((id) => { const b = BLAETTER_NACH_ID.get(id); return b ? blattTitel(b) : id; }).join(", ")}
+                  )
+                </>
+              )}
             </p>
           </div>
           <button
@@ -156,11 +152,10 @@ export function TauschDialog({ blattId, anbieter, aufSchliessen }: Props) {
               <Send className="h-6 w-6" />
             </span>
             <p className="font-display text-lg font-bold text-ink-800">
-              Dein Angebot ist raus!
+              Deine Anfrage ist raus!
             </p>
             <p className="text-sm text-ink-600">
-              Der Vorschlag liegt bei {anbieter.name}. Du findest ihn unten im Postfach – dort
-              kannst du auch chatten und Details klären.
+              {anbieter.name} kann jetzt antworten, anpassen oder ablehnen. Du findest alles unten im Postfach.
             </p>
             <div className="flex gap-2">
               <Link
@@ -182,60 +177,118 @@ export function TauschDialog({ blattId, anbieter, aufSchliessen }: Props) {
             <Repeat2 className="h-8 w-8 text-candy-300" />
             <p className="font-display text-lg font-bold text-ink-800">Das ist dein Blatt!</p>
             <p className="text-sm text-ink-600">
-              Für andere kannst du hier Angebote machen – dein Anbieter-Ansicht führst du über das
-              Postfach.
+              Für andere kannst du hier anfragen – dein Angebot verwaltest du über das Postfach.
             </p>
           </div>
+        ) : stufe === 1 ? (
+          <>
+            <div className="space-y-4 overflow-y-auto p-4">
+              <div>
+                <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-ink-600">
+                  Welche Blätter von {anbieter.name} möchtest du anfragen? (mehrere möglich)
+                </p>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {anbieterBlaetter.map((b) => {
+                    const aktiv = wunschAuswahl.includes(b.id);
+                    return (
+                      <button
+                        key={b.id}
+                        type="button"
+                        onClick={() =>
+                          setWunschAuswahl((vorher) =>
+                            aktiv
+                              ? vorher.filter((id) => id !== b.id)
+                              : [...vorher, b.id].slice(0, 20),
+                          )
+                        }
+                        aria-pressed={aktiv}
+                        className={cn(
+                          "flex items-center gap-2 rounded-2xl p-2 text-left transition-all",
+                          aktiv
+                            ? "bg-candy-500 text-white shadow-sm"
+                            : "bg-white text-ink-700 ring-1 ring-cream-300 hover:ring-candy-300",
+                        )}
+                      >
+                        <img
+                          src={b.bild}
+                          alt=""
+                          className={cn(
+                            "h-10 w-10 shrink-0 rounded-xl bg-white object-contain",
+                            aktiv ? "bg-white/20" : "",
+                          )}
+                        />
+                        <span className="line-clamp-2 flex-1 text-xs font-bold leading-4">
+                          {blattTitel(b)}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {anbieterBlaetter.length === 0 && (
+                  <p className="text-xs font-semibold text-ink-600">
+                    {anbieter.name} hat aktuell keine Blätter zum Tauschen markiert.
+                  </p>
+                )}
+                {wunschAuswahl.length > 0 && (
+                  <p className="mt-2 text-xs font-semibold text-candy-700">
+                    {wunschAuswahl.length} {wunschAuswahl.length === 1 ? "Blatt" : "Blätter"} angefragt
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center justify-between gap-2 border-t border-candy-100 px-4 py-3">
+              <button
+                type="button"
+                onClick={aufSchliessen}
+                className="rounded-full bg-white px-4 py-2 text-sm font-bold text-ink-600 ring-1 ring-cream-300 hover:bg-cream-100"
+              >
+                Abbrechen
+              </button>
+              <button
+                type="button"
+                onClick={() => setStufe(2)}
+                disabled={!kannWeiter}
+                className="flex items-center gap-1.5 rounded-full bg-candy-500 px-5 py-2 text-sm font-bold text-white shadow-sm hover:bg-candy-600 disabled:opacity-40"
+              >
+                Weiter <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
+          </>
         ) : (
           <>
             <div className="space-y-4 overflow-y-auto p-4">
-              {(treffer.meine.length > 0 || treffer.seine.length > 0 || anbieterDaten) && (
+              {treffer.length > 0 && (
                 <div className="rounded-2xl bg-mint-50 p-3 ring-1 ring-mint-200">
                   <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-emerald-700">
                     <Sparkles className="h-3.5 w-3.5" /> Passende Wünsche
                   </p>
-                  {treffer.meine.length > 0 ? (
-                    <p className="mt-1.5 text-xs font-semibold text-ink-700">
-                      Diese Blätter von dir wünscht sich {anbieter.name}:{" "}
-                      {treffer.meine.map((b) => `„${blattTitel(b)}“`).join(", ")}
-                    </p>
-                  ) : (
-                    <p className="mt-1.5 text-xs font-semibold text-ink-600">
-                      Keines deiner Tauschblätter steht bei {anbieter.name} auf der Wunschliste –
-                      vielleicht überzeugt ein Geldbetrag.
-                    </p>
-                  )}
-                  {treffer.seine.length > 0 ? (
-                    <>
-                      <p className="mt-1.5 text-xs font-semibold text-ink-700">
-                        Und du wünschst dir von ihm:{" "}
-                        {treffer.seine.map((b) => `„${blattTitel(b)}“`).join(", ")}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={paketVorschlag}
-                        className="mt-2 flex items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700"
-                      >
-                        <Gift className="h-3.5 w-3.5" /> Paket-Vorschlag in die Nachricht
-                      </button>
-                    </>
-                  ) : null}
+                  <p className="mt-1.5 text-xs font-semibold text-ink-700">
+                    Diese Blätter von dir wünscht sich {anbieter.name}:{" "}
+                    {treffer.map((b) => `„${blattTitel(b)}“`).join(", ")}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={paketVorschlag}
+                    className="mt-2 flex items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700"
+                  >
+                    <Gift className="h-3.5 w-3.5" /> Paket-Vorschlag in die Nachricht
+                  </button>
                 </div>
               )}
               <div>
                 <p className="mb-1 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-ink-600">
-                  <Search className="h-3.5 w-3.5" /> Eigene Blätter bieten (mehrere möglich)
+                  <Search className="h-3.5 w-3.5" /> Eigene Tauschblätter bieten (mehrere möglich)
                 </p>
                 <input
                   value={suche}
                   onChange={(e) => setSuche(e.target.value)}
-                  placeholder={`Suche in deinen ${eigene.length} eigenen Blättern …`}
+                  placeholder={`Suche in deinen ${meineTauschblaetter.length} Tauschblättern …`}
                   className="w-full rounded-full border border-cream-300 bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-candy-400 focus:ring-2 focus:ring-candy-200"
                 />
-                <div className="mt-2 flex flex-wrap gap-1.5">
+                <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {gefiltert.map((b) => {
                     const aktiv = auswahl.includes(b.id);
-                    const aufWunsch = wunschIds.has(b.id);
+                    const aufWunsch = treffer.some((t) => t.id === b.id);
                     return (
                       <button
                         key={b.id}
@@ -254,7 +307,7 @@ export function TauschDialog({ blattId, anbieter, aufSchliessen }: Props) {
                             : undefined
                         }
                         className={cn(
-                          "flex items-center gap-1.5 rounded-full py-1 pl-1 pr-2.5 text-xs font-bold transition-all",
+                          "flex items-center gap-2 rounded-2xl p-2 text-left transition-all",
                           aktiv
                             ? "bg-candy-500 text-white shadow-sm"
                             : "bg-white text-ink-700 ring-1 ring-cream-300 hover:ring-candy-300",
@@ -266,9 +319,12 @@ export function TauschDialog({ blattId, anbieter, aufSchliessen }: Props) {
                         <img
                           src={b.bild}
                           alt=""
-                          className={cn("h-6 w-6 shrink-0 rounded-full object-contain", aktiv ? "bg-white/20" : "bg-white")}
+                          className={cn(
+                            "h-10 w-10 shrink-0 rounded-xl bg-white object-contain",
+                            aktiv ? "bg-white/20" : "",
+                          )}
                         />
-                        <span className="line-clamp-2 max-w-36 text-left leading-4">
+                        <span className="line-clamp-2 flex-1 text-xs font-bold leading-4">
                           {blattTitel(b)}
                           {aufWunsch && (
                             <Star className="ml-1 inline h-3 w-3 -translate-y-px fill-yellow-400 text-yellow-400" />
@@ -278,7 +334,7 @@ export function TauschDialog({ blattId, anbieter, aufSchliessen }: Props) {
                     );
                   })}
                   {gefiltert.length === 0 && (
-                    <p className="text-xs font-semibold text-ink-600">
+                    <p className="col-span-full text-xs font-semibold text-ink-600">
                       Keine passenden Blätter gefunden.
                     </p>
                   )}
@@ -292,7 +348,7 @@ export function TauschDialog({ blattId, anbieter, aufSchliessen }: Props) {
 
               <div>
                 <p className="mb-1 text-xs font-bold uppercase tracking-wide text-ink-600">
-                  Oder Geldbetrag (€)
+                  Oder Geldbetrag (€) – auch statt Blättern möglich
                 </p>
                 <input
                   value={betrag}
@@ -326,18 +382,27 @@ export function TauschDialog({ blattId, anbieter, aufSchliessen }: Props) {
             </div>
 
             <div className="flex items-center justify-between gap-2 border-t border-candy-100 px-4 py-3">
-              <p className="text-xs font-semibold text-ink-600">
-                {auswahl.length === 0
-                  ? "Wähle Blätter oder einen Betrag."
-                  : `${auswahl.length} Blatt${auswahl.length === 1 ? "" : "er"}${betragZahl ? " + " + betragZahl.toLocaleString("de-DE", { style: "currency", currency: "EUR" }) : ""}`}
-              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setStufe(1)}
+                  className="rounded-full bg-white px-4 py-2 text-sm font-bold text-ink-600 ring-1 ring-cream-300 hover:bg-cream-100"
+                >
+                  Zurück
+                </button>
+                <p className="hidden text-xs font-semibold text-ink-600 sm:block">
+                  {auswahl.length === 0
+                    ? "Wähle Blätter oder einen Betrag."
+                    : `${auswahl.length} Blatt${auswahl.length === 1 ? "" : "er"}${betragZahl ? " + " + betragZahl.toLocaleString("de-DE", { style: "currency", currency: "EUR" }) : ""}`}
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => void absenden()}
                 disabled={!kannSenden}
                 className="rounded-full bg-candy-500 px-5 py-2 text-sm font-bold text-white shadow-sm hover:bg-candy-600 disabled:opacity-40"
               >
-                <Send className="mr-1 inline h-4 w-4" /> Angebot senden
+                <Send className="mr-1 inline h-4 w-4" /> Anfrage senden
               </button>
             </div>
           </>

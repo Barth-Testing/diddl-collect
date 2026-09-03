@@ -17,6 +17,11 @@ export type TauschAngebot = {
   status: TauschAngebotStatus;
   erstelltAm: number;
   aktualisiertAm: number;
+  /** Alle vom Interessenten angefragten Blätter des Anbieters (Rework). I
+   *  mmer mindestens [blattId]. */
+  wunschBlatter: string[];
+  /** Verhandlungsrunde (Rework). */
+  runde: number;
 };
 
 export type PostNachricht = {
@@ -25,6 +30,8 @@ export type PostNachricht = {
   autor: string;
   text: string;
   erstelltAm: number;
+  /** 'chat' = normale Nachricht, 'aenderung' = System-Diff (Rework). */
+  typ: "chat" | "aenderung";
 };
 
 type AngebotReihe = {
@@ -40,6 +47,8 @@ type AngebotReihe = {
   status: string;
   erstellt_am: string;
   aktualisiert_am: string;
+  wunsch_blatter?: string[] | null;
+  runde?: number | null;
 };
 
 type PostReihe = {
@@ -48,6 +57,7 @@ type PostReihe = {
   autor: string;
   text: string;
   erstellt_am: string;
+  typ?: string | null;
 };
 
 type Db = {
@@ -197,6 +207,9 @@ function sortierePost(post: PostNachricht[]) {
 }
 
 function alsAngebot(reihe: AngebotReihe): TauschAngebot {
+  const wunsch = Array.isArray(reihe.wunsch_blatter) && reihe.wunsch_blatter.length > 0
+    ? reihe.wunsch_blatter
+    : [reihe.blatt_id];
   return {
     id: reihe.id,
     blattId: reihe.blatt_id,
@@ -210,6 +223,8 @@ function alsAngebot(reihe: AngebotReihe): TauschAngebot {
     status: (reihe.status as TauschAngebotStatus) ?? "offen",
     erstelltAm: new Date(reihe.erstellt_am).getTime(),
     aktualisiertAm: new Date(reihe.aktualisiert_am || reihe.erstellt_am).getTime(),
+    wunschBlatter: wunsch,
+    runde: typeof reihe.runde === "number" && reihe.runde > 0 ? reihe.runde : 1,
   };
 }
 
@@ -220,6 +235,7 @@ function alsPost(reihe: PostReihe): PostNachricht {
     autor: reihe.autor,
     text: reihe.text,
     erstelltAm: new Date(reihe.erstellt_am).getTime(),
+    typ: reihe.typ === "aenderung" ? "aenderung" : "chat",
   };
 }
 
@@ -258,15 +274,24 @@ async function ladeAlles(supabase: ReturnType<typeof getSupabase<Db>>): Promise<
       return true;
     }
   }
-  const [a, p] = await Promise.all([
-    supabase
+  let angebotsAbfrage = await supabase
+    .from("tauschangebot")
+    .select("*, wunsch_blatter, runde")
+    .order("erstellt_am", { ascending: false })
+    .limit(500);
+  if (angebotsAbfrage.error) {
+    /* Rework-Spalten fehlen noch -> alte Struktur laden. */
+    angebotsAbfrage = await supabase
       .from("tauschangebot")
       .select("*")
       .order("erstellt_am", { ascending: false })
-      .limit(500),
+      .limit(500);
+  }
+  const [a, p] = await Promise.all([
+    Promise.resolve(angebotsAbfrage),
     supabase
       .from("postnachrichten")
-      .select("id, angebot_id, autor, text, erstellt_am")
+      .select("id, angebot_id, autor, text, erstellt_am, typ")
       .order("id", { ascending: false })
       .limit(MAX_POST),
   ]);
@@ -314,7 +339,7 @@ async function flushQueueInnere() {
   if (!token) return;
   const cache = ladeCache();
   for (const a of [...cache.offen]) {
-    const { data, error } = await rpcAufruf<AngebotReihe>("angebot_anlegen", {
+    let { data, error } = await rpcAufruf<AngebotReihe>("angebot_anlegen", {
       p_token: token,
       p_id: a.id,
       p_blatt_id: a.blattId,
@@ -323,7 +348,20 @@ async function flushQueueInnere() {
       p_angebot_blatter: a.angebotBlaetter,
       p_angebot_betrag: a.angebotBetrag,
       p_nachricht: a.nachricht,
+      p_wunsch_blatter: a.wunschBlatter,
     });
+    if (error && istAlteSignatur(error)) {
+      ({ data, error } = await rpcAufruf<AngebotReihe>("angebot_anlegen", {
+        p_token: token,
+        p_id: a.id,
+        p_blatt_id: a.blattId,
+        p_anbieter_id: a.anbieterId,
+        p_anbieter_name: a.anbieterName,
+        p_angebot_blatter: a.angebotBlaetter,
+        p_angebot_betrag: a.angebotBetrag,
+        p_nachricht: a.nachricht,
+      }));
+    }
     if (!error && data) {
       const frisch = ladeCache();
       frisch.offen = frisch.offen.filter((x) => x.id !== a.id);
@@ -453,8 +491,14 @@ export async function erstelleAngebot(eingabe: {
   eigeneBlatter: string[];
   betrag: number | null;
   nachricht: string | null;
+  /** Alle Blätter, die der Interessent vom Anbieter anfragt (Rework). */
+  wunschBlatter?: string[];
 }): Promise<TauschAngebot> {
   return serialisiere(async () => {
+  const wunsch =
+    eingabe.wunschBlatter && eingabe.wunschBlatter.length > 0
+      ? eingabe.wunschBlatter
+      : [eingabe.blattId];
   const angebot: TauschAngebot = {
     id: `t-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     blattId: eingabe.blattId,
@@ -468,6 +512,8 @@ export async function erstelleAngebot(eingabe: {
     status: "offen",
     erstelltAm: Date.now(),
     aktualisiertAm: Date.now(),
+    wunschBlatter: wunsch,
+    runde: 1,
   };
   merkeAngebot({ ...angebot, status: "offen" });
   const cache = ladeCache();
@@ -475,7 +521,7 @@ export async function erstelleAngebot(eingabe: {
   speichereCache(cache);
 
   const token = holSessionToken();
-  const { data, error } = token
+  let { data, error } = token
     ? await rpcAufruf<AngebotReihe>("angebot_anlegen", {
         p_token: token,
         p_id: angebot.id,
@@ -485,8 +531,22 @@ export async function erstelleAngebot(eingabe: {
         p_angebot_blatter: angebot.angebotBlaetter,
         p_angebot_betrag: angebot.angebotBetrag,
         p_nachricht: angebot.nachricht,
+        p_wunsch_blatter: wunsch,
       })
     : { data: null, error: null };
+  /* RPC-Signatur noch alt (Spalten fehlen) -> Fallback ohne p_wunsch_blatter. */
+  if (error && istAlteSignatur(error)) {
+    ({ data, error } = await rpcAufruf<AngebotReihe>("angebot_anlegen", {
+      p_token: token,
+      p_id: angebot.id,
+      p_blatt_id: angebot.blattId,
+      p_anbieter_id: angebot.anbieterId,
+      p_anbieter_name: angebot.anbieterName,
+      p_angebot_blatter: angebot.angebotBlaetter,
+      p_angebot_betrag: angebot.angebotBetrag,
+      p_nachricht: angebot.nachricht,
+    }));
+  }
   if (!error && data) {
     const frisch = ladeCache();
     frisch.offen = frisch.offen.filter((x) => x.id !== angebot.id);
@@ -495,6 +555,57 @@ export async function erstelleAngebot(eingabe: {
     tabellenBereit = true;
   }
   return angebot;
+  });
+}
+
+/** PGRST202 = Funktion mit dieser Signatur unbekannt (alte DB-Struktur). */
+function istAlteSignatur(error: { code?: string; message?: string } | null | undefined) {
+  return error?.code === "PGRST202" || (error?.message ?? "").includes("not found");
+}
+
+/** Gegenvorschlag/Turn-Update: schreibt den überarbeiteten Stand und eine
+ *  Diff-Zusammenfassung als System-Nachricht. */
+export async function aendereAngebot(
+  angebotId: string,
+  stand: {
+    wunschBlatter: string[];
+    gebeBlatter: string[];
+    betrag: number | null;
+    nachricht: string | null;
+    diff: string;
+  },
+): Promise<{ ok: boolean; fehler?: string }> {
+  return serialisiere(async () => {
+    const cache = ladeCache();
+    const idx = cache.angebote.findIndex((a) => a.id === angebotId);
+    const token = holSessionToken();
+    if (!token) return { ok: false, fehler: "Bitte erst anmelden." };
+    const { data, error } = await rpcAufruf<unknown>("angebot_aendern", {
+      p_token: token,
+      p_angebot_id: angebotId,
+      p_wunsch_blatter: stand.wunschBlatter,
+      p_gebe_blatter: stand.gebeBlatter,
+      p_angebot_betrag: stand.betrag,
+      p_nachricht: stand.nachricht,
+      p_diff: stand.diff.slice(0, 500),
+    });
+    if (error) {
+      if (error.code === "PGRST202" || (error.message ?? "").includes("not found")) {
+        return { ok: false, fehler: "Die Bearbeitung von Tausch-Angeboten ist auf diesem Gerät noch nicht verfügbar. Bitte später erneut versuchen." };
+      }
+      if (error.code === "42501") {
+        return { ok: false, fehler: error.message || "Dieser Tausch ist nicht mehr offen." };
+      }
+      if (error.code === "28000") {
+        return { ok: false, fehler: "Sitzung abgelaufen – bitte neu anmelden." };
+      }
+      return { ok: false, fehler: error.message || "Das hat nicht geklappt." };
+    }
+    if (idx >= 0 && data) {
+      cache.angebote[idx] = alsAngebot(data as unknown as AngebotReihe);
+      speichereCache(cache);
+    }
+    return { ok: true };
   });
 }
 
@@ -528,6 +639,7 @@ export async function sendePost(angebotId: string, autor: string, text: string) 
     autor: autor.trim() || "Anonyme Knuddelmaus",
     text: sauber.slice(0, 500),
     erstelltAm: Date.now(),
+    typ: "chat",
   };
   const cache = ladeCache();
   cache.postOffen.push(nachricht);
