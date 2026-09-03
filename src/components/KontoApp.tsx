@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDownUp, AtSign, Check, Camera, Egg, Heart, Images, KeyRound, LogIn, PartyPopper, Repeat2, Share2, ShieldCheck, Trash2, UserPlus, UserRound, BookOpenCheck } from "lucide-react";
+import { ArrowDownUp, AtSign, Check, Camera, Egg, Eye, EyeOff, Heart, Images, KeyRound, LogIn, PartyPopper, Repeat2, Share2, ShieldCheck, Trash2, UserPlus, UserRound, BookOpenCheck } from "lucide-react";
 import { BLAETTER, BLAETTER_NACH_ID, blattTitel, sortiereSammlung, uebersichtSammlung, type SammlungSortierung } from "@/lib/blaetter";
 import { aenderePasswort, entferneEmail, getSession, holSessionToken, leseEigeneEmail, login, logout, register, setAnzahlDelta, setBlock, setBeweis, setFavorit, setStatus, setzeEmail, setzeTauschInfo, speichereBeweisFoto, zaehle } from "@/lib/store";
 import type { Benutzer, Blatt, Status, TauschInfo } from "@/lib/types";
@@ -650,6 +650,7 @@ function KontoEinrichten({ benutzer }: { benutzer: Benutzer }) {
   const [alt, setAlt] = useState("");
   const [neu, setNeu] = useState("");
   const [neu2, setNeu2] = useState("");
+  const [pwSichtbar, setPwSichtbar] = useState(false);
   const [pwInfo, setPwInfo] = useState<string | null>(null);
   const [pwFehler, setPwFehler] = useState<string | null>(null);
   const [keinServer, setKeinServer] = useState(false);
@@ -794,34 +795,64 @@ function KontoEinrichten({ benutzer }: { benutzer: Benutzer }) {
           </label>
           <label className="block">
             <span className="text-xs font-bold uppercase tracking-wide text-ink-600">Altes Passwort</span>
-            <input
-              value={alt}
-              onChange={(e) => setAlt(e.target.value)}
-              type="password"
-              autoComplete="current-password"
-              className="mt-1 w-full rounded-2xl border border-cream-300 bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-candy-400 focus:ring-2 focus:ring-candy-200"
-            />
+            <div className="relative mt-1">
+              <input
+                value={alt}
+                onChange={(e) => setAlt(e.target.value)}
+                type={pwSichtbar ? "text" : "password"}
+                autoComplete="current-password"
+                className="w-full rounded-2xl border border-cream-300 bg-white px-3 py-2 pr-10 text-sm font-semibold outline-none focus:border-candy-400 focus:ring-2 focus:ring-candy-200"
+              />
+              <button
+                type="button"
+                tabIndex={-1}
+                onClick={() => setPwSichtbar((v) => !v)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-ink-400 hover:text-ink-600"
+              >
+                {pwSichtbar ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </label>
           <label className="block">
             <span className="text-xs font-bold uppercase tracking-wide text-ink-600">Neues Passwort</span>
-            <input
-              value={neu}
-              onChange={(e) => setNeu(e.target.value)}
-              type="password"
-              autoComplete="new-password"
-              placeholder="Min. 4 Zeichen"
-              className="mt-1 w-full rounded-2xl border border-cream-300 bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-candy-400 focus:ring-2 focus:ring-candy-200"
-            />
+            <div className="relative mt-1">
+              <input
+                value={neu}
+                onChange={(e) => setNeu(e.target.value)}
+                type={pwSichtbar ? "text" : "password"}
+                autoComplete="new-password"
+                placeholder="Min. 4 Zeichen"
+                className="w-full rounded-2xl border border-cream-300 bg-white px-3 py-2 pr-10 text-sm font-semibold outline-none focus:border-candy-400 focus:ring-2 focus:ring-candy-200"
+              />
+              <button
+                type="button"
+                tabIndex={-1}
+                onClick={() => setPwSichtbar((v) => !v)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-ink-400 hover:text-ink-600"
+              >
+                {pwSichtbar ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </label>
           <label className="block">
             <span className="text-xs font-bold uppercase tracking-wide text-ink-600">Neues Passwort wiederholen</span>
-            <input
-              value={neu2}
-              onChange={(e) => setNeu2(e.target.value)}
-              type="password"
-              autoComplete="new-password"
-              className="mt-1 w-full rounded-2xl border border-cream-300 bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-candy-400 focus:ring-2 focus:ring-candy-200"
-            />
+            <div className="relative mt-1">
+              <input
+                value={neu2}
+                onChange={(e) => setNeu2(e.target.value)}
+                type={pwSichtbar ? "text" : "password"}
+                autoComplete="new-password"
+                className="w-full rounded-2xl border border-cream-300 bg-white px-3 py-2 pr-10 text-sm font-semibold outline-none focus:border-candy-400 focus:ring-2 focus:ring-candy-200"
+              />
+              <button
+                type="button"
+                tabIndex={-1}
+                onClick={() => setPwSichtbar((v) => !v)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-ink-400 hover:text-ink-600"
+              >
+                {pwSichtbar ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </label>
         </div>
         <button
