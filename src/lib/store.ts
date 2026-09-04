@@ -186,6 +186,20 @@ function hatDirty(d: DirtyFelder = leseDirty()): boolean {
   );
 }
 
+/** Anzahl lokal geänderter, noch nicht auf den Server hochgeladener
+ *  Blatt-Schlüssel – für die Sync-Anzeige (PWA). */
+export function ungesicherteAenderungen(): number {
+  const d = leseDirty();
+  return (
+    Object.keys(d.statuses).length +
+    Object.keys(d.beweise).length +
+    Object.keys(d.favoriten).length +
+    Object.keys(d.tausch).length +
+    Object.keys(d.blocks).length +
+    Object.keys(d.anzahl).length
+  );
+}
+
 /** Vereint EIN Feld: Server-Stand ist die Basis. Dirty Schlüssel gewinnen
  *  (lokal gesetzt oder gelöscht), alle anderen bleiben Serverseitig. */
 function vereinigeFeld<T>(
@@ -396,6 +410,15 @@ function richteFocusSyncEin() {
   window.addEventListener("focus", beiSichtbar);
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") beiSichtbar();
+  });
+  /* PWA-Handy: vor dem Schließen/Weglegen noch best-effort hochladen – iOS
+     friert die App sonst ggf. vor dem nächsten Upload-Zyklus ein. */
+  const beiVersteckt = () => {
+    void pushProfil();
+  };
+  window.addEventListener("pagehide", beiVersteckt);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") beiVersteckt();
   });
 }
 richteFocusSyncEin();

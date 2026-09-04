@@ -1,28 +1,52 @@
 "use client";
 
-import { LogOut, UserCircle2 } from "lucide-react";
+import { CloudOff, LogOut, UserCircle2 } from "lucide-react";
 import Link from "next/link";
-import { getSession, logout } from "@/lib/store";
+import { getSession, holSessionToken, logout, ungesicherteAenderungen } from "@/lib/store";
 import { useStoreVersion } from "@/lib/useStoreVersion";
 
 export function HeaderBenutzer() {
   useStoreVersion();
   const benutzer = getSession();
+  const offen = ungesicherteAenderungen();
+  const unsynchronisiert = offen > 0 && !holSessionToken();
 
   if (!benutzer) {
     return (
-      <Link
-        href="/konto"
-        className="flex items-center gap-1 rounded-full bg-candy-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-candy-600"
-      >
-        <UserCircle2 className="h-3.5 w-3.5" />
-        <span className="hidden 2xl:inline">Anmelden</span>
-      </Link>
+      <div className="flex items-center gap-1">
+        {offen > 0 && (
+          <Link
+            href="/konto"
+            title={`${offen} ungespeicherte Änderungen – anmelden, um sie zu sichern`}
+            className="flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1.5 text-xs font-bold text-amber-800 hover:bg-amber-200"
+          >
+            <CloudOff className="h-3.5 w-3.5" />
+            <span className="hidden 2xl:inline">{offen} ungesichert</span>
+          </Link>
+        )}
+        <Link
+          href="/konto"
+          className="flex items-center gap-1 rounded-full bg-candy-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-candy-600"
+        >
+          <UserCircle2 className="h-3.5 w-3.5" />
+          <span className="hidden 2xl:inline">Anmelden</span>
+        </Link>
+      </div>
     );
   }
 
   return (
     <div className="flex items-center gap-1">
+      {unsynchronisiert && (
+        <Link
+          href="/konto"
+          title={`${offen} Änderungen liegen nur auf diesem Gerät – bitte neu anmelden`}
+          className="flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1.5 text-xs font-bold text-amber-800 hover:bg-amber-200"
+        >
+          <CloudOff className="h-3.5 w-3.5" />
+          <span className="hidden 2xl:inline">Nicht synchronisiert</span>
+        </Link>
+      )}
       <Link
         href="/konto"
         className="flex items-center gap-1 rounded-full bg-candy-100 px-2.5 py-1.5 text-xs font-bold text-candy-700 hover:bg-candy-200"

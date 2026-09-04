@@ -23,9 +23,17 @@ if (!assets.length) {
 }
 
 const hash = createHash("sha256").update(assets.join("\n")).digest("hex").slice(0, 8);
-const sw = readFileSync("public/sw.js", "utf8")
-  .replace("__VERSION__", "v" + hash)
-  .replace("/* __ASSETS__ */", assets.map((a) => JSON.stringify(a)).join(",\n  "));
+/* Idempotent: funktioniert sowohl mit frischem Template (__VERSION__ /
+ * __ASSETS__) als auch mit bereits gebauten Werten aus einem früheren Lauf. */
+let sw = readFileSync("public/sw.js", "utf8")
+  .replace(/const VERSION = "[^"]*";/, `const VERSION = "v${hash}";`)
+  .replace('"__VERSION__"', `"v${hash}"`);
+const assetListe = assets.map((a) => JSON.stringify(a)).join(",\n  ");
+if (sw.includes("/* __ASSETS__ */")) {
+  sw = sw.replace("/* __ASSETS__ */", assetListe);
+} else {
+  sw = sw.replace(/const PRECACHE_URLS = \[[\s\S]*?\];/, `const PRECACHE_URLS = [\n  ${assetListe}\n];`);
+}
 
 writeFileSync("public/sw.js", sw);
 writeFileSync(join(outDir, "sw.js"), sw);
