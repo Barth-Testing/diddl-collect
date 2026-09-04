@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowDownUp, Check, Heart, LogIn, Repeat2, Search, SlidersHorizontal, X } from "lucide-react";
-import { BLAETTER, DIDDLBACK_KOLLEKTIONEN, VERFÜGBARE_FARBEN, blattTitel } from "@/lib/blaetter";
+import { BLAETTER, DIDDLBACK_KOLLEKTIONEN, PIMBOLI_GENERATIONEN, VERFÜGBARE_FARBEN, blattTitel } from "@/lib/blaetter";
 import { getSession, listBenutzer, setAnzahlDelta, setBlock, setStatus } from "@/lib/store";
 import { FARBREIHENFOLGE, type Status } from "@/lib/types";
 import { BlattKarte } from "./BlattKarte";
@@ -15,13 +15,14 @@ import { cn } from "@/lib/utils";
 type Sortierung = "jahr-auf" | "jahr-ab" | "groesse" | "farbe" | "nummer" | "name";
 type StatusFilter = "Alle" | "own" | "wish" | "offer" | "none";
 
-const GROESSEN_FILTER = ["Alle Größen", "Din A4", "Din A5", "Din A6", "Relief"] as const;
+const GROESSEN_FILTER = ["Alle Größen", "Din A4", "Din A5", "Din A6", "Relief", "Pimboli"] as const;
 const JAHRE = Array.from({ length: 31 }, (_, i) => 1996 + i);
 const MODI = [
   { id: "klassisch", label: "Katalog" },
   { id: "back", label: "Diddl is Back" },
   { id: "forever", label: "Forever Edition 2016" },
   { id: "relief", label: "Reliefblätter" },
+  { id: "pimboli", label: "Pimboli" },
 ] as const;
 type Modus = (typeof MODI)[number]["id"];
 
@@ -30,6 +31,7 @@ export function KatalogApp() {
   const benutzer = getSession();
   const [modus, setModus] = useState<Modus>("klassisch");
   const [kollektion, setKollektion] = useState<string>("Alle");
+  const [pimboliGen, setPimboliGen] = useState<string>("alle");
   const [sort, setSort] = useState<Sortierung>("jahr-auf");
   const [groesse, setGroesse] = useState<string>("Alle Größen");
   const [farbe, setFarbe] = useState<string>("Alle Farben");
@@ -62,6 +64,7 @@ export function KatalogApp() {
     const liste = BLAETTER.filter((b) => {
       if (neu ? b.kategorie !== modus : b.kategorie) return false;
       if (modus === "back" && kollektion !== "Alle" && b.kollektionId !== kollektion) return false;
+      if (modus === "pimboli" && pimboliGen !== "alle" && b.kollektionId !== pimboliGen) return false;
       if (groesse !== "Alle Größen" && b.groesse !== groesse) return false;
       if (farbe !== "Alle Farben" && b.farbe !== farbe) return false;
       if (!neu && ((b.jahr ?? 0) < jahrVon || (b.jahr ?? 0) > jahrBis)) return false;
@@ -118,7 +121,7 @@ export function KatalogApp() {
         break;
     }
     return sortiert;
-  }, [modus, kollektion, sort, groesse, farbe, statusFilter, suche, jahrVon, jahrBis, statuses]);
+  }, [modus, kollektion, pimboliGen, sort, groesse, farbe, statusFilter, suche, jahrVon, jahrBis, statuses]);
 
   const ownGesamt = Object.values(statuses).filter((s) => s.includes("own")).length;
 
@@ -271,6 +274,36 @@ export function KatalogApp() {
               )}
             >
               {k.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {modus === "pimboli" && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setPimboliGen("alle")}
+            className={cn(
+              "rounded-full px-3.5 py-1.5 text-xs font-bold transition-all",
+              pimboliGen === "alle"
+                ? "bg-sky-400 text-white shadow-sm"
+                : "bg-white text-ink-700 ring-1 ring-cream-300 hover:ring-sky-300",
+            )}
+          >
+            Alle Generationen
+          </button>
+          {PIMBOLI_GENERATIONEN.map((g) => (
+            <button
+              key={g.id}
+              onClick={() => setPimboliGen(g.id)}
+              className={cn(
+                "rounded-full px-3.5 py-1.5 text-xs font-bold transition-all",
+                pimboliGen === g.id
+                  ? "bg-sky-400 text-white shadow-sm"
+                  : "bg-white text-ink-700 ring-1 ring-cream-300 hover:ring-sky-300",
+              )}
+            >
+              {g.label}
             </button>
           ))}
         </div>

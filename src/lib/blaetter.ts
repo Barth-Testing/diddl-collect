@@ -1,9 +1,23 @@
 import rohDaten from "../data/blaetter.json";
 import diddlBackRoh from "../data/diddl-back.json";
 import reliefRoh from "../data/relief.json";
+import pimboliRoh from "../data/pimboli.json";
 import { FARBREIHENFOLGE, type Benutzer, type Blatt } from "./types";
 
-export const BLAETTER: Blatt[] = [...(rohDaten as Blatt[]), ...(diddlBackRoh as Blatt[]), ...(reliefRoh as Blatt[])];
+export const BLAETTER: Blatt[] = [...(rohDaten as Blatt[]), ...(diddlBackRoh as Blatt[]), ...(reliefRoh as Blatt[]), ...(pimboliRoh as Blatt[])];
+
+export const PIMBOLI_GENERATIONEN: { id: string; label: string }[] = [
+  { id: "gen1", label: "Gen 1 · 2002" },
+  { id: "gen2", label: "Gen 2 · 2003" },
+  { id: "gen3", label: "Gen 3 · 2003" },
+  { id: "gen4", label: "Gen 4 · 2003" },
+  { id: "gen5", label: "Gen 5 · 2003" },
+  { id: "gen6", label: "Gen 6 · 2003" },
+  { id: "gen7", label: "Gen 7 · 2004" },
+  { id: "gen8", label: "Gen 8 · 2004" },
+  { id: "gen9", label: "Gen 9 · 2004" },
+  { id: "gen10", label: "Gen 10 · 2004" },
+];
 
 export const DIDDLBACK_KOLLEKTIONEN: { id: string; label: string }[] = [
   { id: "fr", label: "Diddl is Back Frankreich" },
@@ -44,9 +58,14 @@ export function farbBadge(farbe: string) {
 /** Einheitliche Benamung aller Blätter: <Jahr>-<DIN-Größe>-<Nummer>.
  *  Bei Diddl-is-Back-Sammlungen wird die Kollektion ergänzt, weil dort die
  *  Nummerierung je Kollektion neu beginnt (sonst gäbe es Dopplungen).
+ *  Pimboliblätter heißen <Jahr>-Pimboli-<Motivcode> (z. B. 2002-Pimboli-m1.1).
  *  Reliefblätter haben weder Jahr noch DIN-Größe: Relief-<Nummer>. */
 export function blattTitel(blatt: Blatt): string {
   if (blatt.kategorie === "relief") return `Relief-${blatt.nummer}`;
+  if (blatt.kategorie === "pimboli" && blatt.code) {
+    const basis = blatt.jahr ? `${blatt.jahr}-Pimboli-${blatt.code}` : `Pimboli-${blatt.code}`;
+    return blatt.kollektion ? `${basis} (${blatt.kollektion})` : basis;
+  }
   const basis = `${blatt.jahr}-${blatt.groesse}-${blatt.nummer}`;
   return blatt.kollektion ? `${basis} (${blatt.kollektion})` : basis;
 }

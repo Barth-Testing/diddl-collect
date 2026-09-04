@@ -1,7 +1,7 @@
 export type Blatt = {
   id: string;
   nummer: number;
-  groesse: "Din A4" | "Din A5" | "Din A6" | "Relief";
+  groesse: "Din A4" | "Din A5" | "Din A6" | "Relief" | "Pimboli";
   bild: string;
   bildGross: string;
   name: string | null;
@@ -11,9 +11,10 @@ export type Blatt = {
   kategorie?: string;
   kollektion?: string;
   kollektionId?: string;
+  code?: string;
 };
 
-export const GROESSEN = ["Din A4", "Din A5", "Din A6", "Relief"] as const;
+export const GROESSEN = ["Din A4", "Din A5", "Din A6", "Relief", "Pimboli"] as const;
 export type Groesse = (typeof GROESSEN)[number];
 
 export const FARBREIHENFOLGE = [

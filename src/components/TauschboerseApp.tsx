@@ -328,6 +328,7 @@ function Filterleiste({
         <option value="Din A5">Din A5</option>
         <option value="Din A6">Din A6</option>
         <option value="Relief">Relief</option>
+        <option value="Pimboli">Pimboli</option>
       </select>
       <select
         value={farbe}
