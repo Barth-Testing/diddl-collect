@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Repeat2, Search, Send, X } from "lucide-react";
+import { ArrowRight, Check, Heart, Repeat2, Search, Send, X } from "lucide-react";
 import { Gift, Sparkles, Star } from "lucide-react";
 import type { Blatt } from "@/lib/types";
 import { BLAETTER_NACH_ID, blattTitel } from "@/lib/blaetter";
@@ -187,9 +187,26 @@ export function TauschDialog({ blattId, anbieter, aufSchliessen }: Props) {
                 <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-ink-600">
                   Welche Blätter von {anbieter.name} möchtest du anfragen? (mehrere möglich)
                 </p>
+                <p className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-semibold text-ink-600">
+                  <span className="flex items-center gap-1">
+                    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-white">
+                      <Check className="h-2.5 w-2.5" strokeWidth={3.5} />
+                    </span>
+                    Hast du schon
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-berry-400 text-white">
+                      <Heart className="h-2.5 w-2.5 fill-current" />
+                    </span>
+                    Auf deiner Wunschliste
+                  </span>
+                </p>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {anbieterBlaetter.map((b) => {
                     const aktiv = wunschAuswahl.includes(b.id);
+                    const meine = benutzer?.statuses[b.id] ?? [];
+                    const habIch = meine.includes("own");
+                    const aufWunsch = meine.includes("wish");
                     return (
                       <button
                         key={b.id}
@@ -202,6 +219,13 @@ export function TauschDialog({ blattId, anbieter, aufSchliessen }: Props) {
                           )
                         }
                         aria-pressed={aktiv}
+                        title={[
+                          blattTitel(b),
+                          habIch ? "– hast du schon" : "",
+                          aufWunsch ? "– auf deiner Wunschliste" : "",
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
                         className={cn(
                           "flex items-center gap-2 rounded-2xl p-2 text-left transition-all",
                           aktiv
@@ -209,14 +233,32 @@ export function TauschDialog({ blattId, anbieter, aufSchliessen }: Props) {
                             : "bg-white text-ink-700 ring-1 ring-cream-300 hover:ring-candy-300",
                         )}
                       >
-                        <img
-                          src={b.bild}
-                          alt=""
-                          className={cn(
-                            "h-10 w-10 shrink-0 rounded-xl bg-white object-contain",
-                            aktiv ? "bg-white/20" : "",
+                        <span className="relative shrink-0">
+                          <img
+                            src={b.bild}
+                            alt=""
+                            className={cn(
+                              "h-10 w-10 rounded-xl bg-white object-contain",
+                              aktiv ? "bg-white/20" : "",
+                            )}
+                          />
+                          {aufWunsch && (
+                            <span
+                              title="Auf deiner Wunschliste"
+                              className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-berry-400 text-white ring-2 ring-white"
+                            >
+                              <Heart className="h-2.5 w-2.5 fill-current" />
+                            </span>
                           )}
-                        />
+                          {habIch && (
+                            <span
+                              title="Hast du schon in deiner Sammlung"
+                              className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-white ring-2 ring-white"
+                            >
+                              <Check className="h-2.5 w-2.5" strokeWidth={3.5} />
+                            </span>
+                          )}
+                        </span>
                         <span className="line-clamp-2 flex-1 text-xs font-bold leading-4">
                           {blattTitel(b)}
                         </span>
