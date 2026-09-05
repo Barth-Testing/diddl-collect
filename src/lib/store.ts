@@ -311,6 +311,7 @@ let tauschUnterstuetzt = true;
 let supporterUnterstuetzt = true;
 let blocksUnterstuetzt = true;
 let anzahlUnterstuetzt = true;
+let profilPatchUnterstuetzt = true;
 
 function istSchemaFehler(error: { code?: string } | null | undefined) {
   return error?.code === "PGRST204" || error?.code === "42703";
@@ -398,19 +399,29 @@ export function erzwingeSync() {
     });
 }
 
-/* Cross-Device-Sync: Sobald die Seite geladen wird oder das Browser-Tab wieder
-   in den Vordergrund kommt (Fokus/Visibility), wird ein frischer Server-Download
-   erzwungen. Damit werden Markierungen, die auf einem anderen Gerät gesetzt wurden
-   (z. B. PC), hier sofort sichtbar – der 12h-TTL-Cache wird dabei umgangen. */
+/* Cross-Device-Sync: Das eigene Konto wird leichtgewichtig (eine Zeile, wenige
+   KB) bei Fokus/Sichtbarkeit, bei Netz-Rückkehr und alle 20 s im sichtbaren
+   Tab vom Server nachgezogen – Markierungen anderer Geräte erscheinen damit
+   fast von selbst. Der schwere Voll-Sync (alle Konten, ~1 MB) bleibt für
+   Start/Rangliste reserviert. */
 let focusSyncEingerichtet = false;
+let letzterEigenSync = 0;
+const EIGEN_SYNC_MS = 15000;
 function richteFocusSyncEin() {
   if (typeof window === "undefined" || focusSyncEingerichtet) return;
   focusSyncEingerichtet = true;
-  const beiSichtbar = () => erzwingeSync();
+  const beiSichtbar = () => {
+    void syncEigenesKonto(true);
+  };
   window.addEventListener("focus", beiSichtbar);
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") beiSichtbar();
   });
+  window.addEventListener("online", beiSichtbar);
+  window.setInterval(() => {
+    if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+    void syncEigenesKonto(false);
+  }, 20000);
   /* PWA-Handy: vor dem Schließen/Weglegen noch best-effort hochladen – iOS
      friert die App sonst ggf. vor dem nächsten Upload-Zyklus ein. */
   const beiVersteckt = () => {
@@ -423,6 +434,7 @@ function richteFocusSyncEin() {
 }
 richteFocusSyncEin();
 erzwingeSync();
+void syncEigenesKonto(true);
 
 /** Server-Konten in den Cache laden, lokale Änderungen hochladen. */
 async function syncMitServer() {
@@ -512,13 +524,52 @@ async function ladeEigeneZeile(id: string): Promise<ProfileRow | null> {
  *  Snapshots parallel, sodass der neueste lokale Stand gewinnt. */
 let uploadKette: Promise<void> = Promise.resolve();
 
+/** Teilt EIN Feld anhand der dirty-Schlüssel in "setzen" und "löschen".
+ *  Nur diese Schlüssel verlassen das Gerät – der Server wendet sie atomar an. */
+function teileFeld<T>(lokFeld: Record<string, T> | null | undefined, schluessel: Record<string, true>) {
+  const setzen: Record<string, T> = {};
+  const loeschen: string[] = [];
+  const l = lokFeld ?? {};
+  for (const k of Object.keys(schluessel)) {
+    if (k in l) setzen[k] = l[k];
+    else loeschen.push(k);
+  }
+  return { setzen, loeschen };
+}
+
+/** Server-Stand des eigenen Kontos in den Cache übernehmen (ohne lokale,
+ *  noch unbestätigte Änderungen zu verlieren). Schreibt nur bei echter
+ *  Änderung, damit Polling keine Render-Schleifen auslöst. */
+function schreibeEigenesKontoInCache(server: Benutzer) {
+  if (typeof window === "undefined") return;
+  const users = loadUsers();
+  const idx = users.findIndex((u) => u.id === server.id);
+  const lokNeu = idx >= 0 ? users[idx] : undefined;
+  if (!server.passwort && lokNeu?.passwort) server.passwort = lokNeu.passwort;
+  const gemergt = mergeEigenesKonto(lokNeu, server, leseDirty());
+  if (lokNeu?.supporter) gemergt.supporter = true;
+  if (idx >= 0 && JSON.stringify(users[idx]) === JSON.stringify(gemergt)) return;
+  if (idx >= 0) users[idx] = gemergt;
+  else users.push(gemergt);
+  saveUsers(users);
+}
+
+/** Profil-JSON (ohne Passwort, z. B. aus profil_patch/anmelden) mit dem
+ *  lokalen Passwort zu einem Benutzer ergänzen. */
+function benutzerAusProfilJson(profil: ProfileRow, fallbackPasswort: string, supporterAlt?: boolean): Benutzer {
+  const b = zeileZuBenutzer({ ...profil, passwort: fallbackPasswort });
+  if (supporterAlt) b.supporter = true;
+  return b;
+}
+
 /** Die eigene Sammlung serverseitig sichern – via Session-Token (RPC).
- *  Liest IMMER den aktuellen lokalen Stand und holt den frischen Server-Stand
- *  des eigenen Kontos. Der Merge ist pro Schlüssel "dirty"-gesteuert (nur
- *  gezielte lokale Änderungen gewinnen, alles andere kommt vom Server), damit
- *  andere Geräte nichts verlieren. Uploads laufen serialisiert (Mutex), und
- *  Fehlschläge werden einmalig erneut versucht. Bei Erfolg wird der Cache auf
- *  den gemergten Stand aktualisiert und dirty zurückgesetzt. */
+ *  Bevorzugt den atomaren Teil-Patch (profil_patch): nur dirty Schlüssel
+ *  werden gesendet und serverseitig in EINEM Update angewendet – zwei Geräte
+ *  mit unterschiedlichen Schlüsseln überschreiben sich damit nie mehr.
+ *  Fehlt die Funktion (SQL noch nicht ausgeführt, PGRST202/42703), fällt der
+ *  Upload auf den bisherigen Komplett-Abgleich (profil_schreiben) zurück.
+ *  Uploads laufen serialisiert (Mutex). Bei Erfolg wird der Cache auf den
+ *  Server-Stand gebracht und dirty zurückgesetzt. */
 function pushProfil(): Promise<boolean> {
   const token = holSessionToken();
   if (!token) return Promise.resolve(true);
@@ -530,6 +581,59 @@ function pushProfil(): Promise<boolean> {
     /* lok UND dirty zum selben Zeitpunkt lesen – so bleibt der Upload auch bei
        parallel eintreffenden neuen Markierungen konsistent. */
     const dirty = leseDirty();
+    const dirtyLeer =
+      Object.keys(dirty.statuses).length === 0 &&
+      Object.keys(dirty.beweise).length === 0 &&
+      Object.keys(dirty.favoriten).length === 0 &&
+      Object.keys(dirty.tausch).length === 0 &&
+      Object.keys(dirty.blocks).length === 0 &&
+      Object.keys(dirty.anzahl).length === 0;
+    if (dirtyLeer) return;
+    if (profilPatchUnterstuetzt) {
+      const s = teileFeld(lok.statuses, dirty.statuses);
+      const bw = teileFeld(lok.beweise, dirty.beweise);
+      const f = teileFeld(lok.favoriten, dirty.favoriten);
+      const t = teileFeld(lok.tausch, dirty.tausch);
+      const bl = teileFeld(lok.blocks, dirty.blocks);
+      const az = teileFeld(lok.anzahl, dirty.anzahl);
+      for (let versuch = 0; versuch < 3; versuch++) {
+        const { data, error } = await rpcAufruf<{ profil?: ProfileRow }>("profil_patch", {
+          p_token: token,
+          p_statuses: s.setzen,
+          p_statuses_loesch: s.loeschen,
+          p_beweise: bw.setzen,
+          p_beweise_loesch: bw.loeschen,
+          p_favoriten: f.setzen,
+          p_favoriten_loesch: f.loeschen,
+          p_tausch: t.setzen,
+          p_tausch_loesch: t.loeschen,
+          p_blocks: bl.setzen,
+          p_blocks_loesch: bl.loeschen,
+          p_anzahl: az.setzen,
+          p_anzahl_loesch: az.loeschen,
+        });
+        if (!error) {
+          entferneDirtySchluessel(dirty);
+          if (data?.profil) {
+            schreibeEigenesKontoInCache(
+              benutzerAusProfilJson(data.profil, lok.passwort, lok.supporter === true),
+            );
+          }
+          return;
+        }
+        if (istSessionFehler(error.code)) {
+          loescheSession();
+          emitChange();
+          return;
+        }
+        if (error.code === "PGRST202" || error.code === "42703" || (error.message ?? "").includes("not found")) {
+          profilPatchUnterstuetzt = false;
+          break;
+        }
+        if (versuch < 2) await new Promise((r) => setTimeout(r, 800));
+      }
+      if (profilPatchUnterstuetzt) return;
+    }
     const server = await ladeEigeneZeile(id);
     const senden: Benutzer = server ? mergeEigenesKonto(lok, zeileZuBenutzer(server), dirty) : lok;
     /* Neuere Spalten erst senden, wenn die SQL-Funktion sie kennt – sonst
@@ -546,6 +650,7 @@ function pushProfil(): Promise<boolean> {
       });
       if (!error) {
         entferneDirtySchluessel(dirty);
+        schreibeEigenesKontoInCache(senden);
         return;
       }
       if (istSessionFehler(error.code)) {
@@ -563,6 +668,28 @@ function pushProfil(): Promise<boolean> {
   });
   uploadKette = letzter.catch(() => {});
   return letzter.then(() => true);
+}
+
+/** Leichtgewichtiger Eigen-Sync (eine Zeile, wenige KB): erst anstehende
+ *  eigene Änderungen hochladen, dann den Server-Stand des eigenen Kontos
+ *  nachziehen. Wird bei Fokus/Sichtbarkeit, Netz-Rückkehr und alle 20 s im
+ *  sichtbaren Tab aufgerufen – fremde Geräte-Änderungen erscheinen damit
+ *  automatisch, ohne manuellen Refresh oder Neuanmeldung. */
+async function syncEigenesKonto(erzwingen = false): Promise<void> {
+  if (typeof window === "undefined") return;
+  const id = sessionNutzerId();
+  const token = holSessionToken();
+  if (!id || !token || !supabaseKonfiguriert()) return;
+  if (!erzwingen && Date.now() - letzterEigenSync < EIGEN_SYNC_MS) return;
+  letzterEigenSync = Date.now();
+  try {
+    if (hatDirty()) await pushProfil();
+    const zeile = await ladeEigeneZeile(id);
+    if (!zeile) return;
+    schreibeEigenesKontoInCache(zeileZuBenutzer(zeile));
+  } catch {
+    /* Best-effort – der nächste Zyklus versucht es erneut. */
+  }
 }
 
 export function listBenutzer(): Benutzer[] {
