@@ -313,8 +313,11 @@ let blocksUnterstuetzt = true;
 let anzahlUnterstuetzt = true;
 let profilPatchUnterstuetzt = true;
 
+/** 42501 = Spalte/Grant nicht lesbar (z. B. blocks/anzahl noch gesperrt) –
+ *  genauso behandeln wie eine fehlende Spalte: Spalte aus der Abfrage nehmen
+ *  und erneut versuchen, statt den ganzen Sync still platzen zu lassen. */
 function istSchemaFehler(error: { code?: string } | null | undefined) {
-  return error?.code === "PGRST204" || error?.code === "42703";
+  return error?.code === "PGRST204" || error?.code === "42703" || error?.code === "42501";
 }
 
 /** Spaltenliste ohne die optionalen Spalten, die (noch) nicht in der DB existieren. */

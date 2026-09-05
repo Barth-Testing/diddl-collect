@@ -1,12 +1,12 @@
 /* Knuddelblätter Service Worker – Version wird beim Build automatisch generiert */
-const VERSION = "v00de3ea4";
+const VERSION = "vfcb78d4e";
 const PRECACHE = "knuddel-pre-" + VERSION;
 const RUNTIME = "knuddel-run-" + VERSION;
 const PRECACHE_URLS = [
-  "/_next/static/RC7bmOWdLbecu6nFL6GKy/_buildManifest.js",
-  "/_next/static/RC7bmOWdLbecu6nFL6GKy/_clientMiddlewareManifest.js",
-  "/_next/static/RC7bmOWdLbecu6nFL6GKy/_ssgManifest.js",
-  "/_next/static/chunks/09gancv5qaapm.js",
+  "/_next/static/GfpEm4mZPCeShFOZN9d_4/_buildManifest.js",
+  "/_next/static/GfpEm4mZPCeShFOZN9d_4/_clientMiddlewareManifest.js",
+  "/_next/static/GfpEm4mZPCeShFOZN9d_4/_ssgManifest.js",
+  "/_next/static/chunks/07fppnsiisdw4.js",
   "/_next/static/chunks/0cz1d0mv5g_q7.js",
   "/_next/static/chunks/0fk74ezekkqax.js",
   "/_next/static/chunks/0jvhpaew_uadu.js",
