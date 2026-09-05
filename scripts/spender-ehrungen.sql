@@ -31,3 +31,7 @@ end $$;
 insert into public.spender_ehrungen (name)
 select 'Stephanie D.'
 where not exists (select 1 from public.spender_ehrungen where name = 'Stephanie D.');
+
+insert into public.spender_ehrungen (name)
+select 'Benjamin G.'
+where not exists (select 1 from public.spender_ehrungen where name = 'Benjamin G.');
