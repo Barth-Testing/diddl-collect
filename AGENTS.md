@@ -11,6 +11,25 @@
 > 5. **Verify before finishing.** After any change run `npm run lint` and `npm run build`; if something cannot be verified locally, say so explicitly instead of assuming it works.
 > 6. **If in doubt, ask.** When a change could affect live users, ask the user before proceeding rather than guessing.
 
+> ## ⚠️ SYNC-REGRESSION 05.09.2026 – DARF NIE WIEDER PASSIEREN
+> Cross-Device-Sync (Markierungen auf Handy → PC) war **schon einmal funktional** und wurde durch einen späteren Patch **kaputt gemacht** – monatelang unbemerkt, weil der Fehler still verschluckt wurde. Symptome damals: Markierung auf Gerät A → Gerät B sieht sie **nicht** nach Refresh; erst **Neuanmeldung** zieht sie nach. Zusammenfassung zur Wiedererkennung + Verhinderung:
+>
+> ### Wurzelursache (Haupt-Problem)
+> - Die App liest `profile` per **direktem SELECT** (`ladeProfileZeilen`/`ladeEigeneZeile` in `src/lib/store.ts`). Irgendein Härtungs-Patch hat **Column-Level-Grants** für `profile.blocks` und `profile.anzahl` gegenüber `anon` **revociert** → SELECT antwortete mit `42501 permission denied`.
+> - `ladeProfileZeilen`/`ladeEigeneZeile` prüften nur `PGRST204`/`42703` → `42501` galt als "kein Fehler, einfach nichts laden" → **jeder** Server-Download (Sync bei Start/Fokus/Polling) lief ins Leere.
+> - **Nur** die Login-RPC `anmelden` (security definer) umging die Sperre → darum wirkte nur Neuanmeldung. Klassisches "stiller Totalschaden": kein Crash, keine Fehlermeldung, nur nie aktuelle Daten.
+> - Fix: `scripts/lese-rechte-fix.sql` (`grant select (blocks/anzahl) on public.profile to anon;`) + `istSchemaFehler` behandelt `42501` jetzt als "Spalte entfernen & retry".
+>
+> ### Nebenschauplatz (ebenfalls gefixt)
+> - `public/sw.js` (Service Worker) cachete **alle** GET-Requests cache-first – auch die Supabase-Downloads. Upload/Login (POST) liefen live, Downloads kamen aus dem SW-Cache → identische Symptomatik. Fix: fremde Origins (außer `diddl-exchange.de`) werden nie gecacht.
+>
+> ### Guardrails für JEDE Schema-/Grant-Änderung (daraus lernen!)
+> 1. **NIEMALS** `revoke select` auf Spalten, die die App direkt liest: `profile.statuses/beweise/favoriten/tausch/blocks/anzahl/supporter/id/name/created_at`. Nur `email` ist absichtlich privat (lesbar via `lese_eigene_email`). Eine `revoke select (x)`-Migration muss immer durch ein Gegen-Grant-Skript im Repo dokumentiert werden.
+> 2. **Nach jeder Härtung den Lese-Pfad testen**, nicht nur den Schreib-Pfad: `curl` mit anon-Key `select=<spalten>` auf `/rest/v1/profile` muss 200 liefern. Ein `42501` auf einer App-Spalte = sofortiger, stiller Sync-Tod.
+> 3. Fehler in Sync-Pfaden **nie still schlucken**: `ladeProfileZeilen`/`ladeEigeneZeile` müssen bei Fehlern entweder sinnvoll fallen back (Spalte entfernen/retry) oder sichtbar loggen – ein `return null;` ohne Log ist eine Daten-Bombe.
+> 4. Regressionstest vor jedem Deploy, der Store/Sync/Supabase anfasst: Gerät A markiert Blatt → Gerät B (frische Seite, KEIN Login) muss die Markierung ohne Neuanmeldung sehen (Fokus oder ≤20 s Polling). Wenn nur Re-Login hilft → Lese-Pfad ist kaputt.
+> 5. Cross-Device-Uploads: nur **dirty Schlüssel** atomar patchen (`profil_patch`, `scripts/profil-patch.sql`) – kein Komplett-Object-Overwrite (`profil_schreiben` nur als Fallback), sonst überschreibt Last-Writer-Wins fremde Änderungen.
+
 ## Git / Deploy / Credentials
 
 - Remote: `https://github.com/Barth-Testing/diddl-collect.git` (branch `main`). Push to main triggers an automatic Cloudflare Pages deploy (~2 min).
