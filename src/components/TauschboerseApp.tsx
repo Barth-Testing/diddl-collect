@@ -4,11 +4,11 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeftRight, Heart, Users } from "lucide-react";
-import { BLAETTER_NACH_ID, blattTitel } from "@/lib/blaetter";
+import { BLAETTER_NACH_ID, blattTitel, katalogBlattId } from "@/lib/blaetter";
 import { getSession, listBenutzer, zaehle } from "@/lib/store";
 import { useStoreVersion } from "@/lib/useStoreVersion";
 import { subscribeTausch, verbindeTausch } from "@/lib/tausch";
-import { aktuelleBlattId, type Blatt, type TauschInfo } from "@/lib/types";
+import { type Blatt, type TauschInfo } from "@/lib/types";
 import { TauschDialog } from "./TauschDialog";
 import { cn } from "@/lib/utils";
 
@@ -83,7 +83,7 @@ export function TauschboerseApp() {
       const z = zaehle(u);
       for (const [id, statuse] of Object.entries(u.statuses)) {
         if (!statuse.includes("offer")) continue;
-        const blattId = aktuelleBlattId(id);
+        const blattId = katalogBlattId(id);
         const blatt = BLAETTER_NACH_ID.get(blattId);
         if (!blatt) continue;
         const gruppe = map.get(blattId) ?? { blattId, blatt, anbieter: [] };

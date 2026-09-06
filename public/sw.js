@@ -1,21 +1,17 @@
 /* Knuddelblätter Service Worker – Version wird beim Build automatisch generiert */
-const VERSION = "vfcb78d4e";
+const VERSION = "vb95b06f5";
 const PRECACHE = "knuddel-pre-" + VERSION;
 const RUNTIME = "knuddel-run-" + VERSION;
 const PRECACHE_URLS = [
-  "/_next/static/GfpEm4mZPCeShFOZN9d_4/_buildManifest.js",
-  "/_next/static/GfpEm4mZPCeShFOZN9d_4/_clientMiddlewareManifest.js",
-  "/_next/static/GfpEm4mZPCeShFOZN9d_4/_ssgManifest.js",
-  "/_next/static/chunks/07fppnsiisdw4.js",
   "/_next/static/chunks/0cz1d0mv5g_q7.js",
   "/_next/static/chunks/0fk74ezekkqax.js",
+  "/_next/static/chunks/0hq6sp-vbe9l2.js",
   "/_next/static/chunks/0jvhpaew_uadu.js",
   "/_next/static/chunks/19mx3mg6lkumu.js",
   "/_next/static/chunks/1h4q8jsg6lak-.js",
   "/_next/static/chunks/1i5c_p_-auy0b.js",
-  "/_next/static/chunks/1w9-yraz3-omb.js",
-  "/_next/static/chunks/1y06mxdejrk3l.js",
   "/_next/static/chunks/2b8m0froc9y7h.js",
+  "/_next/static/chunks/2g8fp4n3zfeg7.js",
   "/_next/static/chunks/2osv-gnrgzp4c.js",
   "/_next/static/chunks/2y5ns0fnp24ib.js",
   "/_next/static/chunks/2zo1toppmyq3-.css",
@@ -23,7 +19,7 @@ const PRECACHE_URLS = [
   "/_next/static/chunks/36lm--m0zwqtj.js",
   "/_next/static/chunks/38lg0--wh-keh.js",
   "/_next/static/chunks/3ayxudn1ei3iz.js",
-  "/_next/static/chunks/3b7-pcf5gwyc-.js",
+  "/_next/static/chunks/3kq54xc2_okoe.js",
   "/_next/static/chunks/3tcog6nkeugog.js",
   "/_next/static/chunks/3yp2ehg9t7vtp.js",
   "/_next/static/chunks/3zgd8ube1f6b9.js",
@@ -35,7 +31,10 @@ const PRECACHE_URLS = [
   "/_next/static/media/7f11d98043fdedc9-s.2c8-7nzo1jf9r.woff2",
   "/_next/static/media/d8cb5ab3660140cd-s.2demiz2t05dx4.woff2",
   "/_next/static/media/e6d00ff86ef9e699-s.1vcas2uk12q5a.woff2",
-  "/_next/static/media/fae90444fefcda8c-s.403cfnf7b-1vb.woff2"
+  "/_next/static/media/fae90444fefcda8c-s.403cfnf7b-1vb.woff2",
+  "/_next/static/sIagWL7QEIztyfJgYJQHD/_buildManifest.js",
+  "/_next/static/sIagWL7QEIztyfJgYJQHD/_clientMiddlewareManifest.js",
+  "/_next/static/sIagWL7QEIztyfJgYJQHD/_ssgManifest.js"
 ];
 
 self.addEventListener("install", (event) => {

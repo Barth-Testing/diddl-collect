@@ -2,9 +2,40 @@ import rohDaten from "../data/blaetter.json";
 import diddlBackRoh from "../data/diddl-back.json";
 import reliefRoh from "../data/relief.json";
 import pimboliRoh from "../data/pimboli.json";
-import { FARBREIHENFOLGE, type Benutzer, type Blatt } from "./types";
+import { ALTE_BLATT_IDS, FARBREIHENFOLGE, normalisiereStatus, type Benutzer, type Blatt, type Status } from "./types";
 
 export const BLAETTER: Blatt[] = [...(rohDaten as Blatt[]), ...(diddlBackRoh as Blatt[]), ...(reliefRoh as Blatt[]), ...(pimboliRoh as Blatt[])];
+
+/** Katalog-Blatt-ID für einen Nutzer-Daten-Schlüssel. Alte
+ *  Sammelverzeichnis-IDs (A5-463…/A6-229…) werden auf ihre
+ *  Diddl-is-Back-ID umgelegt – ABER nur, solange kein Blatt mit der alten ID
+ *  (wieder) im Katalog existiert. Neue klassische Blätter (z. B. A6-230,
+ *  2006) verwenden die alten IDs erneut; dann ist die ID KEINE Alt-ID mehr
+ *  und darf nicht remappt werden – sonst wandern deren Markierungen auf das
+ *  Diddl-is-Back-Blatt und die Karte wirkt "nicht markierbar". */
+export function katalogBlattId(id: string): string {
+  const alt = ALTE_BLATT_IDS[id];
+  return alt && !BLAETTER_NACH_ID.has(id) ? alt : id;
+}
+
+/** Wie normalisiereStatuses (types.ts), aber mit katalogbewusstem Remap:
+ *  alte IDs gewinnen nur, wenn sie nicht als Katalog-Blatt existieren. */
+export function normalisiereStatusesKatalog(roh: Record<string, unknown> | null | undefined): Record<string, Status[]> {
+  const out: Record<string, Status[]> = {};
+  for (const [id, wert] of Object.entries(roh ?? {})) {
+    const liste = normalisiereStatus(wert);
+    if (liste.length === 0) continue;
+    out[katalogBlattId(id)] = liste;
+  }
+  return out;
+}
+
+/** Wie remappeBlattSchluessel (types.ts), aber mit katalogbewusstem Remap. */
+export function remappeBlattSchluesselKatalog<T>(roh: Record<string, T> | null | undefined): Record<string, T> {
+  const out: Record<string, T> = {};
+  for (const [id, wert] of Object.entries(roh ?? {})) out[katalogBlattId(id)] = wert;
+  return out;
+}
 
 export const PIMBOLI_GENERATIONEN: { id: string; label: string }[] = [
   { id: "gen1", label: "Gen 1 · 2002" },
@@ -34,7 +65,6 @@ export const BLAETTER_NACH_ID = new Map(BLAETTER.map((b) => [b.id, b]));
 export const VERFÜGBARE_FARBEN = FARBREIHENFOLGE.filter((f) =>
   BLAETTER.some((b) => b.farbe === f),
 );
-
 export function farbBadge(farbe: string) {
   const map: Record<string, string> = {
     Weiß: "bg-white text-ink-700 ring-1 ring-cream-300",

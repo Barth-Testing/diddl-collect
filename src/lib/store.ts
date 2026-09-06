@@ -1,5 +1,5 @@
 import type { Benutzer, Status, TauschInfo } from "./types";
-import { normalisiereStatuses, remappeBlattSchluessel } from "./types";
+import { normalisiereStatusesKatalog, remappeBlattSchluesselKatalog } from "./blaetter";
 import { getSupabase, hashPasswort, rpcAufruf, supabaseKonfiguriert } from "./supabase";
 
 const USERS_KEY = "diddlcollect:benutzer";
@@ -104,12 +104,12 @@ function loadUsers(): Benutzer[] {
       (u) =>
         ({
           ...u,
-          statuses: normalisiereStatuses(u.statuses),
-          beweise: remappeBlattSchluessel(u.beweise ?? {}),
-          favoriten: remappeBlattSchluessel(u.favoriten ?? {}),
-          tausch: remappeBlattSchluessel(u.tausch ?? {}),
-          blocks: remappeBlattSchluessel(u.blocks ?? {}),
-          anzahl: remappeBlattSchluessel(u.anzahl ?? {}),
+          statuses: normalisiereStatusesKatalog(u.statuses),
+          beweise: remappeBlattSchluesselKatalog(u.beweise ?? {}),
+          favoriten: remappeBlattSchluesselKatalog(u.favoriten ?? {}),
+          tausch: remappeBlattSchluesselKatalog(u.tausch ?? {}),
+          blocks: remappeBlattSchluesselKatalog(u.blocks ?? {}),
+          anzahl: remappeBlattSchluesselKatalog(u.anzahl ?? {}),
           supporter: u.supporter === true,
         }) as Benutzer,
     );
@@ -252,12 +252,12 @@ function zeileZuBenutzer(zeile: ProfileRow): Benutzer {
     name: zeile.name,
     passwort: zeile.passwort,
     createdAt: new Date(zeile.created_at).getTime(),
-    statuses: normalisiereStatuses(zeile.statuses),
-    beweise: remappeBlattSchluessel(zeile.beweise ?? {}),
-    favoriten: remappeBlattSchluessel(zeile.favoriten ?? {}),
-    tausch: remappeBlattSchluessel(zeile.tausch ?? {}),
-    blocks: remappeBlattSchluessel(zeile.blocks ?? {}),
-    anzahl: remappeBlattSchluessel(zeile.anzahl ?? {}),
+    statuses: normalisiereStatusesKatalog(zeile.statuses),
+    beweise: remappeBlattSchluesselKatalog(zeile.beweise ?? {}),
+    favoriten: remappeBlattSchluesselKatalog(zeile.favoriten ?? {}),
+    tausch: remappeBlattSchluesselKatalog(zeile.tausch ?? {}),
+    blocks: remappeBlattSchluesselKatalog(zeile.blocks ?? {}),
+    anzahl: remappeBlattSchluesselKatalog(zeile.anzahl ?? {}),
     supporter: zeile.supporter === true,
   };
 }
@@ -993,7 +993,7 @@ export function setStatus(blattId: string, status: Status, aktiv: boolean) {
   const id = sessionNutzerId();
   const user = users.find((u) => u.id === id);
   if (!user) return;
-  const statuses = normalisiereStatuses(user.statuses);
+  const statuses = normalisiereStatusesKatalog(user.statuses);
   const eintrag = statuses[blattId] ?? [];
   const neu = aktiv
     ? [...new Set([...eintrag, status])]
