@@ -198,7 +198,7 @@ export function SammlerProfilApp() {
         </div>
       )}
 
-      <SammlerKarussell benutzer={benutzer} titel={`${benutzer.name}s Lieblingsblätter`} />
+      <SammlerKarussell key={benutzer.id} benutzer={benutzer} titel={`${benutzer.name}s Lieblingsblätter`} />
 
       {wunschliste.length > 0 && (
         <div className="card-soft p-5">

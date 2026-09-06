@@ -249,7 +249,8 @@ async function ladeRaum(
     const { data: ids } = await supabase
       .from("nachrichten")
       .select("id")
-      .eq("raum", raum);
+      .eq("raum", raum)
+      .limit(MAX_NACHRICHTEN);
     if (ids) {
       const vorhanden = new Set(ids.map((r: { id: number }) => String(r.id)));
       const cache = ladeCache();

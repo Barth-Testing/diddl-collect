@@ -312,6 +312,14 @@ let supporterUnterstuetzt = true;
 let blocksUnterstuetzt = true;
 let anzahlUnterstuetzt = true;
 let profilPatchUnterstuetzt = true;
+/* Datenvolumen: updated_at (SQL scripts/updated-at-sync.sql) erlaubt einen
+   Mini-Check statt des vollen JSONB-Downloads beim Eigen-Poll. */
+let updatedAtUnterstuetzt = true;
+let letzterEigenerUpdatedAt: string | null = null;
+/* Voll-Sync (alle Konten, ~2,6 MB) höchstens alle 30 Minuten – z. B. Rangliste. */
+const VOLL_SYNC_MS = 30 * 60 * 1000;
+/* Ohne updated_at-Spalte wird der Eigen-Poll auf 2 Minuten gedrosselt. */
+const EIGEN_SYNC_FALLBACK_MS = 120_000;
 
 /** 42501 = Spalte/Grant nicht lesbar (z. B. blocks/anzahl noch gesperrt) –
  *  genauso behandeln wie eine fehlende Spalte: Spalte aus der Abfrage nehmen
@@ -383,13 +391,16 @@ function starteSync() {
     });
 }
 
-/** Server-Sync sofort erzwingen (ignoriert den 12h-TTL) – z. B. für die
- *  Rangliste, damit neu registrierte Konten ohne Verzögerung sichtbar sind.
+/** Voll-Sync gedrosselt: höchstens alle 30 Minuten (z. B. Rangliste), damit
+ *  neu registrierte Konten ohne Verzögerung sichtbar sind – ohne bei jedem
+ *  Besuch die komplette Konten-Tabelle (~2,6 MB) herunterzuladen.
  *  Merge-Logik bleibt identisch zu syncMitServer (lokale Daten gehen nicht
  *  verloren, nur das eigene Konto wird hochgeladen). */
-export function erzwingeSync() {
+export function syncBeiBedarf() {
   if (typeof window === "undefined") return;
   if (!supabaseKonfiguriert() || syncLaeuft) return;
+  const letzte = Number(window.localStorage.getItem(SYNCZEIT_KEY) ?? "0");
+  if (Date.now() - letzte < VOLL_SYNC_MS) return;
   syncLaeuft = true;
   syncMitServer()
     .catch(() => {})
@@ -402,11 +413,12 @@ export function erzwingeSync() {
     });
 }
 
-/* Cross-Device-Sync: Das eigene Konto wird leichtgewichtig (eine Zeile, wenige
-   KB) bei Fokus/Sichtbarkeit, bei Netz-Rückkehr und alle 20 s im sichtbaren
-   Tab vom Server nachgezogen – Markierungen anderer Geräte erscheinen damit
-   fast von selbst. Der schwere Voll-Sync (alle Konten, ~1 MB) bleibt für
-   Start/Rangliste reserviert. */
+/* Cross-Device-Sync: Das eigene Konto wird leichtgewichtig bei
+   Fokus/Sichtbarkeit, bei Netz-Rückkehr und alle 20 s im sichtbaren Tab vom
+   Server nachgezogen. Mit updated_at ist das ein Mini-Check (einige Bytes),
+   ohne updated_at-Spalte wird der volle Eigen-Abruf auf 2 Minuten gedrosselt.
+   Der schwere Voll-Sync (alle Konten, ~2,6 MB) bleibt Start (12 h TTL) und
+   Rangliste (30 min) vorbehalten. */
 let focusSyncEingerichtet = false;
 let letzterEigenSync = 0;
 const EIGEN_SYNC_MS = 15000;
@@ -436,7 +448,6 @@ function richteFocusSyncEin() {
   });
 }
 richteFocusSyncEin();
-erzwingeSync();
 void syncEigenesKonto(true);
 
 /** Server-Konten in den Cache laden, lokale Änderungen hochladen. */
@@ -486,6 +497,28 @@ async function syncMitServer() {
 
   if (geaendert) saveUsers([...ergebnis.values()]);
   window.localStorage.setItem(SYNCZEIT_KEY, String(Date.now()));
+}
+
+/** Leichte Änderungsprüfung: nur updated_at der eigenen Zeile (einige Bytes)
+ *  statt der ganzen Profil-Zeile – Cross-Device-Änderungen werden erkannt,
+ *  ohne bei jedem Poll das komplette JSONB herunterzuladen. */
+async function ladeEigeneUpdatedAt(id: string): Promise<string | null> {
+  const supabase = getSupabase<ProfileDb>();
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from("profile")
+    .select("updated_at")
+    .eq("id", id)
+    .maybeSingle();
+  if (!error && data) {
+    const ts = (data as { updated_at?: string }).updated_at;
+    return typeof ts === "string" ? ts : null;
+  }
+  if (istSchemaFehler(error)) {
+    updatedAtUnterstuetzt = false;
+    return null;
+  }
+  return null;
 }
 
 /** Eigene Profil-Zeile frisch vom Server holen (nur dieses Konto, klein). */
@@ -683,10 +716,27 @@ async function syncEigenesKonto(erzwingen = false): Promise<void> {
   const id = sessionNutzerId();
   const token = holSessionToken();
   if (!id || !token || !supabaseKonfiguriert()) return;
-  if (!erzwingen && Date.now() - letzterEigenSync < EIGEN_SYNC_MS) return;
+  const intervall = updatedAtUnterstuetzt ? EIGEN_SYNC_MS : EIGEN_SYNC_FALLBACK_MS;
+  if (!erzwingen && Date.now() - letzterEigenSync < intervall) return;
   letzterEigenSync = Date.now();
   try {
     if (hatDirty()) await pushProfil();
+    if (updatedAtUnterstuetzt) {
+      const stand = await ladeEigeneUpdatedAt(id);
+      if (!stand) {
+        if (erzwingen) {
+          const zeile = await ladeEigeneZeile(id);
+          if (zeile) schreibeEigenesKontoInCache(zeileZuBenutzer(zeile));
+        }
+        return;
+      }
+      if (letzterEigenerUpdatedAt !== null && stand === letzterEigenerUpdatedAt) return;
+      const zeile = await ladeEigeneZeile(id);
+      if (!zeile) return;
+      letzterEigenerUpdatedAt = stand;
+      schreibeEigenesKontoInCache(zeileZuBenutzer(zeile));
+      return;
+    }
     const zeile = await ladeEigeneZeile(id);
     if (!zeile) return;
     schreibeEigenesKontoInCache(zeileZuBenutzer(zeile));

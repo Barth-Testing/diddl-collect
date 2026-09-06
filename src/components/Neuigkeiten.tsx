@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { BadgeCheck, Megaphone, Plus, ShieldCheck, Sparkles, Users } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
 import { listBenutzer, zaehle } from "@/lib/store";
+import { useStoreVersion } from "@/lib/useStoreVersion";
 
 type NewsReihe = {
   id: number;
@@ -65,6 +66,7 @@ type Gemeinde = {
 };
 
 export function Neuigkeiten() {
+  const storeVersion = useStoreVersion();
   const [news, setNews] = useState<NewsReihe[]>([]);
   const [gemeinde, setGemeinde] = useState<Gemeinde | null>(null);
   const [sichtbar, setSichtbar] = useState(5);
@@ -87,6 +89,11 @@ export function Neuigkeiten() {
       aktiv = false;
     };
   }, []);
+
+  /* Blatt-Zähler aus dem bereits synchronisierten Cache (derselbe Stand wie
+     Rangliste) – kein Full-Table-Download der statuses-Spalte mehr. Re-Render
+     bei Sync kommt über storeVersion (useStoreVersion oben). */
+  const blaetterGesamt = listBenutzer().reduce((s, u) => s + zaehle(u).own, 0);
 
   return (
     <div className="card-soft p-6">
@@ -112,7 +119,7 @@ export function Neuigkeiten() {
           />
           <GemeindeKarte
             icon={<Sparkles className="h-5 w-5" />}
-            wert={String(gemeinde.blaetter)}
+            wert={String(blaetterGesamt)}
             label="gehakte Blätter"
             farbe="bg-berry-100 text-berry-400"
           />
@@ -213,9 +220,9 @@ async function ladeNews(supabase: SupabaseClient<Db>): Promise<NewsReihe[]> {
   return [];
 }
 
-/** Gemeinde-Statistik ohne die schweren Spalten: Zähler via Count-Head-Queries,
- *  Blatt-Zähler aus dem bereits synchronisierten Cache (derselbe Stand wie Rangliste).
- *  Nur bei leerem Cache (Erstbesuch) wird als Fallback die statuses-Spalte geladen. */
+/** Gemeinde-Statistik ohne die schweren Spalten: Zähler via Count-Head-Queries
+ *  (kein Full-Table-Download von statuses/beweise – der Blatt-Zähler kommt
+ *  aus dem bereits synchronisierten Cache, siehe blaetterGesamt oben). */
 async function ladeGemeinde(supabase: SupabaseClient<Db>): Promise<Gemeinde | null> {
   const [anzahl, neuestes, fotos] = await Promise.all([
     supabase.from("profile").select("id", { count: "exact", head: true }),
@@ -223,34 +230,10 @@ async function ladeGemeinde(supabase: SupabaseClient<Db>): Promise<Gemeinde | nu
     supabase.from("beweis_fotos").select("id", { count: "exact", head: true }),
   ]);
   if (anzahl.error) return null;
-  let beweise = 0;
-  if (!fotos.error) {
-    beweise = fotos.count ?? 0;
-  } else {
-    /* Tabelle existiert noch nicht -> alte Zählweise (nur Anzahl, nichts speichern). */
-    const alt = await supabase.from("profile").select("beweise");
-    if (!alt.error && alt.data) {
-      for (const r of alt.data) beweise += Object.keys(r.beweise ?? {}).length;
-    }
-  }
-  let blaetter = 0;
-  const cache = listBenutzer();
-  if (cache.length >= 5) {
-    for (const u of cache) blaetter += zaehle(u).own;
-  } else {
-    const statuses = await supabase.from("profile").select("statuses");
-    if (!statuses.error && statuses.data) {
-      for (const r of statuses.data) {
-        for (const s of Object.values(r.statuses ?? {})) {
-          if (s === "own" || (Array.isArray(s) && s.includes("own"))) blaetter++;
-        }
-      }
-    }
-  }
   return {
     sammler: anzahl.count ?? 0,
-    blaetter,
-    beweise,
+    blaetter: 0,
+    beweise: fotos.count ?? 0,
     neuestesMitglied: neuestes.data?.[0]?.name ?? null,
   };
 }

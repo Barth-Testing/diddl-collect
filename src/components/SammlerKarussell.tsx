@@ -15,29 +15,41 @@ export function SammlerKarussell({ benutzer, titel }: { benutzer: Benutzer; tite
   const [kannVor, setKannVor] = useState(false);
   const [kannZurueck, setKannZurueck] = useState(false);
   const [fotos, setFotos] = useState<Record<string, string>>({});
+  const [geladene, setGeladene] = useState<Set<string>>(new Set());
+  const [fotoGewuenscht, setFotoGewuenscht] = useState(60);
   const [alleAnzeigen, setAlleAnzeigen] = useState(false);
-
-  useEffect(() => {
-    let aktiv = true;
-    ladeBeweisFotos(benutzer.id).then((f) => {
-      if (aktiv) setFotos(f);
-    });
-    return () => {
-      aktiv = false;
-    };
-  }, [benutzer.id]);
 
   const eigeneIds = Object.keys(benutzer.statuses)
     .filter((id) => benutzer.statuses[id]?.includes("own"))
     .sort((a, b) => a.localeCompare(b));
   const hatBeweise = Object.keys(benutzer.beweise ?? {}).length > 0;
   const hatFavoriten = Object.keys(benutzer.favoriten ?? {}).length > 0;
+  const beweisIds = eigeneIds.filter((id) => benutzer.beweise[id]);
   const ids =
     quelle === "beweis"
-      ? eigeneIds.filter((id) => benutzer.beweise[id])
+      ? beweisIds
       : quelle === "favoriten"
         ? eigeneIds.filter((id) => benutzer.favoriten?.[id])
         : eigeneIds;
+  const fehlendeFotos = beweisIds.filter((id) => !geladene.has(id)).length;
+
+  /* Beweisfotos nur bei Bedarf (Tab „Beweisfotos“) und in 60er-Schritten laden –
+     nicht beim Öffnen des Profils, sonst lädt z. B. ein Profil mit 500+ Fotos
+     mehrere MB auf einmal. */
+  const ladeFotos = (bis: number) => {
+    const idsJetzt = Object.keys(benutzer.beweise ?? {})
+      .filter((id) => benutzer.statuses[id]?.includes("own"))
+      .sort((a, b) => a.localeCompare(b));
+    const offen = idsJetzt
+      .slice(0, bis)
+      .filter((id) => !geladene.has(id))
+      .slice(0, 60);
+    if (offen.length === 0) return;
+    void ladeBeweisFotos(benutzer.id, offen).then((f) => {
+      setFotos((alt) => ({ ...alt, ...f }));
+      setGeladene((alt) => new Set([...alt, ...offen]));
+    });
+  };
 
   const aktualisierePfeile = useCallback(() => {
     const bahn = bahnRef.current;
@@ -94,7 +106,11 @@ export function SammlerKarussell({ benutzer, titel }: { benutzer: Benutzer; tite
           </button>
           <button
             type="button"
-            onClick={() => setQuelle("beweis")}
+            onClick={() => {
+              setQuelle("beweis");
+              setFotoGewuenscht(60);
+              void ladeFotos(60);
+            }}
             disabled={!hatBeweise}
             title={hatBeweise ? undefined : "Erst Foto-Beweise hochladen"}
             aria-pressed={quelle === "beweis"}
@@ -169,6 +185,20 @@ export function SammlerKarussell({ benutzer, titel }: { benutzer: Benutzer; tite
               className="mt-2 rounded-full bg-candy-100 px-4 py-1.5 text-xs font-bold text-candy-700 hover:bg-candy-200"
             >
               Alle {ids.length} anzeigen
+            </button>
+          )}
+
+          {quelle === "beweis" && fehlendeFotos > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                const neu = Math.min(fotoGewuenscht + 60, beweisIds.length);
+                setFotoGewuenscht(neu);
+                void ladeFotos(neu);
+              }}
+              className="mt-2 ml-2 rounded-full bg-mint-100 px-4 py-1.5 text-xs font-bold text-emerald-700 hover:bg-mint-200"
+            >
+              Beweisfotos nachladen ({fehlendeFotos})
             </button>
           )}
 

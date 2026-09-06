@@ -147,7 +147,7 @@ export function KontoApp() {
         ctx.fillStyle = "#fff";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        await speichereBeweisFoto(blattId, canvas.toDataURL("image/jpeg", 0.6));
+        await speichereBeweisFoto(blattId, canvas.toDataURL("image/jpeg", 0.5));
         setInfos("Beweis gespeichert – schön belegt!");
       };
       img.src = leser.result as string;
@@ -499,7 +499,7 @@ export function KontoApp() {
             )}
           </div>
           {karussellAn && tab === "sammlung" && (
-            <SammlerKarussell benutzer={benutzer} titel="Deine Lieblingsblätter" />
+            <SammlerKarussell key={benutzer.id} benutzer={benutzer} titel="Deine Lieblingsblätter" />
           )}
           {listeAb.length === 0 && (
             <div className="card-soft flex flex-col items-center gap-2 p-10 text-center text-ink-600">
