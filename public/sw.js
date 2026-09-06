@@ -1,5 +1,5 @@
 /* Knuddelblätter Service Worker – Version wird beim Build automatisch generiert */
-const VERSION = "vee65e8be";
+const VERSION = "v006668f5";
 const PRECACHE = "knuddel-pre-" + VERSION;
 const RUNTIME = "knuddel-run-" + VERSION;
 const PRECACHE_URLS = [
@@ -12,6 +12,7 @@ const PRECACHE_URLS = [
   "/_next/static/chunks/1i5c_p_-auy0b.js",
   "/_next/static/chunks/2b8m0froc9y7h.js",
   "/_next/static/chunks/2g8fp4n3zfeg7.js",
+  "/_next/static/chunks/2os42t7po47mz.js",
   "/_next/static/chunks/2osv-gnrgzp4c.js",
   "/_next/static/chunks/2y5ns0fnp24ib.js",
   "/_next/static/chunks/2zo1toppmyq3-.css",
@@ -20,7 +21,6 @@ const PRECACHE_URLS = [
   "/_next/static/chunks/38lg0--wh-keh.js",
   "/_next/static/chunks/3ayxudn1ei3iz.js",
   "/_next/static/chunks/3tcog6nkeugog.js",
-  "/_next/static/chunks/3uy0k7e26slr1.js",
   "/_next/static/chunks/3yp2ehg9t7vtp.js",
   "/_next/static/chunks/3zgd8ube1f6b9.js",
   "/_next/static/chunks/turbopack-22-s-9frl7x1b.js",
@@ -32,9 +32,9 @@ const PRECACHE_URLS = [
   "/_next/static/media/d8cb5ab3660140cd-s.2demiz2t05dx4.woff2",
   "/_next/static/media/e6d00ff86ef9e699-s.1vcas2uk12q5a.woff2",
   "/_next/static/media/fae90444fefcda8c-s.403cfnf7b-1vb.woff2",
-  "/_next/static/zPD3g5Y3_jpG2IuIELqBa/_buildManifest.js",
-  "/_next/static/zPD3g5Y3_jpG2IuIELqBa/_clientMiddlewareManifest.js",
-  "/_next/static/zPD3g5Y3_jpG2IuIELqBa/_ssgManifest.js"
+  "/_next/static/oGyAY40eJzyZ5gkCS4tj1/_buildManifest.js",
+  "/_next/static/oGyAY40eJzyZ5gkCS4tj1/_clientMiddlewareManifest.js",
+  "/_next/static/oGyAY40eJzyZ5gkCS4tj1/_ssgManifest.js"
 ];
 
 self.addEventListener("install", (event) => {

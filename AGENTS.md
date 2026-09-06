@@ -60,6 +60,7 @@
 - `npm run fetch:katalog` REGENERATES `blaetter.json` from diddl-exchange.de only — it wipes manually added entries (e.g. sammelverzeichnis sheets). Don't run it casually.
 - `npm run fetch:sammelverzeichnis` merges "Diddl is back" sheets from diddl-sammelverzeichnis.de into `blaetter.json` (merge by id; numbering continues per size A4→A5→A6). Uses `pngjs` for dominant-color analysis (the jwwb CDN ignores `fm=jpg`, always serves PNG).
 - `blaetter.json` is COMPACT JSON (no pretty-printing) — keep that format when rewriting.
+- Manually added sheets (not from diddl-exchange) use local images under `public/katalog/` + `quelle` of the true source. **Replaced images need a version query (`?v=2`)** – the SW caches same-origin GETs cache-first, so an unchanged URL keeps serving the old image.
 - The catalog year filter defaults matter: extend the `JAHRE` range and the `jahrBis` default in KatalogApp.tsx whenever adding newer years, otherwise new sheets are invisible even though present in data.
 
 ## Tausch (src/lib/tausch.ts)
