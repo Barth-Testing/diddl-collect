@@ -1,5 +1,5 @@
 /* Knuddelblätter Service Worker – Version wird beim Build automatisch generiert */
-const VERSION = "vb95b06f5";
+const VERSION = "vee65e8be";
 const PRECACHE = "knuddel-pre-" + VERSION;
 const RUNTIME = "knuddel-run-" + VERSION;
 const PRECACHE_URLS = [
@@ -19,8 +19,8 @@ const PRECACHE_URLS = [
   "/_next/static/chunks/36lm--m0zwqtj.js",
   "/_next/static/chunks/38lg0--wh-keh.js",
   "/_next/static/chunks/3ayxudn1ei3iz.js",
-  "/_next/static/chunks/3kq54xc2_okoe.js",
   "/_next/static/chunks/3tcog6nkeugog.js",
+  "/_next/static/chunks/3uy0k7e26slr1.js",
   "/_next/static/chunks/3yp2ehg9t7vtp.js",
   "/_next/static/chunks/3zgd8ube1f6b9.js",
   "/_next/static/chunks/turbopack-22-s-9frl7x1b.js",
@@ -32,9 +32,9 @@ const PRECACHE_URLS = [
   "/_next/static/media/d8cb5ab3660140cd-s.2demiz2t05dx4.woff2",
   "/_next/static/media/e6d00ff86ef9e699-s.1vcas2uk12q5a.woff2",
   "/_next/static/media/fae90444fefcda8c-s.403cfnf7b-1vb.woff2",
-  "/_next/static/sIagWL7QEIztyfJgYJQHD/_buildManifest.js",
-  "/_next/static/sIagWL7QEIztyfJgYJQHD/_clientMiddlewareManifest.js",
-  "/_next/static/sIagWL7QEIztyfJgYJQHD/_ssgManifest.js"
+  "/_next/static/zPD3g5Y3_jpG2IuIELqBa/_buildManifest.js",
+  "/_next/static/zPD3g5Y3_jpG2IuIELqBa/_clientMiddlewareManifest.js",
+  "/_next/static/zPD3g5Y3_jpG2IuIELqBa/_ssgManifest.js"
 ];
 
 self.addEventListener("install", (event) => {
