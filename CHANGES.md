@@ -3,6 +3,21 @@
 > Dieses Log wird bei jeder Änderung gepflegt (neuen Eintrag oben einfügen).
 > Beim initialen Laden durchlesen, um den aktuellen Stand zu verstehen.
 
+## 2026-09-07 — Tauschliste als PDF (Druck-Seite für Zum-Tauschen-Blätter)
+
+**Ziel:** Wer auch auf anderen Plattformen tauscht, bekommt eine druckfertige
+Liste aller „Zum Tauschen“-Blätter mit Bild und Konditionen.
+
+- **Neu `src/app/tauschliste/page.tsx`:** Galerie aller `offer`-Blätter (Bild,
+  Titel, Größe/Nr./Jahr/Farbe, Wunschbetrag, Notiz, Stückzahl), gruppiert wie
+  im Verzeichnis, mit Name/Datum im Kopf. Button „Drucken / Als PDF speichern“
+  nutzt `window.print()` (Browser erzeugt das PDF – keine neue Lib, kein
+  CORS-Problem mit den hotlinked Katalogbildern, keine Artwork-Einbettung).
+- **`KontoApp.tsx`:** Button „Tauschliste als PDF“ im Tausch-Tab (nur bei
+  mind. 1 Tausch-Blatt), verlinkt auf `/tauschliste`.
+- **Egress:** keiner – alle Daten liegen bereits auf dem Gerät (Profil-Sync +
+  `blaetter.json`), keine neue Tabelle/RPC. Kein SQL nötig.
+
 ## 2026-09-07 — News per UI schreiben (Admin-Kreis malarky + blondy)
 
 **Ziel:** News müssen nicht mehr per SQL eingetragen werden – der Admin-Kreis

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDownUp, AtSign, Check, Camera, Egg, Eye, EyeOff, Heart, Images, KeyRound, LogIn, PartyPopper, Repeat2, Share2, ShieldCheck, Trash2, UserPlus, UserRound, BookOpenCheck } from "lucide-react";
+import { ArrowDownUp, AtSign, Check, Camera, Egg, Eye, EyeOff, Heart, Images, KeyRound, LogIn, PartyPopper, Printer, Repeat2, Share2, ShieldCheck, Trash2, UserPlus, UserRound, BookOpenCheck } from "lucide-react";
 import { BLAETTER, BLAETTER_NACH_ID, blattTitel, sortiereSammlung, uebersichtSammlung, type SammlungSortierung } from "@/lib/blaetter";
 import { aenderePasswort, entferneEmail, getSession, holSessionToken, leseEigeneEmail, login, logout, register, setAnzahlDelta, setBlock, setBeweis, setFavorit, setStatus, setzeEmail, setzeTauschInfo, speichereBeweisFoto, zaehle } from "@/lib/store";
 import type { Benutzer, Blatt, Status, TauschInfo } from "@/lib/types";
@@ -496,6 +496,14 @@ export function KontoApp() {
                   <Images className="h-4 w-4" /> Karussell
                 </button>
               </>
+            )}
+            {tab === "tausch" && z.offer > 0 && (
+              <Link
+                href="/tauschliste"
+                className="ml-auto flex items-center gap-1.5 rounded-full bg-candy-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-candy-600"
+              >
+                <Printer className="h-4 w-4" /> Tauschliste als PDF
+              </Link>
             )}
           </div>
           {karussellAn && tab === "sammlung" && (
