@@ -3,6 +3,25 @@
 > Dieses Log wird bei jeder Änderung gepflegt (neuen Eintrag oben einfügen).
 > Beim initialen Laden durchlesen, um den aktuellen Stand zu verstehen.
 
+## 2026-09-07 — News-Rubrik: Admin-Check punkt-tolerant (Fix, live verifiziert)
+
+**Befund:** Der News-Code war live im Bundle (per Live-Chunk verifiziert), die
+Rubrik erschien trotzdem nicht. DB-Diagnose zeigt exakte Namen (`Malarky`,
+`BloNdy`, keine Punkte/Dubletten) – darum zusätzlich: Rubrik steht jetzt auch
+auf `/konto` (eigene Kontoseite), nicht nur auf `/sammler`. Verbleibender
+Verdacht bei weiter fehlender Anzeige: veralteter Service Worker im Browser
+(2× neu laden bzw. SW aktualisieren).
+
+- **`kontakt.ts`:** neuer `normalisiereAdminName()` (trim + lower + End-Punkte
+  weg, wie beim Profil-Lookup); `istAdmin()` nutzt ihn.
+- **`SammlerProfilApp.tsx`:** Gate zeigt die Rubrik auch, wenn Session-ID und
+  Profil-ID bei gleichem Admin-Namen auseinanderfallen (Legacy-Dubletten).
+- **`scripts/news-schreiben.sql`:** Admin-Prüfung ebenfalls tolerant
+  (`lower(rtrim(trim(name), '.'))`) – **erneut im SQL-Editor ausführen**,
+  sonst lehnt die RPC Alt-Konten weiter mit `42501` ab.
+
+**Verifikation:** Build OK; Lint nur vorbestehender `SpendeButton.tsx`-Error.
+
 ## 2026-09-07 — Tauschliste als PDF (Druck-Seite für Zum-Tauschen-Blätter)
 
 **Ziel:** Wer auch auf anderen Plattformen tauscht, bekommt eine druckfertige

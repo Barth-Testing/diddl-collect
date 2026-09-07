@@ -32,7 +32,9 @@ begin
     raise exception 'Sitzung abgelaufen – bitte neu anmelden.' using errcode = '28000';
   end if;
   select name into benutzer_name from public.profile where id = benutzer_id;
-  if benutzer_name is null or lower(benutzer_name) not in ('malarky', 'blondy') then
+  /* Alt-Konten können End-Punkte tragen ("Malarky.") – wie im Client tolerant prüfen. */
+  if benutzer_name is null
+    or lower(rtrim(trim(benutzer_name), '.')) not in ('malarky', 'blondy') then
     raise exception 'Nur für die Seitenbetreiber.' using errcode = '42501';
   end if;
   if char_length(trim(coalesce(p_titel, ''))) not between 1 and 120 then

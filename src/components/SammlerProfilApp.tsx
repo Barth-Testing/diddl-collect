@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Gem, Heart, HeartHandshake, Mail, Repeat2, SearchX, Share2, Trophy } from "lucide-react";
 import { aktualisiereSupporter, getSession, listBenutzer, zaehle } from "@/lib/store";
 import { useStoreVersion } from "@/lib/useStoreVersion";
-import { istAdmin } from "@/lib/kontakt";
+import { istAdmin, normalisiereAdminName } from "@/lib/kontakt";
 import { BlattLeiste } from "./BlattLeiste";
 import { Punkte } from "./Punkte";
 import { SammlerKarussell } from "./SammlerKarussell";
@@ -167,7 +167,12 @@ export function SammlerProfilApp() {
         </div>
       </div>
 
-      {ich && ich.id === benutzer.id && istAdmin(benutzer.name) && <NewsSchreiben />}
+      {ich && istAdmin(ich.name) &&
+        (ich.id === benutzer.id ||
+          (istAdmin(benutzer.name) &&
+            normalisiereAdminName(ich.name) === normalisiereAdminName(benutzer.name))) && (
+          <NewsSchreiben />
+        )}
 
       {ich && ich.id !== benutzer.id && treffer.length > 0 && (
         <div className="card-soft border-mint-200 bg-mint-50 p-5">

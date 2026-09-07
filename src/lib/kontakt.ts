@@ -6,8 +6,14 @@ export const ADMIN_NAME = "malarky";
  *  immer case-insensitiv über istAdmin() – nie direkt mit === vergleichen. */
 export const ADMIN_NAMEN = ["malarky", "blondy"];
 
+/** Alt-Konten können End-Punkte tragen ("Malarky."), neue nicht – darum wird
+ *  für den Admin-Abgleich wie beim Profil-Lookup normalisiert. */
+export function normalisiereAdminName(name: string): string {
+  return name.trim().toLowerCase().replace(/\.+$/, "");
+}
+
 export function istAdmin(name: string | null | undefined): boolean {
-  return !!name && ADMIN_NAMEN.includes(name.toLowerCase());
+  return !!name && ADMIN_NAMEN.includes(normalisiereAdminName(name));
 }
 
 export type KontaktReihe = {

@@ -10,6 +10,7 @@ import { istAdmin } from "@/lib/kontakt";
 import { useStoreVersion } from "@/lib/useStoreVersion";
 import { BlattKarte } from "./BlattKarte";
 import { KontaktInbox } from "./KontaktInbox";
+import { NewsSchreiben } from "./NewsSchreiben";
 import { Lupe } from "./Lupe";import { Punkte } from "./Punkte";
 import { SammlerKarussell } from "./SammlerKarussell";
 import { SelectBasis } from "./SelectBasis";
@@ -303,6 +304,8 @@ export function KontoApp() {
       </div>
 
       {istAdmin(benutzer.name) && <KontaktInbox />}
+
+      {istAdmin(benutzer.name) && <NewsSchreiben />}
 
       {ueb && (
         <div className="card-soft flex flex-col gap-3 p-4">
