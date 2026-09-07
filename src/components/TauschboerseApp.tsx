@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowLeftRight, Heart, Users } from "lucide-react";
 import { BLAETTER_NACH_ID, blattTitel, katalogBlattId } from "@/lib/blaetter";
-import { getSession, listBenutzer, zaehle } from "@/lib/store";
+import { getSession, ladeBoerseRpc, listBenutzer, zaehle, type BoersenZeile } from "@/lib/store";
 import { useStoreVersion } from "@/lib/useStoreVersion";
 import { type Blatt, type TauschInfo } from "@/lib/types";
 import { TauschDialog } from "./TauschDialog";
@@ -54,6 +54,13 @@ export function TauschboerseApp() {
   const [gewaehlt, setGewaehlt] = useState<Record<string, string>>({});
   const [dialog, setDialog] = useState<{ blattId: string; anbieter: { id: string; name: string } } | null>(null);
   const [sichtbar, setSichtbar] = useState(120);
+  const [rpcZeilen, setRpcZeilen] = useState<BoersenZeile[] | null>(null);
+
+  useEffect(() => {
+    ladeBoerseRpc().then((zeilen) => {
+      if (zeilen) setRpcZeilen(zeilen);
+    });
+  }, []);
 
   const zuruecksetzen = () => setNurBlatt(null);
 
@@ -66,7 +73,7 @@ export function TauschboerseApp() {
     router.replace(`/tausch?${bestehende.toString()}`, { scroll: false });
   };
 
-  const gruppen = useMemo(() => {
+  const gruppenCache = useMemo(() => {
     const map = new Map<string, AngebotsGruppe>();
     for (const u of listBenutzer()) {
       const z = zaehle(u);
@@ -84,6 +91,9 @@ export function TauschboerseApp() {
     }
     return [...map.values()].sort((a, b) => blattTitel(a.blatt).localeCompare(blattTitel(b.blatt), "de", { numeric: true }));
   }, []);
+
+  const gruppenAusRpc = useMemo(() => (rpcZeilen ? baueBoersenGruppen(rpcZeilen) : null), [rpcZeilen]);
+  const gruppen = gruppenAusRpc ?? gruppenCache;
 
   const q = suche.trim().toLowerCase();
   const wunschIds = useMemo(
@@ -256,6 +266,30 @@ export function TauschboerseApp() {
       )}
     </div>
   );
+}
+
+function baueBoersenGruppen(zeilen: BoersenZeile[]): AngebotsGruppe[] {
+  const map = new Map<string, AngebotsGruppe>();
+  for (const z of zeilen) {
+    const blattId = katalogBlattId(z.blatt_id);
+    const blatt = BLAETTER_NACH_ID.get(blattId);
+    if (!blatt) continue;
+    const gruppe = map.get(blattId) ?? { blattId, blatt, anbieter: [] };
+    if (gruppe.anbieter.every((a) => a.id !== z.anbieter_id)) {
+      gruppe.anbieter.push({
+        id: z.anbieter_id,
+        name: z.anbieter_name,
+        info:
+          z.betrag != null || z.notiz
+            ? { betrag: z.betrag ?? undefined, notiz: z.notiz ?? undefined }
+            : undefined,
+        own: z.own,
+        offer: z.offer,
+      });
+    }
+    map.set(blattId, gruppe);
+  }
+  return [...map.values()].sort((a, b) => blattTitel(a.blatt).localeCompare(blattTitel(b.blatt), "de", { numeric: true }));
 }
 
 function Filterleiste({

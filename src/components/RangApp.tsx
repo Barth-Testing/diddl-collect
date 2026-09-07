@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { Gem, HeartHandshake, Medal, ShieldAlert, ShieldCheck } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
-import { aktualisiereSupporter, berechneRangliste, getSession, listBenutzer, syncBeiBedarf } from "@/lib/store";
+import { aktualisiereSupporter, berechneRangliste, berechneRanglisteAusZeilen, getSession, ladeRanglisteRpc, listBenutzer, syncBeiBedarf, type RangZeile } from "@/lib/store";
 import { useStoreVersion } from "@/lib/useStoreVersion";
 import { cn } from "@/lib/utils";
 
@@ -25,13 +25,19 @@ type EhrungsDb = {
 export function RangApp() {
   useStoreVersion();
   const benutzer = getSession();
-  const eintraege = berechneRangliste();
-  const supporter = listBenutzer().filter((u) => u.supporter);
+  const [rpcZeilen, setRpcZeilen] = useState<RangZeile[] | null>(null);
+  const eintraege = rpcZeilen ? berechneRanglisteAusZeilen(rpcZeilen) : berechneRangliste();
+  const supporterListe = rpcZeilen
+    ? rpcZeilen.filter((z) => z.supporter).map((z) => ({ id: z.id, name: z.name }))
+    : listBenutzer().filter((u) => u.supporter);
   const [ehrungen, setEhrungen] = useState<string[]>([]);
 
   useEffect(() => {
     void aktualisiereSupporter();
-    syncBeiBedarf();
+    ladeRanglisteRpc().then((zeilen) => {
+      if (zeilen) setRpcZeilen(zeilen);
+      else syncBeiBedarf();
+    });
     const supabase = getSupabase<EhrungsDb>();
     if (supabase) {
       ladeEhrungen(supabase).then((namen) => setEhrungen(namen));
@@ -42,7 +48,7 @@ export function RangApp() {
 
   return (
     <div className="mt-6 space-y-4">
-      {(supporter.length > 0 || ehrungen.length > 0) && (
+      {(supporterListe.length > 0 || ehrungen.length > 0) && (
         <div className="card-soft border-yellow-200 bg-gradient-to-r from-yellow-50 via-amber-50 to-yellow-50 p-5">
           <h2 className="font-display flex items-center gap-2 text-lg font-bold text-ink-800">
             <HeartHandshake className="h-5 w-5 text-yellow-500" />
@@ -52,7 +58,7 @@ export function RangApp() {
             Diese Sammler halten die Seite mit einer Spende am Laufen – herzlichen Dank!
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
-            {supporter.map((u) => (
+            {supporterListe.map((u) => (
               <Link
                 key={u.id}
                 href={`/sammler?id=${encodeURIComponent(u.id)}&name=${encodeURIComponent(u.name)}&ht=1`}

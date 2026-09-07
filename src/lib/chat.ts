@@ -18,6 +18,8 @@ export type ChatNachricht = {
 };
 
 const CHAT_KEY = "diddlcollect:chat";
+const VOLL_KEY = "diddlcollect:chat:voll";
+const VOLL_MS = 30 * 60 * 1000;
 const MAX_NACHRICHTEN = 300;
 
 type NachrichtReihe = {
@@ -234,10 +236,52 @@ export function verbinde(raum: string, onNachricht: () => void) {
   };
 }
 
+function leseVollStaende(): Record<string, number> {
+  if (typeof window === "undefined") return {};
+  try {
+    return JSON.parse(window.localStorage.getItem(VOLL_KEY) ?? "{}") as Record<string, number>;
+  } catch {
+    return {};
+  }
+}
+
+function merkeVoll(raum: string) {
+  if (typeof window === "undefined") return;
+  const staende = leseVollStaende();
+  staende[raum] = Date.now();
+  window.localStorage.setItem(VOLL_KEY, JSON.stringify(staende));
+}
+
+function hoechsteId(raum: string): number {
+  let max = 0;
+  for (const m of ladeCache().nachrichten) {
+    if (m.raum !== raum) continue;
+    const n = Number(m.id);
+    if (Number.isFinite(n) && n > max) max = n;
+  }
+  return max;
+}
+
 async function ladeRaum(
   supabase: SupabaseClient<Db>,
   raum: string,
 ): Promise<boolean> {
+  const letzte = hoechsteId(raum);
+  const voll = leseVollStaende()[raum] ?? 0;
+  if (letzte > 0 && Date.now() - voll < VOLL_MS) {
+    const { data, error } = await supabase
+      .from("nachrichten")
+      .select("id, raum, autor, text, erstellt_am")
+      .eq("raum", raum)
+      .gt("id", letzte)
+      .order("id", { ascending: true })
+      .limit(MAX_NACHRICHTEN);
+    if (!error && data) {
+      merkeAusSupabase(data as unknown as NachrichtReihe[]);
+      return true;
+    }
+    return false;
+  }
   const { data, error } = await supabase
     .from("nachrichten")
     .select("id, raum, autor, text, erstellt_am")
@@ -245,21 +289,16 @@ async function ladeRaum(
     .order("id", { ascending: false })
     .limit(MAX_NACHRICHTEN);
   if (!error && data) {
-    merkeAusSupabase(data);
-    const { data: ids } = await supabase
-      .from("nachrichten")
-      .select("id")
-      .eq("raum", raum)
-      .limit(MAX_NACHRICHTEN);
-    if (ids) {
-      const vorhanden = new Set(ids.map((r: { id: number }) => String(r.id)));
-      const cache = ladeCache();
-      const vorher = cache.nachrichten.length;
-      cache.nachrichten = cache.nachrichten.filter(
-        (m) => m.raum !== raum || vorhanden.has(m.id),
-      );
-      if (cache.nachrichten.length !== vorher) speichereCache(cache);
-    }
+    const reihen = data as unknown as NachrichtReihe[];
+    merkeAusSupabase(reihen);
+    const vorhanden = new Set(reihen.map((r) => String(r.id)));
+    const cache = ladeCache();
+    const vorher = cache.nachrichten.length;
+    cache.nachrichten = cache.nachrichten.filter(
+      (m) => m.raum !== raum || vorhanden.has(m.id),
+    );
+    if (cache.nachrichten.length !== vorher) speichereCache(cache);
+    merkeVoll(raum);
     return true;
   }
   return false;

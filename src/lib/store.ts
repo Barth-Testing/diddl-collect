@@ -1196,3 +1196,96 @@ export function berechneRangliste(): RangEintrag[] {
     }))
     .map((e, i) => ({ ...e, rang: i + 1 }));
 }
+
+export type RangZeile = {
+  id: string;
+  name: string;
+  supporter: boolean;
+  own: number;
+  wish: number;
+  offer: number;
+  beweise: number;
+};
+
+export type BoersenZeile = {
+  blatt_id: string;
+  anbieter_id: string;
+  anbieter_name: string;
+  betrag: number | null;
+  notiz: string | null;
+  own: number;
+  offer: number;
+};
+
+let rangRpcFehlt = false;
+let boerseRpcFehlt = false;
+
+function istRpcFehlt(error: { code?: string; message?: string } | null | undefined) {
+  return error?.code === "PGRST202" || (error?.message ?? "").includes("not found");
+}
+
+function alsZahl(wert: unknown): number {
+  const n = Number(wert);
+  return Number.isFinite(n) ? n : 0;
+}
+
+export async function ladeRanglisteRpc(): Promise<RangZeile[] | null> {
+  if (rangRpcFehlt) return null;
+  const { data, error } = await rpcAufruf<RangZeile[]>("lese_rangliste");
+  if (!error && Array.isArray(data)) {
+    return data.map((r) => ({
+      id: String(r.id),
+      name: String(r.name),
+      supporter: r.supporter === true,
+      own: alsZahl(r.own),
+      wish: alsZahl(r.wish),
+      offer: alsZahl(r.offer),
+      beweise: alsZahl(r.beweise),
+    }));
+  }
+  if (istRpcFehlt(error)) rangRpcFehlt = true;
+  return null;
+}
+
+export async function ladeBoerseRpc(): Promise<BoersenZeile[] | null> {
+  if (boerseRpcFehlt) return null;
+  const { data, error } = await rpcAufruf<BoersenZeile[]>("lese_boerse");
+  if (!error && Array.isArray(data)) {
+    return data.map((r) => ({
+      blatt_id: String(r.blatt_id),
+      anbieter_id: String(r.anbieter_id),
+      anbieter_name: String(r.anbieter_name),
+      betrag: r.betrag === null || r.betrag === undefined ? null : alsZahl(r.betrag),
+      notiz: r.notiz ?? null,
+      own: alsZahl(r.own),
+      offer: alsZahl(r.offer),
+    }));
+  }
+  if (istRpcFehlt(error)) boerseRpcFehlt = true;
+  return null;
+}
+
+export function berechneRanglisteAusZeilen(zeilen: RangZeile[]): RangEintrag[] {
+  const users = zeilen
+    .map((z) => ({
+      benutzer: { id: z.id, name: z.name, supporter: z.supporter } as Benutzer,
+      own: z.own,
+      wish: z.wish,
+      offer: z.offer,
+      beweise: z.beweise,
+    }))
+    .map((u) => ({ ...u, punkte: u.own > 100 && u.beweise < 100 ? 100 : u.own }))
+    .sort((a, b) => b.punkte - a.punkte || a.benutzer.name.localeCompare(b.benutzer.name));
+  return users
+    .map((u) => ({
+      benutzer: u.benutzer,
+      own: u.own,
+      wish: u.wish,
+      offer: u.offer,
+      beweise: u.beweise,
+      punkte: u.punkte,
+      freigeschaltet: u.own <= 100 || u.beweise >= 100,
+      rang: 0,
+    }))
+    .map((e, i) => ({ ...e, rang: i + 1 }));
+}
