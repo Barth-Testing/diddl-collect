@@ -5,7 +5,13 @@ import { useEffect, useState } from "react";
 import { Mail } from "lucide-react";
 import { getSession } from "@/lib/store";
 import { useStoreVersion } from "@/lib/useStoreVersion";
-import { subscribeTausch, ungeleseneThreads, verbindeTausch } from "@/lib/tausch";
+import {
+  ladeUngelesen,
+  lesestandAktiv,
+  subscribeTausch,
+  ungeleseneThreads,
+  verbindeTausch,
+} from "@/lib/tausch";
 
 export function PostfachLink() {
   useStoreVersion();
@@ -14,13 +20,36 @@ export function PostfachLink() {
 
   useEffect(() => {
     const remove = subscribeTausch(() => setVersion((v) => v + 1));
-    /* Ohne Anmeldung gibt es keine Ungelesen-Markierung – die schweren
-       Tausch-Downloads (Angebote + Posts) müssen dann nicht auf jedem
-       Seitenaufruf mitlaufen. */
-    const cleanup = ich ? verbindeTausch() : () => {};
+    /* Ohne Anmeldung gibt es keine Ungelesen-Markierung. */
+    if (!ich) return () => remove();
+
+    /* Server-Lesestand (geräteübergreifend): winzige RPC, kein Voll-Download.
+       Egress-Guard: tauschangebot/postnachrichten werden hier NIE mehr global
+       geladen. Poll 60 s + Fokus/Sichtbarkeit. */
+    let tot = false;
+    let pollTimer: ReturnType<typeof setInterval> | undefined;
+    let cleanupAlt: (() => void) | null = null;
+    const pruefe = () => {
+      if (!document.hidden) void ladeUngelesen();
+    };
+    void ladeUngelesen().then(() => {
+      if (tot) return;
+      if (lesestandAktiv()) {
+        pollTimer = setInterval(pruefe, 60_000);
+        document.addEventListener("visibilitychange", pruefe);
+        window.addEventListener("focus", pruefe);
+      } else {
+        /* DB-Migration noch nicht eingespielt: altes Verhalten (voller Sync). */
+        cleanupAlt = verbindeTausch();
+      }
+    });
     return () => {
+      tot = true;
       remove();
-      cleanup();
+      if (pollTimer !== undefined) clearInterval(pollTimer);
+      document.removeEventListener("visibilitychange", pruefe);
+      window.removeEventListener("focus", pruefe);
+      cleanupAlt?.();
     };
   }, [ich?.id]);
 

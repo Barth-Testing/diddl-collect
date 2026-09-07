@@ -215,7 +215,7 @@ export function TauschDialog({ blattId, anbieter, aufSchliessen }: Props) {
                           setWunschAuswahl((vorher) =>
                             aktiv
                               ? vorher.filter((id) => id !== b.id)
-                              : [...vorher, b.id].slice(0, 20),
+                              : [...vorher, b.id].slice(0, 50),
                           )
                         }
                         aria-pressed={aktiv}
@@ -339,7 +339,7 @@ export function TauschDialog({ blattId, anbieter, aufSchliessen }: Props) {
                           setAuswahl((vorher) =>
                             aktiv
                               ? vorher.filter((id) => id !== b.id)
-                              : [...vorher, b.id].slice(0, 20),
+                              : [...vorher, b.id].slice(0, 50),
                           )
                         }
                         aria-pressed={aktiv}

@@ -105,6 +105,55 @@ const TAUSCH_KEY = "diddlcollect:tausch";
 const FRISCH_KEY = "diddlcollect:tausch:frisch";
 const FRISCH_MS = 10 * 60 * 1000;
 const MAX_POST = 2000;
+/* Server-Lesestand (geräteübergreifend): Spiegel der ungelesenen Thread-IDs.
+ * Egress-Guard: der Header-Badge lädt NIE mehr tauschangebot/postnachrichten
+ * global – nur die Mini-RPC lese_ungelesene (~Bytes). */
+const UNGELESEN_KEY = "diddlcollect:ungelesen-server";
+
+let lesestandServer = false;
+
+export function lesestandAktiv() {
+  return lesestandServer;
+}
+
+type UngelesenSpiegel = { ids: string[]; ts: number };
+
+function leseUngelesenSpiegel(): UngelesenSpiegel {
+  if (typeof window === "undefined") return { ids: [], ts: 0 };
+  try {
+    const roh = JSON.parse(window.localStorage.getItem(UNGELESEN_KEY) ?? "{}") as Partial<UngelesenSpiegel>;
+    return {
+      ids: Array.isArray(roh.ids) ? roh.ids : [],
+      ts: typeof roh.ts === "number" ? roh.ts : 0,
+    };
+  } catch {
+    return { ids: [], ts: 0 };
+  }
+}
+
+function speichereUngelesenSpiegel(ids: string[]) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(UNGELESEN_KEY, JSON.stringify({ ids, ts: Date.now() }));
+}
+
+function istPgrst202(error: { code?: string; message?: string } | null | undefined) {
+  return error?.code === "PGRST202" || (error?.message ?? "").includes("not found");
+}
+
+/** Ungelesene Thread-IDs vom Server holen (Mini-RPC, einige Bytes). Erst bei
+ *  Erfolg wird der Server-Lesestand aktiv – sonst bleibt der lokale Fallback. */
+export async function ladeUngelesen(): Promise<void> {
+  const token = holSessionToken();
+  if (!token) return;
+  const { data, error } = await rpcAufruf<string[]>("lese_ungelesene", { p_token: token });
+  if (!error && Array.isArray(data)) {
+    lesestandServer = true;
+    speichereUngelesenSpiegel(data);
+    emitChange();
+    return;
+  }
+  if (istPgrst202(error)) lesestandServer = false;
+}
 
 export function tauschKonfiguriert() {
   return supabaseKonfiguriert();
@@ -261,67 +310,78 @@ function merkePost(nachricht: PostNachricht) {
   speichereCache(cache);
 }
 
-async function ladeAlles(supabase: ReturnType<typeof getSupabase<Db>>): Promise<boolean> {
+async function ladeAlles(
+  supabase: ReturnType<typeof getSupabase<Db>>,
+  eigeneId?: string,
+): Promise<boolean> {
   return serialisiere(async () => {
   if (!supabase) return false;
-  /* Datensparmodus: frischen Cache (10 Min) nicht erneut komplett laden –
-     Realtime liefert neue Einträge ohnehin nach. */
+  /* Datensparmodus: frischen Cache (10 Min, pro Nutzer) nicht erneut komplett
+     laden – Realtime liefert neue Einträge ohnehin nach. */
+  const frischKey = FRISCH_KEY + (eigeneId ? ":" + eigeneId : "");
   if (typeof window !== "undefined") {
-    const letzte = Number(window.localStorage.getItem(FRISCH_KEY) ?? "0");
+    const letzte = Number(window.localStorage.getItem(frischKey) ?? "0");
     if (Date.now() - letzte < FRISCH_MS && window.localStorage.getItem(TAUSCH_KEY)) {
       tabellenBereit = true;
       tabellenFehlend = false;
       return true;
     }
   }
-  let angebotsAbfrage = await supabase
+  /* Egress-Guard: nur die eigenen Threads laden (or-Filter), kein globaler
+     Voll-Download mehr. Ohne eigeneId (Fallback, Gäste) altes Verhalten. */
+  let a = supabase
     .from("tauschangebot")
     .select("*, wunsch_blatter, runde")
     .order("erstellt_am", { ascending: false })
     .limit(500);
-  if (angebotsAbfrage.error) {
+  if (eigeneId) a = a.or(`anbieter_id.eq.${eigeneId},interessent_id.eq.${eigeneId}`);
+  let aErgebnis = await a;
+  if (aErgebnis.error) {
     /* Rework-Spalten fehlen noch -> alte Struktur laden. */
-    angebotsAbfrage = await supabase
+    let alte = supabase
       .from("tauschangebot")
       .select("*")
       .order("erstellt_am", { ascending: false })
       .limit(500);
+    if (eigeneId) alte = alte.or(`anbieter_id.eq.${eigeneId},interessent_id.eq.${eigeneId}`);
+    aErgebnis = await alte;
   }
-  const [a, p] = await Promise.all([
-    Promise.resolve(angebotsAbfrage),
-    supabase
+  if (aErgebnis.error || !aErgebnis.data) {
+    if (aErgebnis.error?.code === "PGRST205" || aErgebnis.error?.code === "42703") tabellenFehlend = true;
+    return false;
+  }
+  const ids = (aErgebnis.data as AngebotReihe[]).map((r) => r.id);
+  let p: { data: PostReihe[] | null; error: { code?: string; message?: string } | null } | null = null;
+  if (ids.length > 0) {
+    p = await supabase
       .from("postnachrichten")
       .select("id, angebot_id, autor, text, erstellt_am, typ")
+      .in("angebot_id", ids)
       .order("id", { ascending: false })
-      .limit(MAX_POST),
-  ]);
-  if ((a.error || !a.data) && (p.error || !p.data)) {
-    const schemaFehlend =
-      (a.error?.code === "PGRST205" || a.error?.code === "42703") &&
-      (p.error?.code === "PGRST205" || p.error?.code === "42703");
-    if (schemaFehlend) tabellenFehlend = true;
-    return false;
+      .limit(MAX_POST);
+    if (p.error || !p.data) {
+      if (p.error?.code === "PGRST205" || p.error?.code === "42703") tabellenFehlend = true;
+      return false;
+    }
   }
   tabellenBereit = true;
   tabellenFehlend = false;
   const cache = ladeCache();
-  if (!a.error && a.data) {
-    const bekannt = new Map(cache.angebote.map((x) => [x.id, x]));
-    for (const reihe of a.data as AngebotReihe[]) bekannt.set(reihe.id, alsAngebot(reihe));
-    cache.angebote = [...bekannt.values()];
-  }
-  if (!p.error && p.data) {
-    const bekannt = new Set(cache.post.map((x) => x.id));
+  const bekannt = new Map(cache.angebote.map((x) => [x.id, x]));
+  for (const reihe of aErgebnis.data as AngebotReihe[]) bekannt.set(reihe.id, alsAngebot(reihe));
+  cache.angebote = [...bekannt.values()];
+  if (p?.data) {
+    const bekanntPost = new Set(cache.post.map((x) => x.id));
     for (const reihe of p.data as PostReihe[]) {
       const n = alsPost(reihe);
-      if (!bekannt.has(n.id)) {
+      if (!bekanntPost.has(n.id)) {
         cache.post.push(n);
-        bekannt.add(n.id);
+        bekanntPost.add(n.id);
       }
     }
   }
   speichereCache(cache);
-  if (typeof window !== "undefined") window.localStorage.setItem(FRISCH_KEY, String(Date.now()));
+  if (typeof window !== "undefined") window.localStorage.setItem(frischKey, String(Date.now()));
   await flushQueueInnere();
   return true;
   });
@@ -386,23 +446,30 @@ async function flushQueueInnere() {
 }
 
 let kanal: RealtimeChannel | null = null;
-let gestartet = false;
 let verbunden = false;
+let geladenerNutzer: string | null = null;
+
+/** Nach Realtime-Events den Mini-Lesestand auffrischen (Bytes, kein Vollload). */
+function frischeUngelesen() {
+  if (lesestandServer) void ladeUngelesen();
+}
 
 export function tauschVerbunden() {
   return verbunden;
 }
 
-export function verbindeTausch(onAenderung?: () => void) {
+export function verbindeTausch(onAenderung?: () => void, eigeneId?: string) {
   const supabase = getSupabase<Db>();
   if (!supabase) return () => {};
 
-  if (!gestartet) {
-    gestartet = true;
-    void ladeAlles(supabase).then((ok) => {
+  /* Pro Nutzer nur einmal anfangen – nach Geräte-/Kontowechsel (andere eigeneId)
+     wird erneut geladen, damit der Cache nicht fremde Threads behält. */
+  if (eigeneId !== geladenerNutzer) {
+    geladenerNutzer = eigeneId ?? null;
+    void ladeAlles(supabase, eigeneId).then((ok) => {
       emitChange();
       onAenderung?.();
-      if (!ok) setTimeout(() => void ladeAlles(supabase).then(() => emitChange()), 15_000);
+      if (!ok) setTimeout(() => void ladeAlles(supabase, eigeneId).then(() => emitChange()), 15_000);
     });
   }
 
@@ -420,6 +487,7 @@ export function verbindeTausch(onAenderung?: () => void) {
           cache.offen = cache.offen.filter((x) => x.id !== temp.id);
           speichereCache(cache);
         }
+        frischeUngelesen();
         onAenderung?.();
       },
     )
@@ -428,6 +496,7 @@ export function verbindeTausch(onAenderung?: () => void) {
       { event: "UPDATE", schema: "public", table: "tauschangebot" },
       (payload) => {
         merkeAngebot(alsAngebot(payload.new as AngebotReihe));
+        frischeUngelesen();
         onAenderung?.();
       },
     )
@@ -446,6 +515,7 @@ export function verbindeTausch(onAenderung?: () => void) {
           frisch.postOffen = frisch.postOffen.filter((x) => x.id !== doppelt.id);
           speichereCache(frisch);
         }
+        frischeUngelesen();
         onAenderung?.();
       },
     )
@@ -678,6 +748,17 @@ function leseGelesen(): Record<string, number> {
 
 export function markiereGelesen(angebotId: string) {
   if (typeof window === "undefined") return;
+  if (lesestandServer) {
+    /* Server-Lesestand: Spiegel sofort anpassen (Badge/Dot verschwinden ohne
+       Netz-Wartezeit), Schreiben an die DB läuft im Hintergrund. */
+    const spiegel = leseUngelesenSpiegel();
+    if (!spiegel.ids.includes(angebotId)) return;
+    speichereUngelesenSpiegel(spiegel.ids.filter((x) => x !== angebotId));
+    emitChange();
+    const token = holSessionToken();
+    if (token) void rpcAufruf("post_gelesen", { p_token: token, p_angebot_id: angebotId });
+    return;
+  }
   const gelesen = leseGelesen();
   const stand = gelesen[angebotId] ?? 0;
   const jetzt = Date.now();
@@ -690,6 +771,17 @@ export function markiereGelesen(angebotId: string) {
 }
 
 export function ungeleseneThreads(ich: { id: string }): number {
+  if (lesestandServer) return leseUngelesenSpiegel().ids.length;
+  return lokaleUngeleseneIds(ich).length;
+}
+
+/** IDs der ungelesenen Threads – für Badge UND Thread-Highlight im Postfach. */
+export function ungeleseneThreadIds(ich: { id: string }): string[] {
+  if (lesestandServer) return leseUngelesenSpiegel().ids;
+  return lokaleUngeleseneIds(ich);
+}
+
+function lokaleUngeleseneIds(ich: { id: string }): string[] {
   const gelesen = leseGelesen();
   const cache = ladeCache();
   const meine = cache.angebote.filter(
@@ -698,7 +790,7 @@ export function ungeleseneThreads(ich: { id: string }): number {
       a.status !== "storniert" &&
       a.status !== "abgelehnt",
   );
-  let count = 0;
+  const ids: string[] = [];
   for (const a of meine) {
     const stand = gelesen[a.id] ?? 0;
     const fremde = cache.post.some(
@@ -708,9 +800,9 @@ export function ungeleseneThreads(ich: { id: string }): number {
         m.erstelltAm > stand &&
         m.autor !== meinNameFuer(a, ich.id),
     );
-    if (fremde) count++;
+    if (fremde) ids.push(a.id);
   }
-  return count;
+  return ids;
 }
 
 /**

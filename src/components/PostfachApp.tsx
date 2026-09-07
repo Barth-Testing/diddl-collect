@@ -16,6 +16,7 @@ import {
   tauschBereit,
   tauschFehlt,
   tauschKonfiguriert,
+  ungeleseneThreadIds,
   verbindeTausch,
   type TauschAngebot,
 } from "@/lib/tausch";
@@ -154,18 +155,20 @@ export function PostfachApp() {
   const endeRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const cleanup = verbindeTausch();
+    if (!ich) return;
+    const cleanup = verbindeTausch(() => setVersion((v) => v + 1), ich.id);
     const remove = subscribeTausch(() => setVersion((v) => v + 1));
     return () => {
       remove();
       cleanup();
     };
-  }, []);
+  }, [ich?.id]);
 
   const alle = ich ? meineAngebote(ich) : [];
   const angebote = alle.filter((a) => !nurOffen || a.status === "offen");
   const gewaehlt = alle.find((a) => a.id === auswahl) ?? null;
   const nachrichten = gewaehlt ? postZu(gewaehlt.id) : [];
+  const ungelesenSet = new Set(ich ? ungeleseneThreadIds(ich) : []);
 
   useEffect(() => {
     if (gewaehlt) markiereGelesen(gewaehlt.id);
@@ -280,6 +283,14 @@ export function PostfachApp() {
                 )}
               </span>
               <StatusChip status={a.status} />
+              {ungelesenSet.has(a.id) && (
+                <span
+                  title="Ungelesen"
+                  className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-peach-400 px-1 text-[10px] font-black text-white"
+                >
+                  1
+                </span>
+              )}
             </button>
           );
         })}

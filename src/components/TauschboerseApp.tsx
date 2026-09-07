@@ -2,12 +2,11 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ArrowLeftRight, Heart, Users } from "lucide-react";
 import { BLAETTER_NACH_ID, blattTitel, katalogBlattId } from "@/lib/blaetter";
 import { getSession, listBenutzer, zaehle } from "@/lib/store";
 import { useStoreVersion } from "@/lib/useStoreVersion";
-import { subscribeTausch, verbindeTausch } from "@/lib/tausch";
 import { type Blatt, type TauschInfo } from "@/lib/types";
 import { TauschDialog } from "./TauschDialog";
 import { cn } from "@/lib/utils";
@@ -42,7 +41,6 @@ export function TauschboerseApp() {
   const router = useRouter();
   const params = useSearchParams();
   const blattParam = params.get("blatt");
-  const [, setVersion] = useState(0);
   const ich = getSession();
   const [suche, setSuche] = useState(() => {
     const b = blattParam ? BLAETTER_NACH_ID.get(blattParam) : undefined;
@@ -67,15 +65,6 @@ export function TauschboerseApp() {
     else bestehende.delete("wunsch");
     router.replace(`/tausch?${bestehende.toString()}`, { scroll: false });
   };
-
-  useEffect(() => {
-    const cleanup = verbindeTausch();
-    const remove = subscribeTausch(() => setVersion((v) => v + 1));
-    return () => {
-      remove();
-      cleanup();
-    };
-  }, []);
 
   const gruppen = useMemo(() => {
     const map = new Map<string, AngebotsGruppe>();

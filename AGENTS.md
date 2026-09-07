@@ -67,6 +67,7 @@
 
 - Thread-Cache liegt in EINEM atomaren localStorage-Key `diddlcollect:tausch` (Mutationen laufen via `serialisiere()`-Mutex, async Teile wie `ladeAlles` rufen `flushQueueInnere()` direkt auf – kein Re-Entry in den Lock). Alte Zwei-Key-Caches (`diddlcollect:tauschangebote` / `diddlcollect:post`) werden beim Lesen migriert und beim Schreiben gelöscht.
 - `markiereGelesen` darf **kein** unbedingtes `emitChange()` abfeuern (Verstärker-Schleife mit `PostfachApp` → Freeze); Änderungen erst nach >5s emittieren.
+- **Egress-Guard (5 GB Supabase-Limit nie wieder brechen):** Der Header-Badge (`PostfachLink`) lädt NIE mehr `tauschangebot`/`postnachrichten` global – er pollt die Mini-RPC `lese_ungelesene` (Bytes, 60 s + Fokus). `ladeAlles` lädt nur noch EIGENE Threads (`or(anbieter/interessent = ich)` + Posts per `in`), FRISCH-Key pro Nutzer. Lesestand geräteübergreifend via `post_lesestand` + `post_gelesen`/`lese_ungelesene` (`scripts/post-lesestand.sql`), Spiegel `diddlcollect:ungelesen-server`. Ohne RPC (PGRST202) Fallback auf altes Verhalten. Die Börse (`TauschboerseApp`) darf KEIN `verbindeTausch()` mehr rufen (nutzt nur Profildaten).
 - Thread-Ansicht ist für BEIDE Parteien dieselbe: `AngebotVorschau` zeigt gewünschtes Blatt + gebotene Blätter + Betrag + Freitext. Es gibt keinen „Annehmen“-Button (könnte falsche Ansprüche ableiten), nur antworten / Ablehnen / Stornieren.
 
 

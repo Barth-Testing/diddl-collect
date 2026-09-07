@@ -3,6 +3,45 @@
 > Dieses Log wird bei jeder Änderung gepflegt (neuen Eintrag oben einfügen).
 > Beim initialen Laden durchlesen, um den aktuellen Stand zu verstehen.
 
+## 2026-09-07 — Postfach-1 geräteübergreifend + Egress-Downshift (Lesestand in DB)
+
+**Ziel:** Die „1“ am Brief verschwindet auf ALLEN Geräten, sobald ein Thread
+geöffnet wurde (kein Geräte-Split mehr), neue Nachrichten zeigen sie weiterhin
+an, und der Egress sinkt drastisch statt zu steigen.
+
+- **DB (`scripts/post-lesestand.sql` – im SQL-Editor einspielen!):**
+  - Neue Tabelle `post_lesestand (benutzer_id, angebot_id, gelesen_am)` – kein
+    direkter Zugriff (revoke), nur über RPCs.
+  - `post_gelesen(p_token, p_angebot_id)` – Thread als gelesen markieren
+    (security definer, nur Teilnehmer, 42501 sonst).
+  - `lese_ungelesene(p_token)` – Mini-RPC, liefert nur die **Thread-IDs** mit
+    ungelesenen fremden Nachrichten (Bytes statt MB). Zählt wie der Client
+    (autor != eigener Name, System-Diffs zählen, storniert/abgelehnt raus).
+- **`tausch.ts`:**
+  - `ladeUngelesen()` + `lesestandAktiv()`: Server-Lesestand-Spiegel
+    (`diddlcollect:ungelesen-server`), Badge zählt geräteübergreifend.
+  - `markiereGelesen` schreibt bei aktivem Server-Lesestand optimistisch in den
+    Spiegel und feuert `post_gelesen` (Fallback alter localStorage-Pfad bleibt).
+  - `ungeleseneThreadIds(ich)`: liefert die ungelesenen Thread-IDs für Badge UND
+    Thread-Highlight.
+  - **`ladeAlles` lädt nur noch die EIGENEN Threads** (`or(anbieter/interessent
+    = ich)` + Posts per `in`), FRISCH-Check pro Nutzer (`tausch:frisch:<id>`).
+    Kein globaler `select` mehr (500 Angebote + 2000 Posts waren die
+    Egress-Bombe).
+  - `verbindeTausch` lädt pro Nutzer-Konto nur einmal (Kontowechsel erneut).
+- **`PostfachLink.tsx`:** Header-Badge ruft NIE mehr `verbindeTausch()` (=
+  Vollload) auf, sondern pollt `lese_ungelesene` (60 s + Fokus/Sichtbarkeit).
+  Nur wenn die RPC fehlt (DB-Migration noch nicht eingespielt), Fallback auf
+  das alte Verhalten – nichts bricht vor dem SQL-Deploy.
+- **`PostfachApp.tsx`:** Ungelesene Threads bekommen einen Peach-Punkt „1“ in der
+  Thread-Liste; Sync läuft mit eigener ID (scoped).
+- **`TauschboerseApp.tsx`:** `verbindeTausch()` entfernt – die Börse nutzt nur
+  Profildaten, der bisherige Volldownload pro Besuch war reiner Egress-Verlust.
+
+**Verifikation:** Build OK; Lint nur vorbestehender `SpendeButton.tsx`-Error.
+**DB-Deploy:** `scripts/post-lesestand.sql` im SQL-Editor ausführen (additiv,
+kein Rollback nötig für Altgeräte). Ohne SQL bleibt alles beim alten Verhalten.
+
 ## 2026-08-31 — Registrierung: Namensende nur mit Buchstabe/Ziffer (alle End-Sonderzeichen geblockt)
 
 **Ziel:** Namens-Überschneidungen dauerhaft verhindern. Drei Ebenen greifen jetzt

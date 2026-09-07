@@ -168,7 +168,7 @@ export function TauschBearbeitenDialog({ angebot, ich, aufSchliessen }: Props) {
                         type="button"
                         onClick={() =>
                           setWunsch((vorher) =>
-                            aktiv ? vorher.filter((id) => id !== b.id) : [...vorher, b.id].slice(0, 20),
+                            aktiv ? vorher.filter((id) => id !== b.id) : [...vorher, b.id].slice(0, 50),
                           )
                         }
                         aria-pressed={aktiv}
@@ -214,7 +214,7 @@ export function TauschBearbeitenDialog({ angebot, ich, aufSchliessen }: Props) {
                         type="button"
                         onClick={() =>
                           setGebe((vorher) =>
-                            aktiv ? vorher.filter((id) => id !== b.id) : [...vorher, b.id].slice(0, 20),
+                            aktiv ? vorher.filter((id) => id !== b.id) : [...vorher, b.id].slice(0, 50),
                           )
                         }
                         aria-pressed={aktiv}
