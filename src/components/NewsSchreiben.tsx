@@ -5,6 +5,7 @@ import { ImagePlus, Loader2, Megaphone, Send, X } from "lucide-react";
 import { getSession, holSessionToken, logout } from "@/lib/store";
 import { rpcAufruf } from "@/lib/supabase";
 import { istAdmin } from "@/lib/kontakt";
+import { loescheNeuigkeitenCache } from "./Neuigkeiten";
 import { cn } from "@/lib/utils";
 
 const TITEL_MAX = 120;
@@ -90,6 +91,7 @@ export function NewsSchreiben() {
       setLink("");
       setBild(null);
       setErfolg(true);
+      loescheNeuigkeitenCache();
       return;
     }
     if (error.code === "PGRST202") {

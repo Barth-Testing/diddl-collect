@@ -3,6 +3,24 @@
 > Dieses Log wird bei jeder Änderung gepflegt (neuen Eintrag oben einfügen).
 > Beim initialen Laden durchlesen, um den aktuellen Stand zu verstehen.
 
+## 2026-09-07 — Egress: RPC-Cache + Sync-TTL 48 h + News-Cache
+
+**Ziel:** Tagesverbrauch weiter Richtung 160-MB-Limit drücken – diesmal über
+Wiederholungsbesuche statt Einzelabfragen (kein SQL nötig).
+
+- **`store.ts`:** `SYNC_TTL` 24 h → 48 h (Boot-Voll-Sync nur noch halb so oft;
+  eigenes Konto weiter per Mini-Poll live, Rangliste/Börse per Lean-RPC live,
+  Fremdprofile per Lazy-Load). Neu: 5-Min-Ergebnis-Cache für
+  `lese_rangliste`/`lese_boerse` (`diddlcollect:rpc-cache`) – Kernseiten laden
+  bei Wiederbesuch ohne Netzfrage.
+- **`Neuigkeiten.tsx`:** News-Liste 5 Min + Gemeinde-Stats 10 Min gecacht
+  (`diddlcollect:neuigkeiten`); `loescheNeuigkeitenCache()` als Export.
+- **`NewsSchreiben.tsx`:** leert den News-Cache nach erfolgreichem Post –
+  eigene News erscheint sofort, fremde max. 5 Min verzögert.
+
+**Verifikation:** `tsc` sauber, Build OK; Lint nur vorbestehender
+`SpendeButton.tsx`-Error.
+
 ## 2026-09-07 — Egress: Boot-Sync 24 h + Fremdprofile lazy + Fotos in 24er-Schritten
 
 **Ziel:** Tagesverbrauch (>200 MB) weiter Richtung 160-MB-Limit drücken. Drei

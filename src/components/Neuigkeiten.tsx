@@ -65,6 +65,38 @@ type Gemeinde = {
   neuestesMitglied: string | null;
 };
 
+const NEUIGKEITEN_KEY = "diddlcollect:neuigkeiten";
+const NEUIGKEITEN_MS = 5 * 60 * 1000;
+const GEMEINDE_MS = 10 * 60 * 1000;
+
+type NeuigkeitenSpiegel = {
+  news?: { ts: number; daten: NewsReihe[] };
+  gemeinde?: { ts: number; daten: Gemeinde };
+};
+
+function leseNeuigkeitenSpiegel(): NeuigkeitenSpiegel {
+  if (typeof window === "undefined") return {};
+  try {
+    return JSON.parse(window.localStorage.getItem(NEUIGKEITEN_KEY) ?? "{}") as NeuigkeitenSpiegel;
+  } catch {
+    return {};
+  }
+}
+
+function speichereNeuigkeitenSpiegel(spiegel: NeuigkeitenSpiegel) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(NEUIGKEITEN_KEY, JSON.stringify(spiegel));
+  } catch {
+    /* Cache voll oder kaputt – Hauptsache kein Absturz */
+  }
+}
+
+export function loescheNeuigkeitenCache() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(NEUIGKEITEN_KEY);
+}
+
 type NewsBild = {
   bild?: string | null;
   bild2?: string | null;
@@ -219,18 +251,26 @@ export function Neuigkeiten() {
 }
 
 async function ladeNews(supabase: SupabaseClient<Db>): Promise<NewsReihe[]> {
+  const spiegel = leseNeuigkeitenSpiegel();
+  if (spiegel.news && Date.now() - spiegel.news.ts < NEUIGKEITEN_MS) return spiegel.news.daten;
   const erste = await supabase
     .from("news")
     .select("id, titel, text, erstellt_am, link")
     .order("erstellt_am", { ascending: false })
     .limit(50);
-  if (!erste.error && erste.data) return erste.data;
+  if (!erste.error && erste.data) {
+    speichereNeuigkeitenSpiegel({ ...leseNeuigkeitenSpiegel(), news: { ts: Date.now(), daten: erste.data } });
+    return erste.data;
+  }
   const zweite = await supabase
     .from("news")
     .select("id, titel, text, erstellt_am")
     .order("erstellt_am", { ascending: false })
     .limit(50);
-  if (!zweite.error && zweite.data) return zweite.data;
+  if (!zweite.error && zweite.data) {
+    speichereNeuigkeitenSpiegel({ ...leseNeuigkeitenSpiegel(), news: { ts: Date.now(), daten: zweite.data } });
+    return zweite.data;
+  }
   return [];
 }
 
@@ -256,18 +296,22 @@ async function ladeBilder(supabase: SupabaseClient<Db>, ids: number[]): Promise<
  *  (kein Full-Table-Download von statuses/beweise – der Blatt-Zähler kommt
  *  aus dem bereits synchronisierten Cache, siehe blaetterGesamt oben). */
 async function ladeGemeinde(supabase: SupabaseClient<Db>): Promise<Gemeinde | null> {
+  const spiegel = leseNeuigkeitenSpiegel();
+  if (spiegel.gemeinde && Date.now() - spiegel.gemeinde.ts < GEMEINDE_MS) return spiegel.gemeinde.daten;
   const [anzahl, neuestes, fotos] = await Promise.all([
     supabase.from("profile").select("id", { count: "exact", head: true }),
     supabase.from("profile").select("name, created_at").order("created_at", { ascending: false }).limit(1),
     supabase.from("beweis_fotos").select("id", { count: "exact", head: true }),
   ]);
   if (anzahl.error) return null;
-  return {
+  const gemeinde: Gemeinde = {
     sammler: anzahl.count ?? 0,
     blaetter: 0,
     beweise: fotos.count ?? 0,
     neuestesMitglied: neuestes.data?.[0]?.name ?? null,
   };
+  speichereNeuigkeitenSpiegel({ ...leseNeuigkeitenSpiegel(), gemeinde: { ts: Date.now(), daten: gemeinde } });
+  return gemeinde;
 }
 
 function Imagelink({ link, titel, children }: { link?: string | null; titel: string; children: React.ReactNode }) {

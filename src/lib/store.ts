@@ -7,7 +7,7 @@ const SESSION_KEY = "diddlcollect:session";
 const USERID_KEY = "diddlcollect:userid";
 const SYNCZEIT_KEY = "diddlcollect:synczeit";
 const DIRTY_KEY = "diddlcollect:dirty";
-const SYNC_TTL = 24 * 60 * 60 * 1000;
+const SYNC_TTL = 48 * 60 * 60 * 1000;
 const PROFIL_FRISCH_KEY = "diddlcollect:profil-frisch";
 const PROFIL_FRISCH_MS = 30 * 60 * 1000;
 
@@ -374,7 +374,7 @@ async function ladeProfileZeilen(): Promise<ProfileRow[] | null> {
 function starteSync() {
   if (typeof window === "undefined") return;
   if (!supabaseKonfiguriert() || synchronisiert || syncLaeuft) return;
-  /* Datenvolumen-Sparmodus: frisches Kopien-Cache (letzte 24 h) wird nicht
+  /* Datenvolumen-Sparmodus: frisches Kopien-Cache (letzte 48 h) wird nicht
      erneut heruntergeladen – jede Seite lädt sonst ~1,4 MB Konten-Daten. */
   const letzte = Number(window.localStorage.getItem(SYNCZEIT_KEY) ?? "0");
   if (Date.now() - letzte < SYNC_TTL && window.localStorage.getItem(USERS_KEY)) {
@@ -419,7 +419,7 @@ export function syncBeiBedarf() {
    Fokus/Sichtbarkeit, bei Netz-Rückkehr und alle 20 s im sichtbaren Tab vom
    Server nachgezogen. Mit updated_at ist das ein Mini-Check (einige Bytes),
    ohne updated_at-Spalte wird der volle Eigen-Abruf auf 2 Minuten gedrosselt.
-   Der schwere Voll-Sync (alle Konten, ~2,6 MB) bleibt Start (24 h TTL) und
+   Der schwere Voll-Sync (alle Konten, ~2,6 MB) bleibt Start (48 h TTL) und
    Fallback-Pfaden vorbehalten – Rangliste/Börse lesen sonst nur Aggregate,
    Fremdprofile werden einzeln nachgeladen. */
 let focusSyncEingerichtet = false;
@@ -807,7 +807,7 @@ export function listBenutzer(): Benutzer[] {
 }
 
 /** Leichter Supporter-Abgleich (~200 Bytes): holt nur die Spender-Markierungen
- *  und merkt sie im Cache – unabhängig vom 24h-Sync-Fenster. No-op, solange
+ *  und merkt sie im Cache – unabhängig vom 48h-Sync-Fenster. No-op, solange
  *  die Spalte (noch) nicht existiert. */
 export async function aktualisiereSupporter(): Promise<void> {
   const supabase = getSupabase<ProfileDb>();
@@ -1276,6 +1276,34 @@ export type BoersenZeile = {
 let rangRpcFehlt = false;
 let boerseRpcFehlt = false;
 
+const RPC_CACHE_KEY = "diddlcollect:rpc-cache";
+const RPC_CACHE_MS = 5 * 60 * 1000;
+
+type RpcCacheEintrag<T> = { ts: number; daten: T };
+
+function leseRpcCache<T>(feld: string): T | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const roh = JSON.parse(window.localStorage.getItem(RPC_CACHE_KEY) ?? "{}") as Record<string, RpcCacheEintrag<T>>;
+    const eintrag = roh[feld];
+    if (eintrag && Date.now() - eintrag.ts < RPC_CACHE_MS) return eintrag.daten;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function schreibeRpcCache<T>(feld: string, daten: T) {
+  if (typeof window === "undefined") return;
+  try {
+    const roh = JSON.parse(window.localStorage.getItem(RPC_CACHE_KEY) ?? "{}") as Record<string, unknown>;
+    roh[feld] = { ts: Date.now(), daten };
+    window.localStorage.setItem(RPC_CACHE_KEY, JSON.stringify(roh));
+  } catch {
+    /* Cache voll oder kaputt – Hauptsache kein Absturz */
+  }
+}
+
 function istRpcFehlt(error: { code?: string; message?: string } | null | undefined) {
   return error?.code === "PGRST202" || (error?.message ?? "").includes("not found");
 }
@@ -1287,9 +1315,11 @@ function alsZahl(wert: unknown): number {
 
 export async function ladeRanglisteRpc(): Promise<RangZeile[] | null> {
   if (rangRpcFehlt) return null;
+  const frisch = leseRpcCache<RangZeile[]>("rangliste");
+  if (frisch) return frisch;
   const { data, error } = await rpcAufruf<RangZeile[]>("lese_rangliste");
   if (!error && Array.isArray(data)) {
-    return data.map((r) => ({
+    const zeilen = data.map((r) => ({
       id: String(r.id),
       name: String(r.name),
       supporter: r.supporter === true,
@@ -1298,6 +1328,8 @@ export async function ladeRanglisteRpc(): Promise<RangZeile[] | null> {
       offer: alsZahl(r.offer),
       beweise: alsZahl(r.beweise),
     }));
+    schreibeRpcCache("rangliste", zeilen);
+    return zeilen;
   }
   if (istRpcFehlt(error)) rangRpcFehlt = true;
   return null;
@@ -1305,9 +1337,11 @@ export async function ladeRanglisteRpc(): Promise<RangZeile[] | null> {
 
 export async function ladeBoerseRpc(): Promise<BoersenZeile[] | null> {
   if (boerseRpcFehlt) return null;
+  const frisch = leseRpcCache<BoersenZeile[]>("boerse");
+  if (frisch) return frisch;
   const { data, error } = await rpcAufruf<BoersenZeile[]>("lese_boerse");
   if (!error && Array.isArray(data)) {
-    return data.map((r) => ({
+    const zeilen = data.map((r) => ({
       blatt_id: String(r.blatt_id),
       anbieter_id: String(r.anbieter_id),
       anbieter_name: String(r.anbieter_name),
@@ -1316,6 +1350,8 @@ export async function ladeBoerseRpc(): Promise<BoersenZeile[] | null> {
       own: alsZahl(r.own),
       offer: alsZahl(r.offer),
     }));
+    schreibeRpcCache("boerse", zeilen);
+    return zeilen;
   }
   if (istRpcFehlt(error)) boerseRpcFehlt = true;
   return null;
