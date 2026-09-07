@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Gem, Heart, HeartHandshake, Mail, Repeat2, SearchX, Share2, Trophy } from "lucide-react";
-import { aktualisiereSupporter, getSession, listBenutzer, zaehle } from "@/lib/store";
+import { aktualisiereSupporter, getSession, ladeFremdesProfil, listBenutzer, zaehle } from "@/lib/store";
 import { useStoreVersion } from "@/lib/useStoreVersion";
 import { istAdmin, normalisiereAdminName } from "@/lib/kontakt";
 import { BlattLeiste } from "./BlattLeiste";
@@ -45,6 +45,12 @@ export function SammlerProfilApp() {
         kandidaten.find((u) => u.name.toLowerCase().replace(/\.+$/, "") === q.replace(/\.+$/, "")) ??
         null)
       : null;
+
+  const benutzerId = benutzer?.id;
+  const ichId = ich?.id;
+  useEffect(() => {
+    if (benutzerId && ichId && benutzerId !== ichId) void ladeFremdesProfil(benutzerId);
+  }, [benutzerId, ichId]);
 
   if ((!name && !idParam) || !benutzer) {
     return (

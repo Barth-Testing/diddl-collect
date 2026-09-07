@@ -7,7 +7,9 @@ const SESSION_KEY = "diddlcollect:session";
 const USERID_KEY = "diddlcollect:userid";
 const SYNCZEIT_KEY = "diddlcollect:synczeit";
 const DIRTY_KEY = "diddlcollect:dirty";
-const SYNC_TTL = 12 * 60 * 60 * 1000;
+const SYNC_TTL = 24 * 60 * 60 * 1000;
+const PROFIL_FRISCH_KEY = "diddlcollect:profil-frisch";
+const PROFIL_FRISCH_MS = 30 * 60 * 1000;
 
 /**
  * Konten liegen dauerhaft in Supabase (Tabelle "profile"). Der localStorage
@@ -372,7 +374,7 @@ async function ladeProfileZeilen(): Promise<ProfileRow[] | null> {
 function starteSync() {
   if (typeof window === "undefined") return;
   if (!supabaseKonfiguriert() || synchronisiert || syncLaeuft) return;
-  /* Datenvolumen-Sparmodus: frisches Kopien-Cache (letzte 12 h) wird nicht
+  /* Datenvolumen-Sparmodus: frisches Kopien-Cache (letzte 24 h) wird nicht
      erneut heruntergeladen – jede Seite lädt sonst ~1,4 MB Konten-Daten. */
   const letzte = Number(window.localStorage.getItem(SYNCZEIT_KEY) ?? "0");
   if (Date.now() - letzte < SYNC_TTL && window.localStorage.getItem(USERS_KEY)) {
@@ -417,8 +419,9 @@ export function syncBeiBedarf() {
    Fokus/Sichtbarkeit, bei Netz-Rückkehr und alle 20 s im sichtbaren Tab vom
    Server nachgezogen. Mit updated_at ist das ein Mini-Check (einige Bytes),
    ohne updated_at-Spalte wird der volle Eigen-Abruf auf 2 Minuten gedrosselt.
-   Der schwere Voll-Sync (alle Konten, ~2,6 MB) bleibt Start (12 h TTL) und
-   Rangliste (30 min) vorbehalten. */
+   Der schwere Voll-Sync (alle Konten, ~2,6 MB) bleibt Start (24 h TTL) und
+   Fallback-Pfaden vorbehalten – Rangliste/Börse lesen sonst nur Aggregate,
+   Fremdprofile werden einzeln nachgeladen. */
 let focusSyncEingerichtet = false;
 let letzterEigenSync = 0;
 const EIGEN_SYNC_MS = 15000;
@@ -554,6 +557,59 @@ async function ladeEigeneZeile(id: string): Promise<ProfileRow | null> {
     }
   }
   return null;
+}
+
+function leseProfilFrisch(): Record<string, number> {
+  if (typeof window === "undefined") return {};
+  try {
+    return JSON.parse(window.localStorage.getItem(PROFIL_FRISCH_KEY) ?? "{}") as Record<string, number>;
+  } catch {
+    return {};
+  }
+}
+
+function merkeProfilFrisch(id: string) {
+  if (typeof window === "undefined") return;
+  const staende = leseProfilFrisch();
+  staende[id] = Date.now();
+  window.localStorage.setItem(PROFIL_FRISCH_KEY, JSON.stringify(staende));
+}
+
+const fremdeProfileLaden = new Set<string>();
+
+export async function ladeFremdesProfil(id: string): Promise<boolean> {
+  if (typeof window === "undefined" || !supabaseKonfiguriert()) return false;
+  if (!id || id === sessionNutzerId()) return false;
+  if (fremdeProfileLaden.has(id)) return false;
+  if (Date.now() - (leseProfilFrisch()[id] ?? 0) < PROFIL_FRISCH_MS) return false;
+  const supabase = getSupabase<ProfileDb>();
+  if (!supabase) return false;
+  fremdeProfileLaden.add(id);
+  try {
+    const { data, error } = await supabase
+      .from("profile")
+      .select(profilSpalten())
+      .eq("id", id)
+      .maybeSingle();
+    if (error || !data) return false;
+    const benutzer = zeileZuBenutzer(data as unknown as ProfileRow);
+    const users = loadUsers();
+    const idx = users.findIndex((u) => u.id === id);
+    if (idx >= 0) {
+      if (JSON.stringify(users[idx]) === JSON.stringify(benutzer)) {
+        merkeProfilFrisch(id);
+        return false;
+      }
+      users[idx] = benutzer;
+    } else {
+      users.push(benutzer);
+    }
+    saveUsers(users);
+    merkeProfilFrisch(id);
+    return true;
+  } finally {
+    fremdeProfileLaden.delete(id);
+  }
 }
 
 /** Uploads serialisieren – nie laufen zwei RPCs mit unterschiedlichen
@@ -751,7 +807,7 @@ export function listBenutzer(): Benutzer[] {
 }
 
 /** Leichter Supporter-Abgleich (~200 Bytes): holt nur die Spender-Markierungen
- *  und merkt sie im Cache – unabhängig vom 12h-Sync-Fenster. No-op, solange
+ *  und merkt sie im Cache – unabhängig vom 24h-Sync-Fenster. No-op, solange
  *  die Spalte (noch) nicht existiert. */
 export async function aktualisiereSupporter(): Promise<void> {
   const supabase = getSupabase<ProfileDb>();

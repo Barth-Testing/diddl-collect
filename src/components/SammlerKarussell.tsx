@@ -16,7 +16,7 @@ export function SammlerKarussell({ benutzer, titel }: { benutzer: Benutzer; tite
   const [kannZurueck, setKannZurueck] = useState(false);
   const [fotos, setFotos] = useState<Record<string, string>>({});
   const [geladene, setGeladene] = useState<Set<string>>(new Set());
-  const [fotoGewuenscht, setFotoGewuenscht] = useState(60);
+  const [fotoGewuenscht, setFotoGewuenscht] = useState(24);
   const [alleAnzeigen, setAlleAnzeigen] = useState(false);
 
   const eigeneIds = Object.keys(benutzer.statuses)
@@ -33,8 +33,8 @@ export function SammlerKarussell({ benutzer, titel }: { benutzer: Benutzer; tite
         : eigeneIds;
   const fehlendeFotos = beweisIds.filter((id) => !geladene.has(id)).length;
 
-  /* Beweisfotos nur bei Bedarf (Tab „Beweisfotos“) und in 60er-Schritten laden –
-     nicht beim Öffnen des Profils, sonst lädt z. B. ein Profil mit 500+ Fotos
+  /* Beweisfotos nur bei Bedarf (Tab „Beweisfotos“) und in 24er-Schritten laden –
+     nicht beim Öffnen des Profils, sonst lädt z. B. ein Profil mit vielen Fotos
      mehrere MB auf einmal. */
   const ladeFotos = (bis: number) => {
     const idsJetzt = Object.keys(benutzer.beweise ?? {})
@@ -43,7 +43,7 @@ export function SammlerKarussell({ benutzer, titel }: { benutzer: Benutzer; tite
     const offen = idsJetzt
       .slice(0, bis)
       .filter((id) => !geladene.has(id))
-      .slice(0, 60);
+      .slice(0, 24);
     if (offen.length === 0) return;
     void ladeBeweisFotos(benutzer.id, offen).then((f) => {
       setFotos((alt) => ({ ...alt, ...f }));
@@ -108,8 +108,8 @@ export function SammlerKarussell({ benutzer, titel }: { benutzer: Benutzer; tite
             type="button"
             onClick={() => {
               setQuelle("beweis");
-              setFotoGewuenscht(60);
-              void ladeFotos(60);
+              setFotoGewuenscht(24);
+              void ladeFotos(24);
             }}
             disabled={!hatBeweise}
             title={hatBeweise ? undefined : "Erst Foto-Beweise hochladen"}
@@ -192,7 +192,7 @@ export function SammlerKarussell({ benutzer, titel }: { benutzer: Benutzer; tite
             <button
               type="button"
               onClick={() => {
-                const neu = Math.min(fotoGewuenscht + 60, beweisIds.length);
+                const neu = Math.min(fotoGewuenscht + 24, beweisIds.length);
                 setFotoGewuenscht(neu);
                 void ladeFotos(neu);
               }}

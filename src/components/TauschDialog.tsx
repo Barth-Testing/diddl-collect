@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Check, Heart, Repeat2, Search, Send, X } from "lucide-react";
 import { Gift, Sparkles, Star } from "lucide-react";
 import type { Blatt } from "@/lib/types";
 import { BLAETTER_NACH_ID, blattTitel } from "@/lib/blaetter";
-import { getSession, listBenutzer } from "@/lib/store";
+import { getSession, ladeFremdesProfil, listBenutzer } from "@/lib/store";
 import { useStoreVersion } from "@/lib/useStoreVersion";
 import { erstelleAngebot } from "@/lib/tausch";
 import { cn } from "@/lib/utils";
@@ -29,10 +29,22 @@ export function TauschDialog({ blattId, anbieter, aufSchliessen }: Props) {
   const [nachricht, setNachricht] = useState("");
   const [gesendet, setGesendet] = useState(false);
   const [fehler, setFehler] = useState<string | null>(null);
+  const [frisch, setFrisch] = useState(0);
+
+  useEffect(() => {
+    let aktiv = true;
+    void ladeFremdesProfil(anbieter.id).then((ok) => {
+      if (aktiv && ok) setFrisch((v) => v + 1);
+    });
+    return () => {
+      aktiv = false;
+    };
+  }, [anbieter.id]);
 
   const anbieterDaten = useMemo(
     () => listBenutzer().find((u) => u.id === anbieter.id) ?? null,
-    [anbieter.id],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [anbieter.id, frisch],
   );
 
   /* Stufe 1: alles, was der Anbieter zum Tauschen markiert hat. */

@@ -3,6 +3,50 @@
 > Dieses Log wird bei jeder Änderung gepflegt (neuen Eintrag oben einfügen).
 > Beim initialen Laden durchlesen, um den aktuellen Stand zu verstehen.
 
+## 2026-09-07 — Egress: Boot-Sync 24 h + Fremdprofile lazy + Fotos in 24er-Schritten
+
+**Ziel:** Tagesverbrauch (>200 MB) weiter Richtung 160-MB-Limit drücken. Drei
+voneinander unabhängige, anzeigeneutrale Maßnahmen (kein SQL nötig).
+
+- **`store.ts`:** `SYNC_TTL` 12 h → 24 h (halbiert die ~2,6-MB-Boot-Syncs).
+  Neu `ladeFremdesProfil(id)`: lädt EINE Profilzeile nach (30-Min-Frische pro
+  ID, In-Flight-Guard, unverändert-gerenderte Zeilen lösen kein Re-Render
+  aus). Fremdzeilen werden plain ersetzt (dirty-Merge gehört nur dem eigenen
+  Konto – Markier-Logik unberührt).
+- **`SammlerProfilApp.tsx` / `TauschDialog.tsx`:** laden das betrachtete
+  Fremdprofil bei Bedarf nach – Detailseiten bleiben trotz 24-h-TTL frisch.
+- **`SammlerKarussell.tsx`:** Beweisfoto-Batches 60 → 24 (Button „nachladen“
+  wie bisher). Kartenraster unverändert.
+- Enthalten, aber noch ungepusht gewesen: News-Kompression + News-Bilder lazy
+  (Startseite lädt keine MB mehr mit).
+
+**Verifikation:** `tsc` sauber, Build OK; Lint nur vorbestehender
+`SpendeButton.tsx`-Error.
+
+## 2026-09-07 — News-Bilder lazy (Startseite lädt keine MB mehr mit)
+
+**Ziel:** Die Startseite lud bis zu 50 News INKLUSIVE aller Data-URL-Bilder
+bei jedem Besuch. Jetzt kommt die Liste nur noch als Text (KB), Bilder werden
+pro sichtbarem Eintrag in einer Sammelabfrage nachgeladen.
+
+- **`Neuigkeiten.tsx`:** Listen-Query ohne `bild`/`bild2` (Fallback-Kette
+  entsprechend gekürzt, alle alten DB-Stände weiter abgedeckt); `ladeBilder()`
+  lädt Bilder nur für sichtbare Einträge (`in`-Query); bei fehlenden Spalten
+  (`PGRST204`/`42703`/`42501`) wird das Nachladen still abgeschaltet.
+  Darstellung, Fallbacks und „Mehr anzeigen“ unverändert.
+
+## 2026-09-07 — News-Bilder stärker komprimiert (Egress)
+
+**Ziel:** News-Bilder landen als Data-URL in der DB und werden mit jeder
+Startseite (bis 50 Einträge) mitgeladen – kleinere Bilder = weniger Egress.
+
+- **`NewsSchreiben.tsx`:** Upload-Kompression 800 px/q0.7 → 640 px/q0.6
+  (reicht für die Kartendarstellung, ca. ein Drittel bis die Hälfte kleiner).
+- **Neu `scripts/news-bilder-diagnose.sql`:** zeigt gespeicherte
+  Data-URL-Bilder nach Größe (nur Lesen). Zu große Alt-Bilder bei Bedarf per
+  `update news set bild = null where id = …` entfernen und kleiner neu
+  hochladen.
+
 ## 2026-09-07 — Hinweis-Button rechts unten (Admin schaltet Text/Link/An-Aus)
 
 **Ziel:** Schwebender Hinweis-Button für eingeloggte Sammler (z. B. „Blöcke
