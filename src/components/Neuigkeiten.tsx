@@ -65,9 +65,17 @@ type Gemeinde = {
   neuestesMitglied: string | null;
 };
 
+type NewsBild = {
+  bild?: string | null;
+  bild2?: string | null;
+};
+
+let bilderUnterstuetzt = true;
+
 export function Neuigkeiten() {
   const storeVersion = useStoreVersion();
   const [news, setNews] = useState<NewsReihe[]>([]);
+  const [bilder, setBilder] = useState<Record<number, NewsBild>>({});
   const [gemeinde, setGemeinde] = useState<Gemeinde | null>(null);
   const [sichtbar, setSichtbar] = useState(5);
 
@@ -89,6 +97,24 @@ export function Neuigkeiten() {
       aktiv = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!bilderUnterstuetzt) return;
+    const ids = news
+      .slice(0, sichtbar)
+      .map((n) => n.id)
+      .filter((id) => !(id in bilder));
+    if (ids.length === 0) return;
+    const supabase = getSupabase<Db>();
+    if (!supabase) return;
+    let aktiv = true;
+    void ladeBilder(supabase, ids).then((liste) => {
+      if (aktiv && Object.keys(liste).length > 0) setBilder((vorher) => ({ ...vorher, ...liste }));
+    });
+    return () => {
+      aktiv = false;
+    };
+  }, [news, sichtbar, bilder]);
 
   /* Blatt-Zähler aus dem bereits synchronisierten Cache (derselbe Stand wie
      Rangliste) – kein Full-Table-Download der statuses-Spalte mehr. Re-Render
@@ -151,22 +177,22 @@ export function Neuigkeiten() {
                 <p className="text-xs font-semibold text-ink-600">{formatiereDatum(n.erstellt_am)}</p>
               </div>
               <p className="mt-1 whitespace-pre-wrap text-sm text-ink-600">{n.text}</p>
-              {(n.bild || n.bild2) && (
+              {(bilder[n.id]?.bild || bilder[n.id]?.bild2) && (
                 <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {n.bild && (
+                  {bilder[n.id]?.bild && (
                     <Imagelink link={n.link} titel={n.titel}>
                       <img
-                        src={n.bild}
+                        src={bilder[n.id]?.bild ?? ""}
                         alt={n.titel}
                         loading="lazy"
                         className="max-h-96 w-full rounded-xl object-contain ring-1 ring-cream-200"
                       />
                     </Imagelink>
                   )}
-                  {n.bild2 && (
+                  {bilder[n.id]?.bild2 && (
                     <Imagelink link={n.link} titel={`${n.titel} (2)`}>
                       <img
-                        src={n.bild2}
+                        src={bilder[n.id]?.bild2 ?? ""}
                         alt={`${n.titel} (2)`}
                         loading="lazy"
                         className="max-h-96 w-full rounded-xl object-contain ring-1 ring-cream-200"
@@ -195,29 +221,35 @@ export function Neuigkeiten() {
 async function ladeNews(supabase: SupabaseClient<Db>): Promise<NewsReihe[]> {
   const erste = await supabase
     .from("news")
-    .select("id, titel, text, erstellt_am, bild, bild2, link")
+    .select("id, titel, text, erstellt_am, link")
     .order("erstellt_am", { ascending: false })
     .limit(50);
   if (!erste.error && erste.data) return erste.data;
   const zweite = await supabase
     .from("news")
-    .select("id, titel, text, erstellt_am, bild, bild2")
-    .order("erstellt_am", { ascending: false })
-    .limit(50);
-  if (!zweite.error && zweite.data) return zweite.data;
-  const dritte = await supabase
-    .from("news")
-    .select("id, titel, text, erstellt_am, bild")
-    .order("erstellt_am", { ascending: false })
-    .limit(50);
-  if (!dritte.error && dritte.data) return dritte.data;
-  const vierte = await supabase
-    .from("news")
     .select("id, titel, text, erstellt_am")
     .order("erstellt_am", { ascending: false })
     .limit(50);
-  if (!vierte.error && vierte.data) return vierte.data;
+  if (!zweite.error && zweite.data) return zweite.data;
   return [];
+}
+
+async function ladeBilder(supabase: SupabaseClient<Db>, ids: number[]): Promise<Record<number, NewsBild>> {
+  const { data, error } = await supabase
+    .from("news")
+    .select("id, bild, bild2")
+    .in("id", ids);
+  if (error || !data) {
+    if (error?.code === "PGRST204" || error?.code === "42703" || error?.code === "42501") {
+      bilderUnterstuetzt = false;
+    }
+    return {};
+  }
+  const out: Record<number, NewsBild> = {};
+  for (const r of data as unknown as { id: number; bild?: string | null; bild2?: string | null }[]) {
+    out[r.id] = { bild: r.bild ?? null, bild2: r.bild2 ?? null };
+  }
+  return out;
 }
 
 /** Gemeinde-Statistik ohne die schweren Spalten: Zähler via Count-Head-Queries

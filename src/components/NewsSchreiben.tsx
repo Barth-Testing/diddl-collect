@@ -35,7 +35,7 @@ export function NewsSchreiben() {
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement("canvas");
-        const max = 800;
+        const max = 640;
         const skala = Math.min(1, max / Math.max(img.width, img.height));
         canvas.width = Math.round(img.width * skala);
         canvas.height = Math.round(img.height * skala);
@@ -44,7 +44,7 @@ export function NewsSchreiben() {
         ctx.fillStyle = "#fff";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        setBild(canvas.toDataURL("image/jpeg", 0.7));
+        setBild(canvas.toDataURL("image/jpeg", 0.6));
       };
       img.src = leser.result as string;
     };
