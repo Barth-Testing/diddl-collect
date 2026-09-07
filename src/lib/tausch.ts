@@ -1,6 +1,6 @@
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { getSupabase, rpcAufruf, supabaseKonfiguriert } from "./supabase";
-import { holSessionToken } from "./store";
+import { holSessionToken, logout } from "./store";
 
 export type TauschAngebotStatus = "offen" | "angenommen" | "abgelehnt" | "storniert";
 
@@ -150,6 +150,11 @@ export async function ladeUngelesen(): Promise<void> {
     lesestandServer = true;
     speichereUngelesenSpiegel(data);
     emitChange();
+    return;
+  }
+  if (error?.code === "28000") {
+    logout();
+    lesestandServer = false;
     return;
   }
   if (istPgrst202(error)) lesestandServer = false;

@@ -3,6 +3,34 @@
 > Dieses Log wird bei jeder Änderung gepflegt (neuen Eintrag oben einfügen).
 > Beim initialen Laden durchlesen, um den aktuellen Stand zu verstehen.
 
+## 2026-09-07 — Egress-Haupttreiber: Patch-Antwort schlank + Stand-Handshake
+
+**Ziel:** `profil_patch` (24k Calls/Tag) lieferte je die volle Profilzeile
+zurück (~30–90 KB) plus danach nochmal per Eigen-Poll. Neu nur noch Bytes –
+bei exakt gleicher Sync-Sicherheit (Cross-Device-Markieren uneingeschränkt,
+kein Relogin-Szenario).
+
+- **DB (`scripts/profil-patch-antwort.sql` – zuerst einspielen, dann Push!):**
+  Neuer optionaler Param `p_stand`; bei Kollision (fremde Änderung seit Stand)
+  volle Zeile wie bisher, sonst `{ok, aktualisiert_am}`. Beide Richtungen
+  kompatibel (ohne `p_stand` immer voll; neue Clients gegen alte DB mergen
+  `data.profil` wie bisher). Keine Grant-Änderungen.
+- **DB (`scripts/rang-boerse-lean.sql` – erneut ausführen):** `lese_boerse`
+  mengenbasiert (ein Durchlauf + `FILTER` statt korrelierter Subselects, gleiche
+  Semantik) gegen die beobachteten 500er-Timeouts.
+- **`store.ts`:** `pushProfil` sendet `p_stand`, übernimmt `aktualisiert_am`
+  (kein redundanter Eigen-Poll-Download mehr); Merge-/Retry-/Fallback-Pfade
+  unverändert; Zeitstempel-Hygiene bei Login/Logout (verhaltensneutral).
+- **`tausch.ts`/`PostfachLink.tsx`:** `28000` beim Badge-Poll loggt aus wie
+  überall (stoppt 400er-Spam toter Sessions); Voll-Download-Fallback nur noch
+  bei fehlender Funktion (`PGRST202`).
+- **`Neuigkeiten.tsx`:** `linkUnterstuetzt`-Flag (ein Fehlversuch, dann direkt
+  Basis-Query).
+
+**Verifikation:** `tsc` sauber, Build OK; Lint nur vorbestehender
+`SpendeButton.tsx`-Error. Akzeptanz: A+B gleichzeitig markieren → Refresh ohne
+Relogin → beide Markierungen überall (plus Alt-Client parallel).
+
 ## 2026-09-07 — Egress: RPC-Cache + Sync-TTL 48 h + News-Cache
 
 **Ziel:** Tagesverbrauch weiter Richtung 160-MB-Limit drücken – diesmal über

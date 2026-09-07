@@ -49,27 +49,31 @@ as $$
         then p.tausch else '{}'::jsonb end as ta
     from public.profile p
   ),
+  aufgeschluesselt as (
+    select b.id, b.name, s.key as blatt_schluessel, s.value as stand,
+      b.ta -> s.key ->> 'betrag' as betrag_text,
+      b.ta -> s.key ->> 'notiz' as notiz_text
+    from basis b, jsonb_each(b.st) s
+  ),
   gez as (
-    select b.id,
-      (select count(*) from jsonb_each(b.st) s
-        where s.value = '"own"'::jsonb or s.value = '"offer"'::jsonb
-          or (jsonb_typeof(s.value) = 'array' and (s.value ? 'own' or s.value ? 'offer'))) as own,
-      (select count(*) from jsonb_each(b.st) s
-        where s.value = '"offer"'::jsonb
-          or (jsonb_typeof(s.value) = 'array' and s.value ? 'offer')) as offer
-    from basis b
+    select a.id,
+      count(*) filter (where a.stand = '"own"'::jsonb or a.stand = '"offer"'::jsonb
+        or (jsonb_typeof(a.stand) = 'array' and (a.stand ? 'own' or a.stand ? 'offer'))) as own,
+      count(*) filter (where a.stand = '"offer"'::jsonb
+        or (jsonb_typeof(a.stand) = 'array' and a.stand ? 'offer')) as offer
+    from aufgeschluesselt a
+    group by a.id
   )
   select coalesce(jsonb_agg(t), '[]'::jsonb) from (
-    select b.id as anbieter_id, b.name as anbieter_name, s.key as blatt_id,
-      case when (b.ta -> s.key ->> 'betrag') ~ '^[0-9]+(\.[0-9]+)?$'
-        then (b.ta -> s.key ->> 'betrag')::numeric end as betrag,
-      nullif(b.ta -> s.key ->> 'notiz', '') as notiz,
+    select a.id as anbieter_id, a.name as anbieter_name, a.blatt_schluessel as blatt_id,
+      case when a.betrag_text ~ '^[0-9]+(\.[0-9]+)?$'
+        then a.betrag_text::numeric end as betrag,
+      nullif(a.notiz_text, '') as notiz,
       z.own, z.offer
-    from basis b
-    join jsonb_each(b.st) s
-      on s.value = '"offer"'::jsonb
-        or (jsonb_typeof(s.value) = 'array' and s.value ? 'offer')
-    join gez z on z.id = b.id
+    from aufgeschluesselt a
+    join gez z on z.id = a.id
+    where a.stand = '"offer"'::jsonb
+      or (jsonb_typeof(a.stand) = 'array' and a.stand ? 'offer')
   ) t
 $$;
 

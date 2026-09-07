@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Mail } from "lucide-react";
-import { getSession } from "@/lib/store";
+import { getSession, holSessionToken } from "@/lib/store";
 import { useStoreVersion } from "@/lib/useStoreVersion";
 import {
   ladeUngelesen,
@@ -33,7 +33,7 @@ export function PostfachLink() {
       if (!document.hidden) void ladeUngelesen();
     };
     void ladeUngelesen().then(() => {
-      if (tot) return;
+      if (tot || !holSessionToken()) return;
       if (lesestandAktiv()) {
         pollTimer = setInterval(pruefe, 60_000);
         document.addEventListener("visibilitychange", pruefe);

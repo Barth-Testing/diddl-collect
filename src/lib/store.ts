@@ -689,7 +689,7 @@ function pushProfil(): Promise<boolean> {
       const bl = teileFeld(lok.blocks, dirty.blocks);
       const az = teileFeld(lok.anzahl, dirty.anzahl);
       for (let versuch = 0; versuch < 3; versuch++) {
-        const { data, error } = await rpcAufruf<{ profil?: ProfileRow }>("profil_patch", {
+        const { data, error } = await rpcAufruf<{ profil?: ProfileRow; aktualisiert_am?: string }>("profil_patch", {
           p_token: token,
           p_statuses: s.setzen,
           p_statuses_loesch: s.loeschen,
@@ -703,6 +703,7 @@ function pushProfil(): Promise<boolean> {
           p_blocks_loesch: bl.loeschen,
           p_anzahl: az.setzen,
           p_anzahl_loesch: az.loeschen,
+          p_stand: letzterEigenerUpdatedAt,
         });
         if (!error) {
           entferneDirtySchluessel(dirty);
@@ -710,6 +711,9 @@ function pushProfil(): Promise<boolean> {
             schreibeEigenesKontoInCache(
               benutzerAusProfilJson(data.profil, lok.passwort, lok.supporter === true),
             );
+          }
+          if (typeof data?.aktualisiert_am === "string" && data.aktualisiert_am) {
+            letzterEigenerUpdatedAt = data.aktualisiert_am;
           }
           return;
         }
@@ -866,6 +870,7 @@ function uebernimmAnmeldung(ergebnis: KontoAntwort): { ok: boolean; fehler?: str
   const rest = loadUsers().filter((u) => u.id !== benutzer.id);
   saveUsers([...rest, benutzer]);
   setzeSession(ergebnis.token, benutzer.id);
+  letzterEigenerUpdatedAt = null;
   /* Nur hochladen, wenn es wirklich lokale (dirty) Änderungen nachzuziehen
      gibt; ansonsten ist der Server-Stand bereits die Quelle der Wahrheit. */
   if (hatDirty()) void pushProfil();
@@ -1027,6 +1032,7 @@ export function logout() {
     rpcAufruf("abmelden", { p_token: token }).then(() => {});
   }
   loescheSession();
+  letzterEigenerUpdatedAt = null;
   emitChange();
 }
 

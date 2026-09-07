@@ -103,6 +103,7 @@ type NewsBild = {
 };
 
 let bilderUnterstuetzt = true;
+let linkUnterstuetzt = true;
 
 export function Neuigkeiten() {
   const storeVersion = useStoreVersion();
@@ -253,14 +254,20 @@ export function Neuigkeiten() {
 async function ladeNews(supabase: SupabaseClient<Db>): Promise<NewsReihe[]> {
   const spiegel = leseNeuigkeitenSpiegel();
   if (spiegel.news && Date.now() - spiegel.news.ts < NEUIGKEITEN_MS) return spiegel.news.daten;
-  const erste = await supabase
-    .from("news")
-    .select("id, titel, text, erstellt_am, link")
-    .order("erstellt_am", { ascending: false })
-    .limit(50);
-  if (!erste.error && erste.data) {
-    speichereNeuigkeitenSpiegel({ ...leseNeuigkeitenSpiegel(), news: { ts: Date.now(), daten: erste.data } });
-    return erste.data;
+  if (linkUnterstuetzt) {
+    const erste = await supabase
+      .from("news")
+      .select("id, titel, text, erstellt_am, link")
+      .order("erstellt_am", { ascending: false })
+      .limit(50);
+    if (!erste.error && erste.data) {
+      speichereNeuigkeitenSpiegel({ ...leseNeuigkeitenSpiegel(), news: { ts: Date.now(), daten: erste.data } });
+      return erste.data;
+    }
+    if (erste.error?.code !== "PGRST204" && erste.error?.code !== "42703" && erste.error?.code !== "42501") {
+      return [];
+    }
+    linkUnterstuetzt = false;
   }
   const zweite = await supabase
     .from("news")
