@@ -6,10 +6,12 @@ import { useSearchParams } from "next/navigation";
 import { Gem, Heart, HeartHandshake, Mail, Repeat2, SearchX, Share2, Trophy } from "lucide-react";
 import { aktualisiereSupporter, getSession, listBenutzer, zaehle } from "@/lib/store";
 import { useStoreVersion } from "@/lib/useStoreVersion";
+import { istAdmin } from "@/lib/kontakt";
 import { BlattLeiste } from "./BlattLeiste";
 import { Punkte } from "./Punkte";
 import { SammlerKarussell } from "./SammlerKarussell";
 import { TauschDialog } from "./TauschDialog";
+import { NewsSchreiben } from "./NewsSchreiben";
 import { cn, kopiereText, sammlerLink } from "@/lib/utils";
 
 export function SammlerProfilApp() {
@@ -164,6 +166,8 @@ export function SammlerProfilApp() {
           </button>
         </div>
       </div>
+
+      {ich && ich.id === benutzer.id && istAdmin(benutzer.name) && <NewsSchreiben />}
 
       {ich && ich.id !== benutzer.id && treffer.length > 0 && (
         <div className="card-soft border-mint-200 bg-mint-50 p-5">

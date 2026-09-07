@@ -2,6 +2,14 @@ import { getSupabase, rpcAufruf, supabaseKonfiguriert } from "./supabase";
 
 export const ADMIN_NAME = "malarky";
 
+/** Admin-Kreis: darf News schreiben und sieht die Kontakt-Inbox. Vergleich
+ *  immer case-insensitiv über istAdmin() – nie direkt mit === vergleichen. */
+export const ADMIN_NAMEN = ["malarky", "blondy"];
+
+export function istAdmin(name: string | null | undefined): boolean {
+  return !!name && ADMIN_NAMEN.includes(name.toLowerCase());
+}
+
 export type KontaktReihe = {
   id: number;
   name: string;

@@ -6,11 +6,11 @@ import { ArrowDownUp, AtSign, Check, Camera, Egg, Eye, EyeOff, Heart, Images, Ke
 import { BLAETTER, BLAETTER_NACH_ID, blattTitel, sortiereSammlung, uebersichtSammlung, type SammlungSortierung } from "@/lib/blaetter";
 import { aenderePasswort, entferneEmail, getSession, holSessionToken, leseEigeneEmail, login, logout, register, setAnzahlDelta, setBlock, setBeweis, setFavorit, setStatus, setzeEmail, setzeTauschInfo, speichereBeweisFoto, zaehle } from "@/lib/store";
 import type { Benutzer, Blatt, Status, TauschInfo } from "@/lib/types";
+import { istAdmin } from "@/lib/kontakt";
 import { useStoreVersion } from "@/lib/useStoreVersion";
 import { BlattKarte } from "./BlattKarte";
 import { KontaktInbox } from "./KontaktInbox";
-import { Lupe } from "./Lupe";
-import { Punkte } from "./Punkte";
+import { Lupe } from "./Lupe";import { Punkte } from "./Punkte";
 import { SammlerKarussell } from "./SammlerKarussell";
 import { SelectBasis } from "./SelectBasis";
 import { cn, kopiereText, sammlerLink } from "@/lib/utils";
@@ -302,7 +302,7 @@ export function KontoApp() {
         </div>
       </div>
 
-      {benutzer.name.toLowerCase() === "malarky" && <KontaktInbox />}
+      {istAdmin(benutzer.name) && <KontaktInbox />}
 
       {ueb && (
         <div className="card-soft flex flex-col gap-3 p-4">

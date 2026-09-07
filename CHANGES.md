@@ -3,6 +3,32 @@
 > Dieses Log wird bei jeder Änderung gepflegt (neuen Eintrag oben einfügen).
 > Beim initialen Laden durchlesen, um den aktuellen Stand zu verstehen.
 
+## 2026-09-07 — News per UI schreiben (Admin-Kreis malarky + blondy)
+
+**Ziel:** News müssen nicht mehr per SQL eingetragen werden – der Admin-Kreis
+schreibt sie direkt auf der eigenen Profilseite (`/sammler`).
+
+- **DB (`scripts/news-schreiben.sql` – im SQL-Editor einspielen!):**
+  - Spalten `bild`/`bild2`/`link` per `add column if not exists` abgesichert.
+  - Neue `security definer`-Funktion `news_schreiben(p_token, p_titel, p_text,
+    p_bild, p_link)`: Session prüfen (`28000`), **Admin serverseitig prüfen**
+    (`lower(name) in ('malarky','blondy')`, sonst `42501` – Client-Name wird nie
+    übernommen, kein Spoofing möglich), Längen prüfen (`23514`: Titel 1–120,
+    Text 1–1000, Link ≤500, Bild ≤500 KB).
+- **`kontakt.ts`:** `ADMIN_NAMEN = ["malarky", "blondy"]` + `istAdmin()`-Helper
+  (immer case-insensitiv nutzen).
+- **Neu `NewsSchreiben.tsx`:** Formular Titel/Text/Bild/Link, Bild per Canvas
+  auf max 800 px (JPEG 0.7) verkleinert, Vorschau, Zähler, deutsche
+  Erfolgs-/Fehlermeldungen, `PGRST202`-Fallback. Nur Schreiben, kein Löschen.
+- **`SammlerProfilApp.tsx`:** Rubrik nur sichtbar, wenn der eingeloggte Admin
+  seine eigene Seite ansieht (`ich.id === benutzer.id && istAdmin(...)`).
+- **`KontoApp.tsx`:** `KontaktInbox`-Gate auf `istAdmin()` umgestellt (gilt
+  damit auch für blondy).
+
+**Verifikation:** Build OK; Lint nur vorbestehender `SpendeButton.tsx`-Error.
+**DB-Deploy:** `scripts/news-schreiben.sql` im SQL-Editor ausführen (additiv).
+Ohne SQL zeigt das Formular „noch nicht eingerichtet“.
+
 ## 2026-09-07 — Postfach-1 geräteübergreifend + Egress-Downshift (Lesestand in DB)
 
 **Ziel:** Die „1“ am Brief verschwindet auf ALLEN Geräten, sobald ein Thread
