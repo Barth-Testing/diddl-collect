@@ -3,6 +3,54 @@
 > Dieses Log wird bei jeder Änderung gepflegt (neuen Eintrag oben einfügen).
 > Beim initialen Laden durchlesen, um den aktuellen Stand zu verstehen.
 
+## 2026-09-07 — Hinweis-Button rechts unten (Admin schaltet Text/Link/An-Aus)
+
+**Ziel:** Schwebender Hinweis-Button für eingeloggte Sammler (z. B. „Blöcke
+verfügbar“), ohne Egress-Belastung und ohne Layout-Risiko (kein Lauftext).
+
+- **DB (`scripts/hinweis.sql` – im SQL-Editor einspielen!):**
+  - Mini-Tabelle `hinweis` (eine Zeile: text/link/aktiv), öffentlich lesbar.
+  - `hinweis_setzen`-RPC (`security definer`, Admin-Check + Validierung).
+- **`lib/hinweis.ts`:** Laden mit 10-Min-Cache (~100 Byte), Speichern per RPC,
+  `PGRST202`-Fallback (Button bleibt dann unsichtbar).
+- **`HinweisButton.tsx`:** global in `layout.tsx`, nur eingeloggt + aktiv +
+  Text vorhanden (sonst rendert nichts), `bottom-40` über dem Spende-Button,
+  interner/externer Link je nach URL.
+- **`HinweisEditor.tsx`:** auf `/konto` für den Admin-Kreis (Text/Link/An-Aus).
+
+**Verifikation:** Build OK; Lint nur vorbestehender `SpendeButton.tsx`-Error.
+**DB-Deploy:** `scripts/hinweis.sql` im SQL-Editor ausführen (additiv).
+
+## 2026-09-07 — Egress: Rangliste/Börse per Lean-RPCs + Chat-Delta (Voll-Sync entschärft)
+
+**Ziel:** Der Voll-Sync aller Profile (~2,6 MB) war der größte Egress-Posten.
+Rangliste und Börse lesen jetzt nur noch Aggregate (KB statt MB).
+
+- **DB (`scripts/rang-boerse-lean.sql` – im SQL-Editor einspielen!):**
+  - `lese_rangliste()` → pro Nutzer nur id/name/supporter/own/wish/offer/beweise.
+  - `lese_boerse()` → pro Angebot nur blatt/anbieter/betrag/notiz/own/offer.
+  - Beide `security definer`, read-only, Zählregeln exakt wie Client
+    (`zaehle`/`normalisiereStatus`: Arrays per Enthaltensein, Legacy-Strings
+    mitgezählt, `offer` zählt als `own`), keine sensiblen Spalten.
+- **`store.ts`:** `ladeRanglisteRpc()`/`ladeBoerseRpc()` + Typen
+  (`RangZeile`/`BoersenZeile`) + `berechneRanglisteAusZeilen()` (Punkte- und
+  Sortiermathematik identisch zu `berechneRangliste`). `PGRST202` → Flag, dann
+  alte Cache-Pfade (kein wiederholter Fehlversuch).
+- **`RangApp.tsx`:** RPC-first; nur bei fehlender RPC noch `syncBeiBedarf()`.
+  Darstellung (inkl. Supporter-Chips, „Du“-Markierung, 100-Punkte-Regel)
+  unverändert. Detailseiten (Fremdprofile) folgen weiter dem Boot-Cache.
+- **`TauschboerseApp.tsx`:** Gruppenaufbau aus RPC-Zeilen (`baueBoersenGruppen`,
+  gleiche Sortierung/Dedup-/Filterlogik); ohne RPC alter Cache-Pfad.
+  Markier- und Kauf-Logik unberührt.
+- **`chat.ts`:** zweite ID-only-Query pro Raum gestrichen (IDs kamen schon aus
+  der ersten Abfrage); Delta-Load (nur `id > max`, voller Abgleich max. alle
+  30 Min pro Raum). Senden/Offline-Queue/Realtime unverändert.
+
+**Verifikation:** Build OK; Lint nur vorbestehender `SpendeButton.tsx`-Error.
+**DB-Deploy:** `scripts/rang-boerse-lean.sql` im SQL-Editor ausführen (additiv).
+Ohne SQL läuft alles wie bisher (Fallback, kein Mehrverkehr außer je einem
+fehlschlagenden RPC-Versuch pro Sitzung).
+
 ## 2026-09-07 — News-Rubrik: Admin-Check punkt-tolerant (Fix, live verifiziert)
 
 **Befund:** Der News-Code war live im Bundle (per Live-Chunk verifiziert), die

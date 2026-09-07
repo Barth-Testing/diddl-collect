@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Nunito, Quicksand } from "next/font/google";
 import Script from "next/script";
 import { Header, Footer } from "@/components/Header";
+import { HinweisButton } from "@/components/HinweisButton";
 import { NachObenButton } from "@/components/NachObenButton";
 import { PwaRegistrierung } from "@/components/PwaRegistrierung";
 import { SpendeButton } from "@/components/SpendeButton";
@@ -85,6 +86,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Footer />
         <SpendeButton />
         <SupportButton />
+        <HinweisButton />
         <NachObenButton />
         <PwaRegistrierung />
         <script
