@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { Gem, HeartHandshake, Medal, ShieldAlert, ShieldCheck } from "lucide-react";
+import { Crown, Gem, HeartHandshake, Medal, ShieldAlert, ShieldCheck } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
 import { aktualisiereSupporter, berechneRangliste, berechneRanglisteAusZeilen, getSession, ladeRanglisteRpc, listBenutzer, syncBeiBedarf, type RangZeile } from "@/lib/store";
 import { useStoreVersion } from "@/lib/useStoreVersion";
@@ -22,11 +22,12 @@ type EhrungsDb = {
   };
 };
 
+const TOP_SPENDER = ["nelefranka"];
+
 export function RangApp() {
   useStoreVersion();
   const benutzer = getSession();
-  const [rpcZeilen, setRpcZeilen] = useState<RangZeile[] | null>(null);
-  const eintraege = rpcZeilen ? berechneRanglisteAusZeilen(rpcZeilen) : berechneRangliste();
+  const [rpcZeilen, setRpcZeilen] = useState<RangZeile[] | null>(null);  const eintraege = rpcZeilen ? berechneRanglisteAusZeilen(rpcZeilen) : berechneRangliste();
   const supporterListe = rpcZeilen
     ? rpcZeilen.filter((z) => z.supporter).map((z) => ({ id: z.id, name: z.name }))
     : listBenutzer().filter((u) => u.supporter);
@@ -58,16 +59,34 @@ export function RangApp() {
             Diese Sammler halten die Seite mit einer Spende am Laufen – herzlichen Dank!
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
-            {supporterListe.map((u) => (
-              <Link
-                key={u.id}
-                href={`/sammler?id=${encodeURIComponent(u.id)}&name=${encodeURIComponent(u.name)}&ht=1`}
-                className="chip gap-1.5 bg-white px-3 py-1.5 text-sm font-bold text-ink-800 ring-1 ring-yellow-300 hover:bg-yellow-100"
-              >
-                <Gem className="h-3.5 w-3.5 text-yellow-500" />
-                {u.name}
-              </Link>
-            ))}
+            {supporterListe.map((u) => {
+              const top = TOP_SPENDER.includes(u.name.toLowerCase());
+              return (
+                <Link
+                  key={u.id}
+                  href={`/sammler?id=${encodeURIComponent(u.id)}&name=${encodeURIComponent(u.name)}&ht=1`}
+                  title={top ? "Top-Spenderin – größtes Dankeschön der Gemeinde!" : undefined}
+                  className={cn(
+                    "chip gap-1.5 px-3 py-1.5 text-sm font-bold text-ink-800",
+                    top
+                      ? "bg-gradient-to-r from-amber-200 via-yellow-100 to-amber-200 ring-2 ring-amber-400 hover:bg-amber-100"
+                      : "bg-white ring-1 ring-yellow-300 hover:bg-yellow-100",
+                  )}
+                >
+                  {top ? (
+                    <Crown className="h-3.5 w-3.5 text-amber-500" />
+                  ) : (
+                    <Gem className="h-3.5 w-3.5 text-yellow-500" />
+                  )}
+                  {u.name}
+                  {top && (
+                    <span className="rounded-full bg-amber-400 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wide text-white">
+                      Top-Spenderin
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
             {ehrungen.map((name) => (
               <span
                 key={name}
