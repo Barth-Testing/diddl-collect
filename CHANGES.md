@@ -3,6 +3,17 @@
 > Dieses Log wird bei jeder Änderung gepflegt (neuen Eintrag oben einfügen).
 > Beim initialen Laden durchlesen, um den aktuellen Stand zu verstehen.
 
+## 2026-09-07 — Katalog: zusätzlicher Block-Filter (parallel kombinierbar)
+
+**Ziel:** Blätter lassen sich eingrenzen auf „hat Block-Markierung“ – additiv
+zu „Hab ich“ und parallel mit allen anderen Filtern kombinierbar.
+
+- **`KatalogApp.tsx`:** Toggle-Chip „Nur Block“ neben dem Status-Dropdown
+  (emerald, passend zum Block-Chip der Karten); wirkt in allen Modi
+  (Katalog/Diddl is Back/Forever/Relief/Pimboli) plus Kollektion/Generation/
+  Größe/Farbe/Status/Suche. Legende um Block ergänzt.
+- Nur lokale Sitzungsdaten, kein Egress, kein SQL nötig.
+
 ## 2026-09-07 — Egress-Haupttreiber: Patch-Antwort schlank + Stand-Handshake
 
 **Ziel:** `profil_patch` (24k Calls/Tag) lieferte je die volle Profilzeile

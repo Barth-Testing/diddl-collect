@@ -36,6 +36,7 @@ export function KatalogApp() {
   const [groesse, setGroesse] = useState<string>("Alle Größen");
   const [farbe, setFarbe] = useState<string>("Alle Farben");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("Alle");
+  const [nurBlock, setNurBlock] = useState(false);
   const [suche, setSuche] = useState("");
   const [jahrVon, setJahrVon] = useState(1996);
   const [jahrBis, setJahrBis] = useState(2026);
@@ -45,6 +46,7 @@ export function KatalogApp() {
 
   const statuses = useMemo(() => benutzer?.statuses ?? {}, [benutzer]);
   const beweise = useMemo(() => benutzer?.beweise ?? {}, [benutzer]);
+  const blocks = useMemo(() => benutzer?.blocks ?? {}, [benutzer]);
 
   /* Wie viele Sammler bieten dieses Blatt in der Tauschbörse an. */
   const tauschAngebote = useMemo(() => {
@@ -72,6 +74,7 @@ export function KatalogApp() {
         const s = statuses[b.id] ?? [];
         if (statusFilter === "none" ? s.length > 0 : !s.includes(statusFilter)) return false;
       }
+      if (nurBlock && blocks[b.id] !== true) return false;
       if (q) {
         const text = `${blattTitel(b)} ${b.name ?? ""} ${b.nummer} ${b.groesse} ${b.farbe} ${b.kollektion ?? ""}`.toLowerCase();
         if (!text.includes(q)) return false;
@@ -121,7 +124,7 @@ export function KatalogApp() {
         break;
     }
     return sortiert;
-  }, [modus, kollektion, pimboliGen, sort, groesse, farbe, statusFilter, suche, jahrVon, jahrBis, statuses]);
+  }, [modus, kollektion, pimboliGen, sort, groesse, farbe, statusFilter, nurBlock, blocks, suche, jahrVon, jahrBis, statuses]);
 
   const ownGesamt = Object.values(statuses).filter((s) => s.includes("own")).length;
 
@@ -206,6 +209,20 @@ export function KatalogApp() {
               ["none", "Noch nicht erfasst"],
             ]}
           />
+          <button
+            type="button"
+            onClick={() => setNurBlock(!nurBlock)}
+            aria-pressed={nurBlock}
+            title="Nur Blätter mit Block-Markierung zeigen"
+            className={cn(
+              "rounded-full px-3.5 py-1.5 text-xs font-bold transition-all",
+              nurBlock
+                ? "bg-emerald-600 text-white shadow-sm"
+                : "bg-white text-ink-700 ring-1 ring-cream-300 hover:ring-emerald-300",
+            )}
+          >
+            Nur Block
+          </button>
           {modus === "klassisch" && (
           <label className="flex items-center gap-1.5 text-xs font-bold text-ink-600">
             <select
@@ -326,6 +343,9 @@ export function KatalogApp() {
         </span>
         <span className="flex items-center gap-1">
           <Repeat2 className="h-3.5 w-3.5 text-peach-500" /> Zum Tauschen
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="chip bg-emerald-500 px-1.5 py-0.5 text-[10px] text-white">Block ✓</span> Block
         </span>
         {!benutzer && (
           <Link href="/konto" className="flex items-center gap-1 text-candy-600 hover:underline">
