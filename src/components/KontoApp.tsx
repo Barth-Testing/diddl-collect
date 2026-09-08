@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDownUp, AtSign, Check, Camera, Egg, Eye, EyeOff, Heart, Images, KeyRound, LogIn, PartyPopper, Printer, Repeat2, Share2, ShieldCheck, Trash2, UserPlus, UserRound, BookOpenCheck } from "lucide-react";
-import { BLAETTER, BLAETTER_NACH_ID, blattTitel, sortiereSammlung, uebersichtSammlung, type SammlungSortierung } from "@/lib/blaetter";
+import { ArrowDownUp, AtSign, Check, Camera, Egg, Eye, EyeOff, Heart, Images, KeyRound, LogIn, PartyPopper, Printer, Repeat2, Search, Share2, ShieldCheck, Trash2, UserPlus, UserRound, BookOpenCheck } from "lucide-react";
+import { BLAETTER, BLAETTER_NACH_ID, VERFÜGBARE_FARBEN, blattTitel, sortiereSammlung, uebersichtSammlung, type SammlungSortierung } from "@/lib/blaetter";
 import { aenderePasswort, entferneEmail, getSession, holSessionToken, leseEigeneEmail, login, logout, register, setAnzahlDelta, setBlock, setBeweis, setFavorit, setStatus, setzeEmail, setzeTauschInfo, speichereBeweisFoto, zaehle } from "@/lib/store";
 import type { Benutzer, Blatt, Status, TauschInfo } from "@/lib/types";
 import { istAdmin } from "@/lib/kontakt";
@@ -28,6 +28,10 @@ export function KontoApp() {
   const [lupe, setLupe] = useState<string | null>(null);
   const [nurUnbewiesen, setNurUnbewiesen] = useState(false);
   const [sortierung, setSortierung] = useState<SammlungSortierung>("id");
+  const [groesseFilter, setGroesseFilter] = useState("Alle Größen");
+  const [farbeFilter, setFarbeFilter] = useState("Alle Farben");
+  const [beweisFilter, setBeweisFilter] = useState("Alle");
+  const [sucheEigen, setSucheEigen] = useState("");
   const [bilderQuelle, setBilderQuelle] = useState<"vorlagen" | "beweise">("vorlagen");
   const [karussellAn, setKarussellAn] = useState(false);
   const [sichtbar, setSichtbar] = useState(150);
@@ -74,22 +78,39 @@ export function KontoApp() {
 
   const listeAb: Array<{ id: string; status: Status[] }> = useMemo(() => {
     if (!benutzer) return [];
+    const q = sucheEigen.trim().toLowerCase();
     const eintraege = Object.keys(benutzer.statuses)
       .filter((id) => {
         const s = benutzer.statuses[id] ?? [];
         const gewuenscht = tab === "sammlung" ? s.includes("own") : tab === "wunsch" ? s.includes("wish") : s.includes("offer");
         if (!gewuenscht) return false;
         if (nurUnbewiesen && tab === "sammlung" && benutzer.beweise[id]) return false;
+        if (beweisFilter !== "Alle") {
+          const hat = !!benutzer.beweise[id];
+          if (beweisFilter === "mit" ? !hat : hat) return false;
+        }
         return true;
       })
       .map((id) => ({ id, status: benutzer.statuses[id], blatt: BLAETTER_NACH_ID.get(id) }))
-      .filter((e): e is { id: string; status: Status[]; blatt: Blatt } => e.blatt !== undefined);
+      .filter((e): e is { id: string; status: Status[]; blatt: Blatt } => e.blatt !== undefined)
+      .filter((e) => {
+        if (groesseFilter !== "Alle Größen" && e.blatt.groesse !== groesseFilter) return false;
+        if (farbeFilter !== "Alle Farben" && e.blatt.farbe !== farbeFilter) return false;
+        if (q) {
+          const text = `${blattTitel(e.blatt)} ${e.blatt.name ?? ""} ${e.blatt.nummer} ${e.blatt.groesse} ${e.blatt.farbe}`.toLowerCase();
+          if (!text.includes(q)) return false;
+        }
+        return true;
+      });
     const gefiltert =
       bilderQuelle === "beweise" && tab === "sammlung"
         ? eintraege.filter((e) => benutzer.beweise[e.id])
         : eintraege;
     return sortiereSammlung(gefiltert, sortierung).map(({ id, status }) => ({ id, status }));
-  }, [benutzer, tab, nurUnbewiesen, sortierung, bilderQuelle]);
+  }, [benutzer, tab, nurUnbewiesen, sortierung, bilderQuelle, groesseFilter, farbeFilter, beweisFilter, sucheEigen]);
+
+  const filterAktiv =
+    groesseFilter !== "Alle Größen" || farbeFilter !== "Alle Farben" || sucheEigen.trim() !== "";
 
   function anmeldenOderRegistrieren(modus: "login" | "register", form: HTMLFormElement) {
     const name = form.querySelector<HTMLInputElement>("input[data-name]")?.value ?? "";
@@ -432,6 +453,15 @@ export function KontoApp() {
       ) : (
         <>
           <div className="card-soft flex flex-wrap items-center gap-x-5 gap-y-3 p-4">
+            <label className="relative min-w-44 flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-600" />
+              <input
+                value={sucheEigen}
+                onChange={(e) => setSucheEigen(e.target.value)}
+                placeholder="Suchen …"
+                className="w-full rounded-full border border-cream-300 bg-white py-2 pl-9 pr-4 text-sm font-semibold text-ink-800 outline-none placeholder:text-ink-600/60 focus:border-candy-400 focus:ring-2 focus:ring-candy-200"
+              />
+            </label>
             <div className="flex items-center gap-2">
               <span className="flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-ink-600">
                 <ArrowDownUp className="h-3.5 w-3.5" /> Sortieren
@@ -448,6 +478,37 @@ export function KontoApp() {
                   ["groesse", "Größe"],
                   ["farbe", "Farbe"],
                   ["zuletzt", "Zuletzt hinzugefügt"],
+                ]}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-ink-600">
+                Filtern
+              </span>
+              <SelectBasis
+                value={groesseFilter}
+                onChange={setGroesseFilter}
+                optionen={[
+                  ["Alle Größen", "Alle Größen"],
+                  ["Din A4", "Din A4"],
+                  ["Din A5", "Din A5"],
+                  ["Din A6", "Din A6"],
+                  ["Relief", "Relief"],
+                  ["Pimboli", "Pimboli"],
+                ]}
+              />
+              <SelectBasis
+                value={farbeFilter}
+                onChange={setFarbeFilter}
+                optionen={[["Alle Farben", "Alle Farben"], ...VERFÜGBARE_FARBEN.map((f) => [f, f] as [string, string])]}
+              />
+              <SelectBasis
+                value={beweisFilter}
+                onChange={setBeweisFilter}
+                optionen={[
+                  ["Alle", "Alle Beweise"],
+                  ["mit", "Mit Beweis"],
+                  ["ohne", "Ohne Beweis"],
                 ]}
               />
             </div>
@@ -518,11 +579,32 @@ export function KontoApp() {
           {listeAb.length === 0 && (
             <div className="card-soft flex flex-col items-center gap-2 p-10 text-center text-ink-600">
               <Egg className="h-8 w-8 text-candy-300" />
-              <p className="font-display text-lg font-bold">Hier ist es noch leer.</p>
-              <p className="text-sm">
-                Geh in den <a href="/katalog" className="font-bold text-candy-600 hover:underline">Katalog</a> und
-                setze deine ersten Häkchen!
+              <p className="font-display text-lg font-bold">
+                {filterAktiv ? "Keine Treffer." : "Hier ist es noch leer."}
               </p>
+              <p className="text-sm">
+                {filterAktiv ? (
+                  <>Passe die Suche oder die Filter an – oder setze sie zurück.</>
+                ) : (
+                  <>
+                    Geh in den <a href="/katalog" className="font-bold text-candy-600 hover:underline">Katalog</a> und
+                    setze deine ersten Häkchen!
+                  </>
+                )}
+              </p>
+              {filterAktiv && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setGroesseFilter("Alle Größen");
+                    setFarbeFilter("Alle Farben");
+                    setSucheEigen("");
+                  }}
+                  className="rounded-full bg-candy-100 px-4 py-2 text-sm font-bold text-candy-700 hover:bg-candy-200"
+                >
+                  Filter zurücksetzen
+                </button>
+              )}
             </div>
           )}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5">
