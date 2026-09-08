@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowDownUp, Check, Heart, LogIn, Repeat2, Search, SlidersHorizontal, X } from "lucide-react";
-import { BLAETTER, DIDDLBACK_KOLLEKTIONEN, PIMBOLI_GENERATIONEN, VERFÜGBARE_FARBEN, blattTitel } from "@/lib/blaetter";
-import { getSession, listBenutzer, setAnzahlDelta, setBlock, setStatus } from "@/lib/store";
+import { BLAETTER, DIDDLBACK_KOLLEKTIONEN, PIMBOLI_GENERATIONEN, VERFÜGBARE_FARBEN, blattTitel, katalogBlattId } from "@/lib/blaetter";
+import { getSession, ladeBoerseRpc, listBenutzer, setAnzahlDelta, setBlock, setStatus, type BoersenZeile } from "@/lib/store";
 import { FARBREIHENFOLGE, type Status } from "@/lib/types";
 import { BlattKarte } from "./BlattKarte";
 import { Lupe } from "./Lupe";
@@ -49,9 +49,25 @@ export function KatalogApp() {
   const statuses = useMemo(() => benutzer?.statuses ?? {}, [benutzer]);
   const beweise = useMemo(() => benutzer?.beweise ?? {}, [benutzer]);
   const blocks = useMemo(() => benutzer?.blocks ?? {}, [benutzer]);
+  const [boersenZeilen, setBoersenZeilen] = useState<BoersenZeile[] | null>(null);
 
-  /* Wie viele Sammler bieten dieses Blatt in der Tauschbörse an. */
+  useEffect(() => {
+    ladeBoerseRpc().then((zeilen) => {
+      if (zeilen) setBoersenZeilen(zeilen);
+    });
+  }, []);
+
+  /* Wie viele Sammler bieten dieses Blatt in der Tauschbörse an – live per
+     Lean-RPC (5-Min-Cache), Fallback auf den Profil-Cache. */
   const tauschAngebote = useMemo(() => {
+    if (boersenZeilen) {
+      const zaehler = new Map<string, number>();
+      for (const z of boersenZeilen) {
+        const id = katalogBlattId(z.blatt_id);
+        zaehler.set(id, (zaehler.get(id) ?? 0) + 1);
+      }
+      return zaehler;
+    }
     const zaehler = new Map<string, number>();
     for (const u of listBenutzer()) {
       for (const [id, s] of Object.entries(u.statuses)) {
@@ -60,7 +76,7 @@ export function KatalogApp() {
       }
     }
     return zaehler;
-  }, [storeVersion]);
+  }, [storeVersion, boersenZeilen]);
 
   const gefiltert = useMemo(() => {
     const q = suche.trim().toLowerCase();

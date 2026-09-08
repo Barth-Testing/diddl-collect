@@ -3,6 +3,37 @@
 > Dieses Log wird bei jeder Änderung gepflegt (neuen Eintrag oben einfügen).
 > Beim initialen Laden durchlesen, um den aktuellen Stand zu verstehen.
 
+## 2026-09-08 — Katalog: A5 Blätter 463-481 ergänzt (PDF-Import)
+
+**Ziel:** Fehlende A5-Blätter 463-481 aus `DIN_A5_463_bis_481.pdf` ergänzen.
+Die Blätter 457-462 waren bereits vorhanden; 463-481 fehlten komplett.
+
+- **`src/data/blaetter.json`:** 19 Einträge `A5-463` … `A5-481` (Din A5, Jahr
+  2006, Farben aus Bildanalyse, Quelle `diddl-verzamel-ik.nl`) – compact JSON,
+  einheitliche Benamung `A5-<nummer>`, bestehende IDs bleiben stabil, alte
+  Remap-IDs (`diddlback-de-a5-*`) dank katalogbewusstem Remap abgesichert.
+- **`public/katalog/a5-463.jpg` … `a5-481.jpg`:** Bilder aus dem PDF extrahiert
+  (via `pdfimages`), große Blätter auf 270px Breite skaliert (Qualität 85),
+  kleine direkt übernommen – alle lokal unter `public/katalog` (kein Hotlink,
+  keine Copyright-Verletzung, einheitlich wie `a6-229` …).
+- Filter: Größe, Farbe, Jahr, Suche, Status, Block, Beweis greifen sofort –
+  kein SQL nötig, kein Egress-Einfluss (statische Assets, Cloudflare-Cache).
+
+## 2026-09-08 — Egress ohne Pro-Plan: Katalog-Zähler lean + Sync-TTL 7 Tage
+
+**Ziel:** Unter 160 MB/Tag bleiben ohne Mehrkosten. Letzte heiße Stelle
+(volle Profil-Caches für Zähler) beseitigt, Boot-Sync weiter gestreckt.
+
+- **`KatalogApp.tsx`:** Tausch-Angebots-Zähler kommen per Lean-RPC
+  (`lese_boerse`, 5-Min-Cache, katalogbewusst remappt) statt Voll-Cache-Scan;
+  Fallback unverändert. Zähler sind dadurch sogar aktueller als bisher.
+- **`store.ts`:** `SYNC_TTL` 48 h → 7 Tage (Boot-Voll-Sync nur noch wöchentlich
+  pro Gerät). Abgedeckt: eigenes Konto per Mini-Poll, Rangliste/Börse/
+  Katalog-Zähler per Lean-RPC, Fremdprofile per Lazy-Load, Supporter per
+  Mount-Abgleich. Gelöschte Konten können bis zu 7 Tage als Kartei-Leiche
+  sichtbar bleiben (selten, kosmetisch).
+- Kein SQL nötig, keine Schreibpfad-Änderung.
+
 ## 2026-09-08 — Beweis-Filter (Alle/Mit/Ohne) in Katalog und Konto-Tabs
 
 **Ziel:** Blätter zusätzlich nach Beweis-Status eingrenzen – parallel zu allen
