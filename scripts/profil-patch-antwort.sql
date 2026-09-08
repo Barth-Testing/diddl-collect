@@ -10,6 +10,12 @@
 -- Kompatibel beide Richtungen: ohne p_stand (Alt-Clients, Default null)
 -- immer volle Zeile; neue Clients gegen alte DB mergen data.profil wie bisher.
 -- Idempotent (create or replace). Bestehende Grants bleiben erhalten.
+--
+-- WICHTIG: create or replace mit GEÄNDERTER Signatur ersetzt NICHT, sondern
+-- legt eine Überladung an! Die alte 13-Param-Version muss daher explizit weg,
+-- sonst antwortet PostgREST Alt-Clients (13 Argumente) mit 300 Multiple
+-- Choices – die loopen dann alle 15 s (09/2026, Egress-Sturm). Darum zuerst:
+drop function if exists public.profil_patch(text, jsonb, text[], jsonb, text[], jsonb, text[], jsonb, text[], jsonb, text[], jsonb, text[]);
 
 create or replace function public.profil_patch(
   p_token text,
