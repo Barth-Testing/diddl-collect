@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 
 type Sortierung = "jahr-auf" | "jahr-ab" | "groesse" | "farbe" | "nummer" | "name";
 type StatusFilter = "Alle" | "own" | "wish" | "offer" | "none";
+type BeweisFilter = "Alle" | "mit" | "ohne";
 
 const GROESSEN_FILTER = ["Alle Größen", "Din A4", "Din A5", "Din A6", "Relief", "Pimboli"] as const;
 const JAHRE = Array.from({ length: 31 }, (_, i) => 1996 + i);
@@ -36,6 +37,7 @@ export function KatalogApp() {
   const [groesse, setGroesse] = useState<string>("Alle Größen");
   const [farbe, setFarbe] = useState<string>("Alle Farben");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("Alle");
+  const [beweisFilter, setBeweisFilter] = useState<BeweisFilter>("Alle");
   const [nurBlock, setNurBlock] = useState(false);
   const [suche, setSuche] = useState("");
   const [jahrVon, setJahrVon] = useState(1996);
@@ -73,6 +75,10 @@ export function KatalogApp() {
       if (statusFilter !== "Alle") {
         const s = statuses[b.id] ?? [];
         if (statusFilter === "none" ? s.length > 0 : !s.includes(statusFilter)) return false;
+      }
+      if (beweisFilter !== "Alle") {
+        const hat = !!beweise[b.id];
+        if (beweisFilter === "mit" ? !hat : hat) return false;
       }
       if (nurBlock && blocks[b.id] !== true) return false;
       if (q) {
@@ -124,7 +130,7 @@ export function KatalogApp() {
         break;
     }
     return sortiert;
-  }, [modus, kollektion, pimboliGen, sort, groesse, farbe, statusFilter, nurBlock, blocks, suche, jahrVon, jahrBis, statuses]);
+  }, [modus, kollektion, pimboliGen, sort, groesse, farbe, statusFilter, beweisFilter, beweise, nurBlock, blocks, suche, jahrVon, jahrBis, statuses]);
 
   const ownGesamt = Object.values(statuses).filter((s) => s.includes("own")).length;
 
@@ -207,6 +213,15 @@ export function KatalogApp() {
               ["wish", "Mit: Wunsch"],
               ["offer", "Mit: Tausch"],
               ["none", "Noch nicht erfasst"],
+            ]}
+          />
+          <SelectBasis
+            value={beweisFilter}
+            onChange={(v) => setBeweisFilter(v as BeweisFilter)}
+            optionen={[
+              ["Alle", "Alle Beweise"],
+              ["mit", "Mit Beweis"],
+              ["ohne", "Ohne Beweis"],
             ]}
           />
           <button

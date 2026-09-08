@@ -3,6 +3,25 @@
 > Dieses Log wird bei jeder Änderung gepflegt (neuen Eintrag oben einfügen).
 > Beim initialen Laden durchlesen, um den aktuellen Stand zu verstehen.
 
+## 2026-09-08 — Beweis-Filter (Alle/Mit/Ohne) in Katalog und Konto-Tabs
+
+**Ziel:** Blätter zusätzlich nach Beweis-Status eingrenzen – parallel zu allen
+anderen Filtern kombinierbar.
+
+- **`KatalogApp.tsx` / `KontoApp.tsx`:** Dropdown „Alle Beweise / Mit Beweis /
+  Ohne Beweis“ in den Filterzeilen (alle Modi/Tabs).
+- Nur lokale Sitzungsdaten, kein Egress-, kein Sync-, kein DB-Einfluss.
+
+## 2026-09-08 — Konto-Tabs: Katalog-Filter (Größe/Farbe/Suche) für die eigene Sammlung
+
+**Ziel:** Im eigenen Profil gab es nur Sortierung – jetzt dieselben Filter wie
+im Katalog (Größe, Farbe, Suche) in den Tabs Sammlung/Wunsch/Tausch.
+
+- **`KontoApp.tsx`:** Suchfeld + Größe-/Farbe-Dropdowns in der Filterkarte
+  (nur lokale Sitzungsdaten); Leer-Zustand unterscheidet „noch leer“ vs.
+  „keine Treffer“ inkl. Zurücksetzen-Button.
+- Kein Egress-, kein Sync-, kein DB-Einfluss.
+
 ## 2026-09-08 — Fehlende Profile: Sync paginiert + Direktlink lädt nach
 
 **Befund:** Profil GlitziGlitz (u-1788773538-8042f3) wurde nicht mehr angezeigt.
