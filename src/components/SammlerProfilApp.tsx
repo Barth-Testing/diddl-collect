@@ -52,6 +52,10 @@ export function SammlerProfilApp() {
     if (benutzerId && ichId && benutzerId !== ichId) void ladeFremdesProfil(benutzerId);
   }, [benutzerId, ichId]);
 
+  useEffect(() => {
+    if (!benutzerId && idParam) void ladeFremdesProfil(idParam);
+  }, [benutzerId, idParam]);
+
   if ((!name && !idParam) || !benutzer) {
     return (
       <div className="mt-6 space-y-4">

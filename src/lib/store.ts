@@ -341,34 +341,62 @@ function profilSpalten(): string {
   return spalten.join(", ");
 }
 
-async function ladeProfileZeilen(): Promise<ProfileRow[] | null> {
+const SEITEN_GROESSE = 1000;
+
+async function ladeProfilSeite(start: number): Promise<{ zeilen: ProfileRow[] } | { schemaFehler: true } | null> {
   const supabase = getSupabase<ProfileDb>();
   if (!supabase) return null;
-  const erste = await supabase.from("profile").select(profilSpalten());
-  if (!erste.error && erste.data) return erste.data as unknown as ProfileRow[];
-  if (istSchemaFehler(erste.error)) {
-    if (supporterUnterstuetzt) {
-      supporterUnterstuetzt = false;
-      return ladeProfileZeilen();
-    }
-    if (anzahlUnterstuetzt) {
-      anzahlUnterstuetzt = false;
-      return ladeProfileZeilen();
-    }
-    if (blocksUnterstuetzt) {
-      blocksUnterstuetzt = false;
-      return ladeProfileZeilen();
-    }
-    if (tauschUnterstuetzt) {
-      tauschUnterstuetzt = false;
-      return ladeProfileZeilen();
-    }
-    if (favoritenUnterstuetzt) {
-      favoritenUnterstuetzt = false;
-      return ladeProfileZeilen();
-    }
+  const ergebnis = await supabase
+    .from("profile")
+    .select(profilSpalten())
+    .order("id", { ascending: true })
+    .range(start, start + SEITEN_GROESSE - 1);
+  if (!ergebnis.error && ergebnis.data) {
+    return { zeilen: ergebnis.data as unknown as ProfileRow[] };
   }
+  if (istSchemaFehler(ergebnis.error)) return { schemaFehler: true };
   return null;
+}
+
+function wendeSchemaFallbackAn(): boolean {
+  if (supporterUnterstuetzt) {
+    supporterUnterstuetzt = false;
+    return true;
+  }
+  if (anzahlUnterstuetzt) {
+    anzahlUnterstuetzt = false;
+    return true;
+  }
+  if (blocksUnterstuetzt) {
+    blocksUnterstuetzt = false;
+    return true;
+  }
+  if (tauschUnterstuetzt) {
+    tauschUnterstuetzt = false;
+    return true;
+  }
+  if (favoritenUnterstuetzt) {
+    favoritenUnterstuetzt = false;
+    return true;
+  }
+  return false;
+}
+
+async function ladeProfileZeilen(): Promise<ProfileRow[] | null> {
+  const alle: ProfileRow[] = [];
+  let start = 0;
+  for (;;) {
+    const seite = await ladeProfilSeite(start);
+    if (!seite) return null;
+    if ("schemaFehler" in seite) {
+      if (!wendeSchemaFallbackAn()) return null;
+      return ladeProfileZeilen();
+    }
+    alle.push(...seite.zeilen);
+    if (seite.zeilen.length < SEITEN_GROESSE) break;
+    start += SEITEN_GROESSE;
+  }
+  return alle;
 }
 
 function starteSync() {

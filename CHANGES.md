@@ -3,6 +3,49 @@
 > Dieses Log wird bei jeder Änderung gepflegt (neuen Eintrag oben einfügen).
 > Beim initialen Laden durchlesen, um den aktuellen Stand zu verstehen.
 
+## 2026-09-08 — Fehlende Profile: Sync paginiert + Direktlink lädt nach
+
+**Befund:** Profil GlitziGlitz (u-1788773538-8042f3) wurde nicht mehr angezeigt.
+Zwei Lücken gefunden: (1) Der Voll-Sync las ohne Limit/Sortierung (PostgREST
+schneidet kommentarlos bei 1000 Zeilen ab) – wachsende Gemeinde = zufällig
+fehlende Profile. (2) Seit RPC-first + langem TTL löst ein Direktlink auf ein
+nicht-gecachtes Profil nie einen Abruf aus (Lazy-Load lief nur für bekannte
+Profile).
+
+- **`store.ts`:** `ladeProfileZeilen` lädt in stabil sortierten 1000er-Seiten
+  (unter 1000 Zeilen exakt 1 Request wie bisher, kein Mehr-Egress);
+  Schema-Fallback-Kaskade unverändert; Teilfehler → Sync wird verworfen statt
+  halb gemergt.
+- **`SammlerProfilApp.tsx`:** Direktlink (`?id=`) auf unbekanntes Profil lädt
+  die eine Zeile nach (`ladeFremdesProfil`) – danach erscheint sie.
+- **DB-Diagnose (falls Profil weiter fehlt):** Zeile prüfen per
+  `select id, name, created_at from profile where id = '…';` – fehlt sie dort,
+  wurde sie serverseitig gelöscht (kein Client-Problem).
+
+## 2026-09-08 — Tandem-Überladung profil_patch entfernt (300er-Loop war Egress-Treiber)
+
+**Befund (Log 24 h):** `profil_patch` antwortete Alt-Clients mit `300 Multiple
+Choices` – `profil-patch-antwort.sql` hatte per `create or replace` mit neuer
+Signatur (`+p_stand`) eine **zweite Überladung** angelegt statt zu ersetzen.
+13-Argument-Calls treffen beide → 300 → Client-Retry ×3, dirty bleibt, alle
+15 s erneut. Der Sturm im Log (mehrere Patches/Sekunde) kommt daher.
+
+**Fix:** Alte 13-Param-Signatur per `drop function` entfernen (in
+`profil-patch-antwort.sql` fest verdrahtet, Guardrail in AGENTS.md). Danach:
+Alt-Clients → 200 mit voller Zeile (Verhalten wie vor dem Ack-Umbau, Storm
+stoppt sofort), Neu-Clients → Ack (Bytes). Kein Code-Change nötig, kein Build.
+
+## 2026-09-07 — Top-Spenderin NeleFranka (Supporter + Highlight)
+
+**Ziel:** NeleFranka (bisherige Top-Spenderin) als Supporter markieren und in
+der Ranglisten-Danksagung besonders hervorheben.
+
+- **DB (im SQL-Editor ausführen):** `update public.profile set supporter = true
+  where id = 'u-1788627590-de6c53';`
+- **`RangApp.tsx`:** `TOP_SPENDER`-Liste (case-insensitiv); Eintrag bekommt in
+  der Danke-Box Krone + goldenen Verlauf + „Top-Spenderin“-Badge. Rest
+  unverändert, kein Egress-, kein Sync-Einfluss.
+
 ## 2026-09-07 — Katalog: zusätzlicher Block-Filter (parallel kombinierbar)
 
 **Ziel:** Blätter lassen sich eingrenzen auf „hat Block-Markierung“ – additiv
