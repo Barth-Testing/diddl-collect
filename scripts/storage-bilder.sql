@@ -85,7 +85,7 @@ begin
       end if;
     elsif v_bild ~ '^https://[^/]+/storage/v1/object/public/news-bilder/[A-Za-z0-9_./-]+\.(webp|jpg|jpeg|png)$'
       and v_bild not like '%..%' and char_length(v_bild) <= 500 then
-      /* Neue Storage-URL – Format ok. */
+      null; /* Neue Storage-URL – Format ok. */
     else
       raise exception 'Ungültiges Bildformat.' using errcode = '23514';
     end if;
@@ -134,7 +134,7 @@ begin
     raise exception 'Unbekanntes Bildfeld.' using errcode = '23514';
   end if;
   if v_url is null
-    or v_url not ~ '^https://[^/]+/storage/v1/object/public/news-bilder/[A-Za-z0-9_./-]+\.(webp|jpg|jpeg|png)$'
+    or v_url !~ '^https://[^/]+/storage/v1/object/public/news-bilder/[A-Za-z0-9_./-]+\.(webp|jpg|jpeg|png)$'
     or v_url like '%..%' or char_length(v_url) > 500 then
     raise exception 'Ungültiges Bildformat.' using errcode = '23514';
   end if;
@@ -174,7 +174,7 @@ begin
   elsif v_bild ~ '^https://[^/]+/storage/v1/object/public/beweis-fotos/[A-Za-z0-9_./-]+\.(webp|jpg|jpeg|png)$'
     and v_bild not like '%..%' and char_length(v_bild) <= 500
     and v_bild like '%/beweis-fotos/' || v_benutzer_id || '/%' then
-    /* Eigene Storage-URL – Format ok. */
+    null; /* Eigene Storage-URL – Format ok. */
   else
     raise exception 'Ungültiges Bildformat.' using errcode = '23514';
   end if;

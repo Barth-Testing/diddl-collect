@@ -235,7 +235,7 @@ begin
   elsif v_bild ~ '^https://[^/]+/storage/v1/object/public/beweis-fotos/[A-Za-z0-9_./-]+\.(webp|jpg|jpeg|png)$'
     and v_bild not like '%..%' and char_length(v_bild) <= 500
     and v_bild like '%/beweis-fotos/' || v_benutzer_id || '/%' then
-    /* Eigene Storage-URL – Format ok. */
+    null; /* Eigene Storage-URL – Format ok. */
   else
     raise exception 'Ungültiges Bildformat.' using errcode = '23514';
   end if;

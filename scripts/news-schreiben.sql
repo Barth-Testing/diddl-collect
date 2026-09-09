@@ -55,7 +55,7 @@ begin
       end if;
     elsif v_bild ~ '^https://[^/]+/storage/v1/object/public/news-bilder/[A-Za-z0-9_./-]+\.(webp|jpg|jpeg|png)$'
       and v_bild not like '%..%' and char_length(v_bild) <= 500 then
-      /* Neue Storage-URL – Format ok. */
+      null; /* Neue Storage-URL – Format ok. */
     else
       raise exception 'Ungültiges Bildformat.' using errcode = '23514';
     end if;
