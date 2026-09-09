@@ -8,6 +8,11 @@ const USERID_KEY = "diddlcollect:userid";
 const SYNCZEIT_KEY = "diddlcollect:synczeit";
 const DIRTY_KEY = "diddlcollect:dirty";
 const SYNC_TTL = 7 * 24 * 60 * 60 * 1000;
+/* Nach einem FEHLgeschlagenen Voll-Sync (z. B. Server-Timeout) eine Stunde
+   keinen neuen Versuch – sonst lädt jeder Besuch die ~2,6 MB erneut ins
+   Leere (Egress-Schleife, im Log 09.09.2026 beobachtet). */
+const SYNC_FEHLER_KEY = "diddlcollect:syncfehler";
+const SYNC_FEHLER_MS = 60 * 60 * 1000;
 const PROFIL_FRISCH_KEY = "diddlcollect:profil-frisch";
 const PROFIL_FRISCH_MS = 30 * 60 * 1000;
 
@@ -22,7 +27,9 @@ const PROFIL_FRISCH_MS = 30 * 60 * 1000;
 type ProfileRow = {
   id: string;
   name: string;
-  passwort: string;
+  /* Optional: Der Voll-Sync lädt bewusst KEIN passwort mehr (Egress + kein
+     Hash-Abfluss an alle Geräte). Login/Register liefern es weiter mit. */
+  passwort?: string;
   created_at: string;
   statuses: Record<string, Status | Status[]> | null;
   beweise: Record<string, string | boolean> | null;
@@ -252,7 +259,7 @@ function zeileZuBenutzer(zeile: ProfileRow): Benutzer {
   return {
     id: zeile.id,
     name: zeile.name,
-    passwort: zeile.passwort,
+    passwort: zeile.passwort ?? "",
     createdAt: new Date(zeile.created_at).getTime(),
     statuses: normalisiereStatusesKatalog(zeile.statuses),
     beweise: remappeBlattSchluesselKatalog(zeile.beweise ?? {}),
@@ -330,9 +337,11 @@ function istSchemaFehler(error: { code?: string } | null | undefined) {
   return error?.code === "PGRST204" || error?.code === "42703" || error?.code === "42501";
 }
 
-/** Spaltenliste ohne die optionalen Spalten, die (noch) nicht in der DB existieren. */
+/** Spaltenliste ohne die optionalen Spalten, die (noch) nicht in der DB existieren.
+ *  passwort wird NIE mitgeladen: Der Hash gehört nicht in fremde Caches
+ *  (Sicherheit) und kostet pro Sync ~60–100 Byte × Zeilen (Egress). */
 function profilSpalten(): string {
-  const spalten = ["id", "name", "passwort", "created_at", "statuses", "beweise"];
+  const spalten = ["id", "name", "created_at", "statuses", "beweise"];
   if (favoritenUnterstuetzt) spalten.push("favoriten");
   if (tauschUnterstuetzt) spalten.push("tausch");
   if (blocksUnterstuetzt) spalten.push("blocks");
@@ -341,7 +350,10 @@ function profilSpalten(): string {
   return spalten.join(", ");
 }
 
-const SEITEN_GROESSE = 1000;
+/* Kleine Seiten: Ein 1000er-Block (~2,6 MB) läuft in PostgREST in Timeouts
+   („Thread killed by timeout manager“, Log 09.09.2026) – danach wiederholt
+   jeder Besuch den Voll-Sync. 250er-Seiten sind einzeln harmlos (Bytes gleich). */
+const SEITEN_GROESSE = 250;
 
 async function ladeProfilSeite(start: number): Promise<{ zeilen: ProfileRow[] } | { schemaFehler: true } | null> {
   const supabase = getSupabase<ProfileDb>();
@@ -399,6 +411,22 @@ async function ladeProfileZeilen(): Promise<ProfileRow[] | null> {
   return alle;
 }
 
+function syncFehlerFrisch(): boolean {
+  if (typeof window === "undefined") return false;
+  const letzte = Number(window.localStorage.getItem(SYNC_FEHLER_KEY) ?? "0");
+  return Date.now() - letzte < SYNC_FEHLER_MS;
+}
+
+function merkeSyncFehler() {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(SYNC_FEHLER_KEY, String(Date.now()));
+}
+
+function loescheSyncFehler() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(SYNC_FEHLER_KEY);
+}
+
 function starteSync() {
   if (typeof window === "undefined") return;
   if (!supabaseKonfiguriert() || synchronisiert || syncLaeuft) return;
@@ -406,6 +434,11 @@ function starteSync() {
      erneut heruntergeladen – jede Seite lädt sonst ~1,4 MB Konten-Daten. */
   const letzte = Number(window.localStorage.getItem(SYNCZEIT_KEY) ?? "0");
   if (Date.now() - letzte < SYNC_TTL && window.localStorage.getItem(USERS_KEY)) {
+    synchronisiert = true;
+    return;
+  }
+  /* Frisch fehlgeschlagen (Timeout o. ä.): eine Stunde kein neuer Voll-Sync. */
+  if (syncFehlerFrisch()) {
     synchronisiert = true;
     return;
   }
@@ -428,7 +461,7 @@ function starteSync() {
  *  verloren, nur das eigene Konto wird hochgeladen). */
 export function syncBeiBedarf() {
   if (typeof window === "undefined") return;
-  if (!supabaseKonfiguriert() || syncLaeuft) return;
+  if (!supabaseKonfiguriert() || syncLaeuft || syncFehlerFrisch()) return;
   const letzte = Number(window.localStorage.getItem(SYNCZEIT_KEY) ?? "0");
   if (Date.now() - letzte < VOLL_SYNC_MS) return;
   syncLaeuft = true;
@@ -484,7 +517,11 @@ void syncEigenesKonto(true);
 /** Server-Konten in den Cache laden, lokale Änderungen hochladen. */
 async function syncMitServer() {
   const data = await ladeProfileZeilen();
-  if (!data) return;
+  if (!data) {
+    merkeSyncFehler();
+    return;
+  }
+  loescheSyncFehler();
   synchronisiert = true;
 
   const lokal = loadUsers();
@@ -544,6 +581,13 @@ async function ladeEigeneUpdatedAt(id: string): Promise<string | null> {
   if (!error && data) {
     const ts = (data as { updated_at?: string }).updated_at;
     return typeof ts === "string" ? ts : null;
+  }
+  /* 28000 = tote Session: ausloggen, sonst pollt das Gerät ewig weiter. Nur
+     28000 – 42501 gehört dem Schema-Fallback (Grant noch gesperrt). */
+  if (error?.code === "28000") {
+    loescheSession();
+    emitChange();
+    return null;
   }
   if (istSchemaFehler(error)) {
     updatedAtUnterstuetzt = false;

@@ -3,6 +3,45 @@
 > Dieses Log wird bei jeder Änderung gepflegt (neuen Eintrag oben einfügen).
 > Beim initialen Laden durchlesen, um den aktuellen Stand zu verstehen.
 
+## 2026-09-09 — Log-Analyse: lese_ungelesene kaputt (42702) + Voll-Sync-Schleifen
+
+**Befund (`logs/supabase_logs.csv`, 1000 Zeilen, 11:10–11:45 Uhr):**
+- `lese_ungelesene` schlägt zu **100 %** fehl (22× POST → 400 + 22× postgres
+  `42702 column reference "benutzer_id" is ambiguous`). Variable heißt wie die
+  Spalte – je nach deployed Revision löst der Parser falsch auf. Folge: Der
+  Postfach-Badge fällt auf `verbindeTausch()` **ohne eigeneId** (= GLOBAL:
+  `tauschangebot limit=500` + Riesen-Posts-IN) zurück – im Fenster ~10 globale
+  Loads à ~250–500 KB. `post_gelesen` wurde 0× aufgerufen (Lesestand nie aktiv).
+- **15 volle Profil-Syncs** (~2,6 MB) in 35 Min, teils 3× in 2,5 Min vom selben
+  Gerät. Verstärker: 2× PostgREST-Timeout („Thread killed by timeout manager“,
+  1000er-Block zu groß) – nach Fehlschlag ist SYNCZEIT nie gesetzt, jeder neue
+  Besuch lädt erneut voll.
+- News-Bilder: 36 Queries/35 Min (~120 MB/Tag hochgerechnet) – nur per
+  Storage+CDN lösbar (größeres Projekt, zurückgestellt).
+- Kleinvieh: 19× 28000 (tote Sessions pollen ewig weiter), 16× anmelden-403 von
+  einem Gerät (menschliche Fehlversuche, kein Loop).
+
+**Fixes (Code, abwärtskompatibel):**
+- **DB (`scripts/post-lesestand-fix.sql` – im SQL-Editor ausführen!):**
+  `lese_ungelesene`/`post_gelesen` erst DROPPEN (räumt stille Überladungen weg),
+  dann mit `v_`-Variablen + voll qualifizierten Spalten neu anlegen. Logik
+  unverändert. Danach im Log: keine 400 auf `lese_ungelesene`, keine globalen
+  `tauschangebot`-Downloads (ohne `or`-Filter) mehr.
+- **`tausch.ts`/`PostfachLink.tsx`:** `ladeUngelesen()` meldet den Grund;
+  neuer `lesestandNichtEingerichtet()` (nur PGRST202). Der Voll-Sync-Fallback
+  läuft NUR noch bei fehlender Migration – und dann **scoped** (`eigeneId`).
+  Bei kaputter RPC (400) bleibt der lokale Stand (kein Download-Sturm mehr).
+- **`store.ts`:** `passwort` aus dem Sync-Select entfernt (~60–100 B × Zeilen
+  gespart + keine Hashes mehr in fremden Caches); `SEITEN_GROESSE` 1000 → 250
+  (keine PostgREST-Timeouts mehr, Bytes gleich); nach Fehlschlag 1 h kein neuer
+  Voll-Sync (`diddlcollect:syncfehler`); 28000 im Eigen-Poll loggt aus (tote
+  Sessions pollen nicht ewig).
+
+**Verifikation:** `tsc` sauber, Build OK; Lint nur vorbestehender
+`SpendeButton.tsx`-Error. Nach SQL-Deploy + Push im nächsten Log prüfen:
+`lese_ungelesene` 200, `tauschangebot` nur noch mit `or`-Filter, Voll-Syncs mit
+`limit=250`.
+
 ## 2026-09-09 — Katalog: neue Kategorie „Dänemark“ (Deense A6 + Spezial-Blätter)
 
 **Ziel:** Dänische Sonderkollektion als eigener Modus im Katalog – 6 Deense-Blätter

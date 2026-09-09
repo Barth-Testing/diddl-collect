@@ -8,6 +8,7 @@ import { useStoreVersion } from "@/lib/useStoreVersion";
 import {
   ladeUngelesen,
   lesestandAktiv,
+  lesestandNichtEingerichtet,
   subscribeTausch,
   ungeleseneThreads,
   verbindeTausch,
@@ -38,9 +39,11 @@ export function PostfachLink() {
         pollTimer = setInterval(pruefe, 60_000);
         document.addEventListener("visibilitychange", pruefe);
         window.addEventListener("focus", pruefe);
-      } else {
-        /* DB-Migration noch nicht eingespielt: altes Verhalten (voller Sync). */
-        cleanupAlt = verbindeTausch();
+      } else if (lesestandNichtEingerichtet()) {
+        /* DB-Migration noch nicht eingespielt: alter Sync, aber NUR die
+           eigenen Threads (scoped) – nie mehr global. Bei anderen Fehlern
+           (z. B. kaputte RPC) bewusst kein Vollload (Egress-Guard). */
+        cleanupAlt = verbindeTausch(undefined, ich.id);
       }
     });
     return () => {

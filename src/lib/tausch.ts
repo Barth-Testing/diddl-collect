@@ -111,9 +111,18 @@ const MAX_POST = 2000;
 const UNGELESEN_KEY = "diddlcollect:ungelesen-server";
 
 let lesestandServer = false;
+let lesestandFehlt = false;
 
 export function lesestandAktiv() {
   return lesestandServer;
+}
+
+/** True, wenn die Lesestand-RPCs in der DB (noch) nicht existieren (PGRST202) –
+ *  nur dann darf der Header auf den alten Voll-Sync zurückfallen. Bei anderen
+ *  Fehlern (z. B. kaputte Funktion, 400) bleibt der lokale Stand aktiv, damit
+ *  ein DB-Fehler nie wieder einen globalen Download-Sturm auslöst. */
+export function lesestandNichtEingerichtet() {
+  return lesestandFehlt;
 }
 
 type UngelesenSpiegel = { ids: string[]; ts: number };
@@ -141,23 +150,33 @@ function istPgrst202(error: { code?: string; message?: string } | null | undefin
 }
 
 /** Ungelesene Thread-IDs vom Server holen (Mini-RPC, einige Bytes). Erst bei
- *  Erfolg wird der Server-Lesestand aktiv – sonst bleibt der lokale Fallback. */
-export async function ladeUngelesen(): Promise<void> {
+ *  Erfolg wird der Server-Lesestand aktiv – sonst bleibt der lokale Fallback.
+ *  Gibt zurück, ob der Server-Lesestand aktiv ist. */
+export async function ladeUngelesen(): Promise<boolean> {
   const token = holSessionToken();
-  if (!token) return;
+  if (!token) return lesestandServer;
   const { data, error } = await rpcAufruf<string[]>("lese_ungelesene", { p_token: token });
   if (!error && Array.isArray(data)) {
     lesestandServer = true;
+    lesestandFehlt = false;
     speichereUngelesenSpiegel(data);
     emitChange();
-    return;
+    return true;
   }
   if (error?.code === "28000") {
     logout();
     lesestandServer = false;
-    return;
+    lesestandFehlt = false;
+    return false;
   }
-  if (istPgrst202(error)) lesestandServer = false;
+  if (istPgrst202(error)) {
+    lesestandServer = false;
+    lesestandFehlt = true;
+    return false;
+  }
+  lesestandServer = false;
+  lesestandFehlt = false;
+  return false;
 }
 
 export function tauschKonfiguriert() {
