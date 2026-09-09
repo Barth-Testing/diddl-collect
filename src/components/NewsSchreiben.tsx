@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { ImagePlus, Loader2, Megaphone, Send, X } from "lucide-react";
 import { getSession, holSessionToken, logout } from "@/lib/store";
 import { rpcAufruf } from "@/lib/supabase";
+import { NEWS_BUCKET, komprimiereBild, ladeBildHoch, zufallsName } from "@/lib/bilder";
 import { istAdmin } from "@/lib/kontakt";
 import { loescheNeuigkeitenCache } from "./Neuigkeiten";
 import { cn } from "@/lib/utils";
@@ -17,6 +18,7 @@ export function NewsSchreiben() {
   const [text, setText] = useState("");
   const [link, setLink] = useState("");
   const [bild, setBild] = useState<string | null>(null);
+  const [datei, setDatei] = useState<File | null>(null);
   const [sendet, setSendet] = useState(false);
   const [erfolg, setErfolg] = useState(false);
   const [fehler, setFehler] = useState<string | null>(null);
@@ -24,13 +26,14 @@ export function NewsSchreiben() {
 
   if (!ich || !istAdmin(ich.name)) return null;
 
-  function dateiGewaehlt(datei: File | undefined) {
+  function dateiGewaehlt(dateiNeu: File | undefined) {
     setFehler(null);
-    if (!datei) return;
-    if (!datei.type.startsWith("image/")) {
+    if (!dateiNeu) return;
+    if (!dateiNeu.type.startsWith("image/")) {
       setFehler("Bitte ein Bild (JPG/PNG) auswählen.");
       return;
     }
+    setDatei(dateiNeu);
     const leser = new FileReader();
     leser.onload = () => {
       const img = new Image();
@@ -49,7 +52,7 @@ export function NewsSchreiben() {
       };
       img.src = leser.result as string;
     };
-    leser.readAsDataURL(datei);
+    leser.readAsDataURL(dateiNeu);
   }
 
   function normalisiereLink(wert: string): string | null {
@@ -77,11 +80,22 @@ export function NewsSchreiben() {
       return;
     }
     setSendet(true);
+    /* Storage-first: Bild als WebP in den Bucket legen, nur die URL geht in
+       die DB (Egress-Diät). Scheitert der Upload (SQL/Bucket fehlt o. ä.),
+       fällt der Aufruf still auf die alte Data-URL zurück. */
+    let bildWert: string | null = bild;
+    if (bild && datei) {
+      const komprimat = await komprimiereBild(datei, 640, 0.7);
+      if (komprimat) {
+        const url = await ladeBildHoch(NEWS_BUCKET, zufallsName("news/", komprimat.endung), komprimat.blob);
+        if (url) bildWert = url;
+      }
+    }
     const { error } = await rpcAufruf("news_schreiben", {
       p_token: token,
       p_titel: titel.trim(),
       p_text: text.trim(),
-      p_bild: bild,
+      p_bild: bildWert,
       p_link: normalisiereLink(link),
     });
     setSendet(false);
@@ -90,6 +104,7 @@ export function NewsSchreiben() {
       setText("");
       setLink("");
       setBild(null);
+      setDatei(null);
       setErfolg(true);
       loescheNeuigkeitenCache();
       return;
@@ -160,7 +175,10 @@ export function NewsSchreiben() {
               />
               <button
                 type="button"
-                onClick={() => setBild(null)}
+                onClick={() => {
+                  setBild(null);
+                  setDatei(null);
+                }}
                 aria-label="Bild entfernen"
                 className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center rounded-full bg-peach-400 text-white shadow hover:bg-peach-500"
               >

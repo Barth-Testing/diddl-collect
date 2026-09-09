@@ -1,26 +1,29 @@
 /* Knuddelblätter Service Worker – Version wird beim Build automatisch generiert */
-const VERSION = "v9cc44906";
+const VERSION = "v4948aa2d";
 const PRECACHE = "knuddel-pre-" + VERSION;
 const RUNTIME = "knuddel-run-" + VERSION;
 const PRECACHE_URLS = [
+  "/_next/static/X05an9i-Kx0ir0cUxdUEB/_buildManifest.js",
+  "/_next/static/X05an9i-Kx0ir0cUxdUEB/_clientMiddlewareManifest.js",
+  "/_next/static/X05an9i-Kx0ir0cUxdUEB/_ssgManifest.js",
   "/_next/static/chunks/04ittye2u-_86.js",
+  "/_next/static/chunks/0citqnm140ty1.js",
   "/_next/static/chunks/0cz1d0mv5g_q7.js",
-  "/_next/static/chunks/0ica6qvfwe_-3.js",
   "/_next/static/chunks/0jvhpaew_uadu.js",
   "/_next/static/chunks/0mcx-4u6tl5xb.js",
+  "/_next/static/chunks/12pvsoyy3_f97.js",
   "/_next/static/chunks/19mx3mg6lkumu.js",
   "/_next/static/chunks/1rbfb8wwj5b-8.js",
   "/_next/static/chunks/1y9ulk0oo3wwt.js",
-  "/_next/static/chunks/1z8juikjm-w08.js",
   "/_next/static/chunks/2-iirnbsypi8h.css",
   "/_next/static/chunks/20a0w82oovf5o.js",
-  "/_next/static/chunks/25cn9mrhdo3to.js",
+  "/_next/static/chunks/21b3aprw7mfte.js",
   "/_next/static/chunks/2b8m0froc9y7h.js",
+  "/_next/static/chunks/2nufqbkri6exo.js",
   "/_next/static/chunks/2osv-gnrgzp4c.js",
   "/_next/static/chunks/2v2sekfzyol6f.js",
   "/_next/static/chunks/2yhihbi1hu6op.js",
   "/_next/static/chunks/36lm--m0zwqtj.js",
-  "/_next/static/chunks/3emw1au4jmy3e.js",
   "/_next/static/chunks/3gxp0qj-25k-8.js",
   "/_next/static/chunks/3lo78_e30kbdc.js",
   "/_next/static/chunks/3tcog6nkeugog.js",
@@ -33,10 +36,7 @@ const PRECACHE_URLS = [
   "/_next/static/media/7f11d98043fdedc9-s.2c8-7nzo1jf9r.woff2",
   "/_next/static/media/d8cb5ab3660140cd-s.2demiz2t05dx4.woff2",
   "/_next/static/media/e6d00ff86ef9e699-s.1vcas2uk12q5a.woff2",
-  "/_next/static/media/fae90444fefcda8c-s.403cfnf7b-1vb.woff2",
-  "/_next/static/vbhxQ9K375f0CCaPBPuJO/_buildManifest.js",
-  "/_next/static/vbhxQ9K375f0CCaPBPuJO/_clientMiddlewareManifest.js",
-  "/_next/static/vbhxQ9K375f0CCaPBPuJO/_ssgManifest.js"
+  "/_next/static/media/fae90444fefcda8c-s.403cfnf7b-1vb.woff2"
 ];
 
 self.addEventListener("install", (event) => {

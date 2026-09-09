@@ -7,6 +7,7 @@ import { BLAETTER, BLAETTER_NACH_ID, VERFÜGBARE_FARBEN, blattTitel, sortiereSam
 import { aenderePasswort, entferneEmail, getSession, holSessionToken, leseEigeneEmail, login, logout, register, setAnzahlDelta, setBlock, setBeweis, setFavorit, setStatus, setzeEmail, setzeTauschInfo, speichereBeweisFoto, zaehle } from "@/lib/store";
 import type { Benutzer, Blatt, Status, TauschInfo } from "@/lib/types";
 import { istAdmin } from "@/lib/kontakt";
+import { BEWEIS_BUCKET, komprimiereBild, ladeBildHoch, zufallsName } from "@/lib/bilder";
 import { useStoreVersion } from "@/lib/useStoreVersion";
 import { BlattKarte } from "./BlattKarte";
 import { KontaktInbox } from "./KontaktInbox";
@@ -170,7 +171,18 @@ export function KontoApp() {
         ctx.fillStyle = "#fff";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        await speichereBeweisFoto(blattId, canvas.toDataURL("image/jpeg", 0.5));
+        /* Storage-first: WebP in den Bucket, nur die URL geht in die DB.
+           Scheitert der Upload, fällt der Aufruf still auf die Data-URL zurück. */
+        let wert: string | null = null;
+        const komprimat = await komprimiereBild(datei, 320, 0.6);
+        if (komprimat && benutzer) {
+          wert = await ladeBildHoch(
+            BEWEIS_BUCKET,
+            `${benutzer.id}/${zufallsName(`${blattId}-`, komprimat.endung)}`,
+            komprimat.blob,
+          );
+        }
+        await speichereBeweisFoto(blattId, wert ?? canvas.toDataURL("image/jpeg", 0.5));
         setInfos("Beweis gespeichert – schön belegt!");
       };
       img.src = leser.result as string;

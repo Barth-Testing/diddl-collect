@@ -3,6 +3,42 @@
 > Dieses Log wird bei jeder Änderung gepflegt (neuen Eintrag oben einfügen).
 > Beim initialen Laden durchlesen, um den aktuellen Stand zu verstehen.
 
+## 2026-09-09 — Bilder nach Supabase Storage (News + Beweise, Egress-Diät)
+
+**Ziel:** base64-Data-URLs in `news.bild/bild2` + `beweis_fotos.bild` (+33 %
+Overhead, kein CDN) durch WebP-Dateien in Storage-Buckets ersetzen – ohne
+Alt-Daten, Alt-Clients oder Cross-Device-Sync anzufassen.
+
+- **DB (`scripts/storage-bilder.sql` – im SQL-Editor ausführen!):** Buckets
+  `news-bilder` + `beweis-fotos` (öffentlich lesbar), Policies (Lesen öffentlich,
+  Hochladen für App-Clients, kein Ändern/Löschen per API). RPCs bei GLEICHER
+  Signatur (keine Überladungsgefahr): `news_schreiben`/`beweis_hochladen`
+  nehmen data-URL (alt, max. 500 KB – Beweis war bisher unbegrenzt!) oder
+  Storage-URL (Format-Whitelist; Beweis zusätzlich Eigentums-Bindung an den
+  Ordner des Aufrufers). `beweis_loeschen` räumt die Storage-Datei mit weg.
+  Neu `news_bild_migrieren` (Admin, ersetzt NUR data:-Werte – nie URLs).
+  Kanonische Dateien (`news-schreiben.sql`, `konto-haertung.sql`) spiegeln die
+  neuen Bodies (Deploy-Quelle bleibt `storage-bilder.sql`).
+- **Neu `src/lib/bilder.ts`:** `bildUrl()` (data: + https direkt, nackte Pfade
+  defensiv via getPublicUrl), `komprimiereBild()` (WebP mit JPEG-Fallback),
+  `ladeBildHoch()` (null bei Fehler → Aufrufer nimmt alten Weg),
+  `versucheNewsMigration()` (nur Admin-Geräte, max. 2/Ladung) +
+  `versucheBeweisMigration()` (nur eigene Fotos, max. 3/Ladung, ein Versuch je
+  Gerät, Markierung zurück bei fehlendem SQL/Bucket).
+- **Uploads Storage-first mit Data-URL-Fallback** (`NewsSchreiben.tsx` 640px,
+  `KontoApp.tsx` 320px): Scheitert der Upload (SQL/Bucket fehlt), geht die
+  Data-URL wie bisher in die DB – Deploy-Reihenfolge egal, Alt-Clients zeigen
+  https-URLs ohne Update an.
+- **Anzeige beider Formate** (`Neuigkeiten.tsx`, `SammlerKarussell.tsx`).
+  Sync/Merge unberührt (URLs sind Strings in denselben Spalten); Alt-Zeilen
+  werden nie angefasst, Fremdprofile nie migriert.
+
+**Verifikation:** `tsc` sauber, Build OK; Lint nur vorbestehender
+`SpendeButton.tsx`-Error. Nach SQL-Deploy prüfen: neue Bilder landen als
+`https://…/storage/…`-URL in der DB, Alt-Bilder wandern still um (Startseite
+als Admin öffnen, eigenes Beweisfoto-Tab öffnen), Anzeige auf Zweitgerät ohne
+Neuanmeldung.
+
 ## 2026-09-09 — Log-Analyse: lese_ungelesene kaputt (42702) + Voll-Sync-Schleifen
 
 **Befund (`logs/supabase_logs.csv`, 1000 Zeilen, 11:10–11:45 Uhr):**

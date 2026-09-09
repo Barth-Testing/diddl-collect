@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { BadgeCheck, Megaphone, Plus, ShieldCheck, Sparkles, Users } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
 import { listBenutzer, zaehle } from "@/lib/store";
+import { NEWS_BUCKET, bildUrl, istDatenUrl, versucheNewsMigration } from "@/lib/bilder";
 import { useStoreVersion } from "@/lib/useStoreVersion";
 
 type NewsReihe = {
@@ -142,7 +143,31 @@ export function Neuigkeiten() {
     if (!supabase) return;
     let aktiv = true;
     void ladeBilder(supabase, ids).then((liste) => {
-      if (aktiv && Object.keys(liste).length > 0) setBilder((vorher) => ({ ...vorher, ...liste }));
+      if (aktiv && Object.keys(liste).length > 0) {
+        setBilder((vorher) => ({ ...vorher, ...liste }));
+        /* Lazy-Migration: alte Data-URL-Bilder still auf Storage umziehen
+           (nur Admin-Geräte lösen aus, max. 2 je Ladung, Server prüft erneut).
+           Anzeige läuft über bildUrl – beide Formate, ohne Neuanmeldung. */
+        let migriert = 0;
+        for (const [id, paar] of Object.entries(liste)) {
+          if (migriert >= 2) break;
+          const nid = Number(id);
+          for (const feld of ["bild", "bild2"] as const) {
+            const wert = paar[feld];
+            if (!istDatenUrl(wert)) continue;
+            if (migriert >= 2) break;
+            migriert++;
+            versucheNewsMigration(nid, feld, wert, (url) => {
+              if (aktiv) {
+                setBilder((vorher) => ({
+                  ...vorher,
+                  [nid]: { ...vorher[nid], [feld]: url },
+                }));
+              }
+            });
+          }
+        }
+      }
     });
     return () => {
       aktiv = false;
@@ -215,7 +240,7 @@ export function Neuigkeiten() {
                   {bilder[n.id]?.bild && (
                     <Imagelink link={n.link} titel={n.titel}>
                       <img
-                        src={bilder[n.id]?.bild ?? ""}
+                        src={bildUrl(bilder[n.id]?.bild, NEWS_BUCKET)}
                         alt={n.titel}
                         loading="lazy"
                         className="max-h-96 w-full rounded-xl object-contain ring-1 ring-cream-200"
@@ -225,7 +250,7 @@ export function Neuigkeiten() {
                   {bilder[n.id]?.bild2 && (
                     <Imagelink link={n.link} titel={`${n.titel} (2)`}>
                       <img
-                        src={bilder[n.id]?.bild2 ?? ""}
+                        src={bildUrl(bilder[n.id]?.bild2, NEWS_BUCKET)}
                         alt={`${n.titel} (2)`}
                         loading="lazy"
                         className="max-h-96 w-full rounded-xl object-contain ring-1 ring-cream-200"

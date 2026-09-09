@@ -207,7 +207,9 @@ begin
    where id = benutzer_id;
 end $$;
 
-/** Beweisfoto hochladen (gleiches Blatt wird ersetzt). */
+/** Beweisfoto hochladen (gleiches Blatt wird ersetzt).
+ *  Stand: storage-bilder.sql (p_bild versteht data-URL oder die Storage-URL
+ *  im Ordner des aufrufenden Kontos). */
 create or replace function public.beweis_hochladen(
   p_token text,
   p_blatt_id text,
@@ -217,17 +219,32 @@ returns void
 language plpgsql security definer set search_path = public, extensions
 as $$
 declare
-  benutzer_id text := public.sitzung_benutzer(p_token);
+  v_benutzer_id text := public.sitzung_benutzer(p_token);
+  v_bild text := nullif(trim(coalesce(p_bild, '')), '');
 begin
-  if benutzer_id is null then
+  if v_benutzer_id is null then
     raise exception 'Sitzung abgelaufen – bitte neu anmelden.' using errcode = '28000';
   end if;
+  if v_bild is null then
+    raise exception 'Kein Bild übergeben.' using errcode = '23514';
+  end if;
+  if v_bild like 'data:image/%' then
+    if char_length(v_bild) > 500000 then
+      raise exception 'Das Bild ist zu groß.' using errcode = '23514';
+    end if;
+  elsif v_bild ~ '^https://[^/]+/storage/v1/object/public/beweis-fotos/[A-Za-z0-9_./-]+\.(webp|jpg|jpeg|png)$'
+    and v_bild not like '%..%' and char_length(v_bild) <= 500
+    and v_bild like '%/beweis-fotos/' || v_benutzer_id || '/%' then
+    /* Eigene Storage-URL – Format ok. */
+  else
+    raise exception 'Ungültiges Bildformat.' using errcode = '23514';
+  end if;
   insert into public.beweis_fotos (profil_id, blatt_id, bild)
-  values (benutzer_id, p_blatt_id, p_bild)
+  values (v_benutzer_id, p_blatt_id, v_bild)
   on conflict (profil_id, blatt_id) do update set bild = excluded.bild;
 end $$;
 
-/** Beweisfoto löschen. */
+/** Beweisfoto löschen (entfernt zusätzlich die Storage-Datei, falls eine). */
 create or replace function public.beweis_loeschen(
   p_token text,
   p_blatt_id text
@@ -236,12 +253,23 @@ returns void
 language plpgsql security definer set search_path = public, extensions
 as $$
 declare
-  benutzer_id text := public.sitzung_benutzer(p_token);
+  v_benutzer_id text := public.sitzung_benutzer(p_token);
+  v_bild text;
+  v_name text;
 begin
-  if benutzer_id is null then
+  if v_benutzer_id is null then
     raise exception 'Sitzung abgelaufen – bitte neu anmelden.' using errcode = '28000';
   end if;
-  delete from public.beweis_fotos where profil_id = benutzer_id and blatt_id = p_blatt_id;
+  select f.bild into v_bild from public.beweis_fotos as f
+  where f.profil_id = v_benutzer_id and f.blatt_id = p_blatt_id;
+  delete from public.beweis_fotos where profil_id = v_benutzer_id and blatt_id = p_blatt_id;
+  if v_bild like 'https://%/storage/v1/object/public/beweis-fotos/%' then
+    v_name := substring(v_bild from '/beweis-fotos/(.*)$');
+    if v_name like v_benutzer_id || '/%' then
+      delete from storage.objects as o
+      where o.bucket_id = 'beweis-fotos' and o.name = v_name;
+    end if;
+  end if;
 end $$;
 
 /** Tausch-Angebot eines Interessenten an einen Anbieter. */

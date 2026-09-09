@@ -5,6 +5,8 @@ import { ChevronLeft, ChevronRight, Images, Star } from "lucide-react";
 import type { Benutzer } from "@/lib/types";
 import { BLAETTER_NACH_ID, blattTitel } from "@/lib/blaetter";
 import { ladeBeweisFotos } from "@/lib/beweise";
+import { BEWEIS_BUCKET, bildUrl, istDatenUrl, versucheBeweisMigration } from "@/lib/bilder";
+import { getSession } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 type BildQuelle = "vorlage" | "beweis" | "favoriten";
@@ -48,6 +50,19 @@ export function SammlerKarussell({ benutzer, titel }: { benutzer: Benutzer; tite
     void ladeBeweisFotos(benutzer.id, offen).then((f) => {
       setFotos((alt) => ({ ...alt, ...f }));
       setGeladene((alt) => new Set([...alt, ...offen]));
+      /* Lazy-Migration: eigene Alt-Bilder (data:) still auf Storage umziehen
+         (max. 3 je Ladung); fremde Profile fassen wir nie an. */
+      const eigen = getSession();
+      if (eigen && eigen.id === benutzer.id) {
+        Object.entries(f)
+          .filter(([, v]) => istDatenUrl(v))
+          .slice(0, 3)
+          .forEach(([blattId, v]) =>
+            versucheBeweisMigration(benutzer.id, blattId, v, (neu) =>
+              setFotos((alt) => ({ ...alt, [blattId]: neu })),
+            ),
+          );
+      }
     });
   };
 
@@ -156,7 +171,7 @@ export function SammlerKarussell({ benutzer, titel }: { benutzer: Benutzer; tite
               const blatt = BLAETTER_NACH_ID.get(id);
               if (!blatt) return null;
               const roh = benutzer.beweise[id];
-              const beweisBild = typeof roh === "string" ? roh : fotos[id];
+              const beweisBild = bildUrl(typeof roh === "string" ? roh : fotos[id], BEWEIS_BUCKET);
               return (
                 <figure key={id} data-karte className="w-32 shrink-0 snap-start sm:w-40">
                   <div className="overflow-hidden rounded-2xl bg-white ring-1 ring-candy-100">
