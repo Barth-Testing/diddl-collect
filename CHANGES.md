@@ -34,10 +34,11 @@ Alt-Daten, Alt-Clients oder Cross-Device-Sync anzufassen.
   werden nie angefasst, Fremdprofile nie migriert.
 
 **Verifikation:** `tsc` sauber, Build OK; Lint nur vorbestehender
-`SpendeButton.tsx`-Error. Nach SQL-Deploy prüfen: neue Bilder landen als
-`https://…/storage/…`-URL in der DB, Alt-Bilder wandern still um (Startseite
-als Admin öffnen, eigenes Beweisfoto-Tab öffnen), Anzeige auf Zweitgerät ohne
-Neuanmeldung.
+`SpendeButton.tsx`-Error. **SQL am 09.09.2026 ausgeführt und verifiziert**
+(2 Buckets `public=true`, 2 Policies). Syntaxfix `d2735e3` (`!~` statt
+`NOT ~`, leere ELSIF-Zweige). Offen: App-Test (neue Bilder landen als
+`https://…/storage/…`-URL, Alt-Bilder wandern still um, Zweitgerät ohne
+Neuanmeldung).
 
 ## 2026-09-09 — Log-Analyse: lese_ungelesene kaputt (42702) + Voll-Sync-Schleifen
 
