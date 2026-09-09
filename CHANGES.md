@@ -75,7 +75,9 @@ Neuanmeldung).
   Sessions pollen nicht ewig).
 
 **Verifikation:** `tsc` sauber, Build OK; Lint nur vorbestehender
-`SpendeButton.tsx`-Error. Nach SQL-Deploy + Push im nächsten Log prüfen:
+`SpendeButton.tsx`-Error. **Beide SQL am 10.09.2026 ausgeführt und verifiziert:**
+`post-lesestand-fix.sql` + `storage-bilder.sql` (alle 6 Funktionen je genau 1×,
+Signaturen korrekt; 2 Buckets `public=true`, 2 Policies). Im nächsten Log prüfen:
 `lese_ungelesene` 200, `tauschangebot` nur noch mit `or`-Filter, Voll-Syncs mit
 `limit=250`.
 
