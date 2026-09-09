@@ -1,10 +1,11 @@
 import rohDaten from "../data/blaetter.json";
 import diddlBackRoh from "../data/diddl-back.json";
+import daenemarkRoh from "../data/daenemark.json";
 import reliefRoh from "../data/relief.json";
 import pimboliRoh from "../data/pimboli.json";
 import { ALTE_BLATT_IDS, FARBREIHENFOLGE, normalisiereStatus, type Benutzer, type Blatt, type Status } from "./types";
 
-export const BLAETTER: Blatt[] = [...(rohDaten as Blatt[]), ...(diddlBackRoh as Blatt[]), ...(reliefRoh as Blatt[]), ...(pimboliRoh as Blatt[])];
+export const BLAETTER: Blatt[] = [...(rohDaten as Blatt[]), ...(diddlBackRoh as Blatt[]), ...(daenemarkRoh as Blatt[]), ...(reliefRoh as Blatt[]), ...(pimboliRoh as Blatt[])];
 
 /** Katalog-Blatt-ID für einen Nutzer-Daten-Schlüssel. Alte
  *  Sammelverzeichnis-IDs (A5-463…/A6-229…) werden auf ihre
@@ -60,6 +61,12 @@ export const DIDDLBACK_KOLLEKTIONEN: { id: string; label: string }[] = [
   { id: "geb", label: "Sonderkollektion (Geburtstag)" },
 ];
 
+export const DAENEMARK_KOLLEKTIONEN: { id: string; label: string }[] = [
+  { id: "daenemark", label: "Dänemark" },
+  { id: "diddlina", label: "Diddlina" },
+  { id: "kaeseblatt", label: "Käseblatt" },
+];
+
 export const BLAETTER_NACH_ID = new Map(BLAETTER.map((b) => [b.id, b]));
 
 export const VERFÜGBARE_FARBEN = FARBREIHENFOLGE.filter((f) =>
@@ -96,7 +103,7 @@ export function blattTitel(blatt: Blatt): string {
     const basis = blatt.jahr ? `${blatt.jahr}-Pimboli-${blatt.code}` : `Pimboli-${blatt.code}`;
     return blatt.kollektion ? `${basis} (${blatt.kollektion})` : basis;
   }
-  const basis = `${blatt.jahr}-${blatt.groesse}-${blatt.nummer}`;
+  const basis = blatt.jahr ? `${blatt.jahr}-${blatt.groesse}-${blatt.nummer}` : `${blatt.groesse}-${blatt.nummer}`;
   return blatt.kollektion ? `${basis} (${blatt.kollektion})` : basis;
 }
 

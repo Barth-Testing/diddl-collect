@@ -3,6 +3,31 @@
 > Dieses Log wird bei jeder Änderung gepflegt (neuen Eintrag oben einfügen).
 > Beim initialen Laden durchlesen, um den aktuellen Stand zu verstehen.
 
+## 2026-09-09 — Katalog: neue Kategorie „Dänemark“ (Deense A6 + Spezial-Blätter)
+
+**Ziel:** Dänische Sonderkollektion als eigener Modus im Katalog – 6 Deense-Blätter
+(Oktober 2011, teils als Nr. 235–240 geführt) plus 4 Spezial-Blätter von Seite 1
+des PDFs unter abweichender Benamung.
+
+- **Neu `src/data/daenemark.json`** (compact, 10 Einträge, `kategorie: daenemark`):
+  - Kollektion **Dänemark** (`daenemark-a6-001` … `-006`, Nummer 1–6, Jahr 2011,
+    `name` D1–D6 suchbar) → Benamung `2011-Din A6-1 (Dänemark)` … wie immer.
+  - Kollektion **Diddlina** (`daenemark-diddlina-01/02`, `Din A6-1 (Diddlina)` …)
+    und **Käseblatt** (`daenemark-kaeseblatt-01/02`, `Din A6-1 (Käseblatt)` …) –
+    Nummerierung beginnt je Kollektion neu (Muster wie Diddl-is-Back). Jahr
+    unbekannt → `jahr: null` (Annahme, gern korrigieren).
+- **Neu `public/daenemark/`:** 10 Bilder aus `SpecialeA6blaadjes.pdf`
+  (Tabellenraster per Linienerkennung ausgeschnitten, Rand getrimmt, 270 px /
+  q85 wie A5-463 ff., 15–35 KB) – statisch via Cloudflare, kein Supabase-Egress.
+- **`blaetter.ts`:** `daenemark.json` in `BLAETTER`, neu
+  `DAENEMARK_KOLLEKTIONEN`; `blattTitel` ohne Jahr → `Din A6-1 (Diddlina)`
+  (trifft keine bestehenden Einträge – alle haben ein Jahr).
+- **`KatalogApp.tsx`:** Modus-Button „Dänemark“ + Kollektions-Chips
+  (Alle/Dänemark/Diddlina/Käseblatt); alle Filter (Größe/Farbe/Suche/Status/
+  Block/Beweis) greifen wie in den anderen Modi. IDs sind neu und kollidieren
+  nicht mit `ALTE_BLATT_IDS` – kein Remap nötig.
+- Farben per Farbanalyse + Sichtkontrolle (u. a. erstmals `Grau` im Katalog).
+
 ## 2026-09-08 — Katalog: A5 Blätter 463-481 ergänzt (PDF-Import)
 
 **Ziel:** Fehlende A5-Blätter 463-481 aus `DIN_A5_463_bis_481.pdf` ergänzen.

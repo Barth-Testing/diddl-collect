@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowDownUp, Check, Heart, LogIn, Repeat2, Search, SlidersHorizontal, X } from "lucide-react";
-import { BLAETTER, DIDDLBACK_KOLLEKTIONEN, PIMBOLI_GENERATIONEN, VERFÜGBARE_FARBEN, blattTitel, katalogBlattId } from "@/lib/blaetter";
+import { BLAETTER, DAENEMARK_KOLLEKTIONEN, DIDDLBACK_KOLLEKTIONEN, PIMBOLI_GENERATIONEN, VERFÜGBARE_FARBEN, blattTitel, katalogBlattId } from "@/lib/blaetter";
 import { getSession, ladeBoerseRpc, listBenutzer, setAnzahlDelta, setBlock, setStatus, type BoersenZeile } from "@/lib/store";
 import { FARBREIHENFOLGE, type Status } from "@/lib/types";
 import { BlattKarte } from "./BlattKarte";
@@ -24,6 +24,7 @@ const MODI = [
   { id: "forever", label: "Forever Edition 2016" },
   { id: "relief", label: "Reliefblätter" },
   { id: "pimboli", label: "Pimboli" },
+  { id: "daenemark", label: "Dänemark" },
 ] as const;
 type Modus = (typeof MODI)[number]["id"];
 
@@ -32,6 +33,7 @@ export function KatalogApp() {
   const benutzer = getSession();
   const [modus, setModus] = useState<Modus>("klassisch");
   const [kollektion, setKollektion] = useState<string>("Alle");
+  const [daenemarkKoll, setDaenemarkKoll] = useState<string>("Alle");
   const [pimboliGen, setPimboliGen] = useState<string>("alle");
   const [sort, setSort] = useState<Sortierung>("jahr-auf");
   const [groesse, setGroesse] = useState<string>("Alle Größen");
@@ -84,6 +86,7 @@ export function KatalogApp() {
     const liste = BLAETTER.filter((b) => {
       if (neu ? b.kategorie !== modus : b.kategorie) return false;
       if (modus === "back" && kollektion !== "Alle" && b.kollektionId !== kollektion) return false;
+      if (modus === "daenemark" && daenemarkKoll !== "Alle" && b.kollektionId !== daenemarkKoll) return false;
       if (modus === "pimboli" && pimboliGen !== "alle" && b.kollektionId !== pimboliGen) return false;
       if (groesse !== "Alle Größen" && b.groesse !== groesse) return false;
       if (farbe !== "Alle Farben" && b.farbe !== farbe) return false;
@@ -110,12 +113,13 @@ export function KatalogApp() {
     const groesseIndex = (g: string) => (g === "Din A4" ? 0 : g === "Din A5" ? 1 : 2);
     const sortiert = [...liste];
     if (neu) {
+      const kollListe = modus === "daenemark" ? DAENEMARK_KOLLEKTIONEN : DIDDLBACK_KOLLEKTIONEN;
       const kollIndex = (id?: string) => {
-        const i = DIDDLBACK_KOLLEKTIONEN.findIndex((k) => k.id === id);
+        const i = kollListe.findIndex((k) => k.id === id);
         return i === -1 ? 99 : i;
       };
       sortiert.sort((a, b) => {
-        if (modus === "back" && kollektion === "Alle") {
+        if ((modus === "back" && kollektion === "Alle") || (modus === "daenemark" && daenemarkKoll === "Alle")) {
           const ki = kollIndex(a.kollektionId) - kollIndex(b.kollektionId);
           if (ki !== 0) return ki;
         }
@@ -146,7 +150,7 @@ export function KatalogApp() {
         break;
     }
     return sortiert;
-  }, [modus, kollektion, pimboliGen, sort, groesse, farbe, statusFilter, beweisFilter, beweise, nurBlock, blocks, suche, jahrVon, jahrBis, statuses]);
+  }, [modus, kollektion, daenemarkKoll, pimboliGen, sort, groesse, farbe, statusFilter, beweisFilter, beweise, nurBlock, blocks, suche, jahrVon, jahrBis, statuses]);
 
   const ownGesamt = Object.values(statuses).filter((s) => s.includes("own")).length;
 
@@ -317,6 +321,36 @@ export function KatalogApp() {
               className={cn(
                 "rounded-full px-3.5 py-1.5 text-xs font-bold transition-all",
                 kollektion === k.id
+                  ? "bg-sky-400 text-white shadow-sm"
+                  : "bg-white text-ink-700 ring-1 ring-cream-300 hover:ring-sky-300",
+              )}
+            >
+              {k.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {modus === "daenemark" && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setDaenemarkKoll("Alle")}
+            className={cn(
+              "rounded-full px-3.5 py-1.5 text-xs font-bold transition-all",
+              daenemarkKoll === "Alle"
+                ? "bg-sky-400 text-white shadow-sm"
+                : "bg-white text-ink-700 ring-1 ring-cream-300 hover:ring-sky-300",
+            )}
+          >
+            Alle Kollektionen
+          </button>
+          {DAENEMARK_KOLLEKTIONEN.map((k) => (
+            <button
+              key={k.id}
+              onClick={() => setDaenemarkKoll(k.id)}
+              className={cn(
+                "rounded-full px-3.5 py-1.5 text-xs font-bold transition-all",
+                daenemarkKoll === k.id
                   ? "bg-sky-400 text-white shadow-sm"
                   : "bg-white text-ink-700 ring-1 ring-cream-300 hover:ring-sky-300",
               )}
