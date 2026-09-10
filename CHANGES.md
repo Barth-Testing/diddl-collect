@@ -51,7 +51,7 @@ um → 13× 400, Startseiten-Bilder defekt. Eigenverschulden, sofort behoben:
 `bildUrl()` reicht `/…`-Pfade durch (kein `//`-Prefix). Die zuvor
 hochgeladenen Bucket-Kopien (50/66 KB) verwaist – per Dashboard löschbar,
 harmlos. `_bucket-upload/` gelöscht.
-- **Neu `scripts/news-relative-pfad.sql` (ausführen!):** `news_schreiben`
+- **Neu `scripts/news-relative-pfad.sql` (am 10.09.2026 ausgeführt):** `news_schreiben`
   akzeptiert zusätzlich `/…`-Pfade (kein `//`, kein `..`, max. 500 Zeichen) –
   gleiche Signatur. Gespiegelt in `news-schreiben.sql` + `storage-bilder.sql`.
 
