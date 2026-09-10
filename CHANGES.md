@@ -42,6 +42,19 @@
 `out/blur-beweis.jpg` liegt bei. Im nächsten Log: Sync-Seiten nur noch
 `id,name,created_at,supporter`, keine 400 auf Storage, Warp-Kills sinken.
 
+## 2026-09-10 — Fix: app-relative News-Bilder (`/…`-Pfade) + RPC-Freigabe
+
+**Befund:** Zwei News-Zeilen (15/16) enthalten app-relative Pfade
+(`/surprise_delivery.jpeg`, aus `public/` per Cloudflare – null
+Supabase-Egress). Mein neues `bildUrl()` bog sie auf (fehlende) Storage-URLs
+um → 13× 400, Startseiten-Bilder defekt. Eigenverschulden, sofort behoben:
+`bildUrl()` reicht `/…`-Pfade durch (kein `//`-Prefix). Die zuvor
+hochgeladenen Bucket-Kopien (50/66 KB) verwaist – per Dashboard löschbar,
+harmlos. `_bucket-upload/` gelöscht.
+- **Neu `scripts/news-relative-pfad.sql` (ausführen!):** `news_schreiben`
+  akzeptiert zusätzlich `/…`-Pfade (kein `//`, kein `..`, max. 500 Zeichen) –
+  gleiche Signatur. Gespiegelt in `news-schreiben.sql` + `storage-bilder.sql`.
+
 ## 2026-09-09 — Bilder nach Supabase Storage (News + Beweise, Egress-Diät)
 
 **Ziel:** base64-Data-URLs in `news.bild/bild2` + `beweis_fotos.bild` (+33 %

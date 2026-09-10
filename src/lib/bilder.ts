@@ -19,11 +19,13 @@ export function istHttpUrl(wert: unknown): wert is string {
   );
 }
 
-/** Anzeigefähige Bildquelle: Data-URL (alt) und https-URL (neu) direkt;
- *  nackte Storage-Pfade defensiv über getPublicUrl auflösen. */
+/** Anzeigefähige Bildquelle: Data-URL (alt), https-URL (Storage/neu) und
+ *  app-relative Pfade (/…, aus public/ via Cloudflare, null Supabase-Egress)
+ *  direkt; nackte Storage-Pfade defensiv über getPublicUrl auflösen. */
 export function bildUrl(wert: unknown, bucket: string): string {
   if (istDatenUrl(wert) || istHttpUrl(wert)) return wert;
   if (typeof wert !== "string" || !wert) return "";
+  if (wert.startsWith("/") && !wert.startsWith("//")) return wert;
   try {
     const s = getSupabase();
     const o = s?.storage.from(bucket).getPublicUrl(wert);

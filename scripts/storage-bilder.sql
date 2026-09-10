@@ -86,6 +86,9 @@ begin
     elsif v_bild ~ '^https://[^/]+/storage/v1/object/public/news-bilder/[A-Za-z0-9_./-]+\.(webp|jpg|jpeg|png)$'
       and v_bild not like '%..%' and char_length(v_bild) <= 500 then
       null; /* Neue Storage-URL – Format ok. */
+    elsif v_bild like '/%' and v_bild not like '//%' and v_bild not like '%..%'
+      and char_length(v_bild) <= 500 then
+      null; /* App-relativer Pfad (public/, Cloudflare) – null Supabase-Egress. */
     else
       raise exception 'Ungültiges Bildformat.' using errcode = '23514';
     end if;

@@ -1,19 +1,12 @@
--- Diddl-Collect: News per UI schreiben (additiv, NICHT destruktiv)
+-- Diddl-Collect: news_schreiben akzeptiert app-relative Bildpfade (additiv)
 -- ==============================================================================
--- Bisher konnte nur der Betreiber per SQL News eintragen. Diese Migration
--- erlaubt es dem Admin-Kreis (malarky, blondy – Vergleich case-insensitiv),
--- News direkt im UI zu schreiben (Komponente NewsSchreiben.tsx auf der
--- eigenen Profilseite). Alle anderen bleiben schreibgeschützt.
--- Rollback: drop function if exists public.news_schreiben(text, text, text, text, text);
+-- Drittes Bildformat neben data: und Storage-URL: Pfade wie
+-- /surprise_delivery.jpeg (Datei in public/, ausgeliefert per Cloudflare –
+-- null Supabase-Egress, offlinefähig per Service Worker). Zwei News-Zeilen
+-- nutzen das bereits – ohne diese Freigabe würde ein künftiges Neu-
+-- Speichern sie ablehnen. Gleiche Signatur (keine Überladungsgefahr).
+-- Im SQL-Editor ausführen.
 
--- Spalten absichern (Startseite liest sie bereits mit Fallback):
-alter table public.news add column if not exists bild text;
-alter table public.news add column if not exists bild2 text;
-alter table public.news add column if not exists link text;
-
-/** News-Eintrag – nur für den Admin-Kreis. Der Autor wird NICHT vom Client
- *  übernommen (sonst Spoofing): Die Identität kommt aus dem Session-Token.
- *  Stand: storage-bilder.sql (p_bild versteht data-URL oder Storage-URL). */
 create or replace function public.news_schreiben(
   p_token text,
   p_titel text,
@@ -34,7 +27,6 @@ begin
     raise exception 'Sitzung abgelaufen – bitte neu anmelden.' using errcode = '28000';
   end if;
   select p.name into v_benutzer_name from public.profile as p where p.id = v_benutzer_id;
-  /* Alt-Konten können End-Punkte tragen ("Malarky.") – wie im Client tolerant prüfen. */
   if v_benutzer_name is null
     or lower(rtrim(trim(v_benutzer_name), '.')) not in ('malarky', 'blondy') then
     raise exception 'Nur für die Seitenbetreiber.' using errcode = '42501';
@@ -55,10 +47,10 @@ begin
       end if;
     elsif v_bild ~ '^https://[^/]+/storage/v1/object/public/news-bilder/[A-Za-z0-9_./-]+\.(webp|jpg|jpeg|png)$'
       and v_bild not like '%..%' and char_length(v_bild) <= 500 then
-      null; /* Neue Storage-URL – Format ok. */
+      null;
     elsif v_bild like '/%' and v_bild not like '//%' and v_bild not like '%..%'
       and char_length(v_bild) <= 500 then
-      null; /* App-relativer Pfad (public/, Cloudflare) – null Supabase-Egress. */
+      null;
     else
       raise exception 'Ungültiges Bildformat.' using errcode = '23514';
     end if;
