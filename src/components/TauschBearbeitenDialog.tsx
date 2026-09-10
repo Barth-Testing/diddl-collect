@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Check, Pencil, X } from "lucide-react";
 import type { Blatt } from "@/lib/types";
 import { BLAETTER_NACH_ID, blattTitel } from "@/lib/blaetter";
-import { listBenutzer } from "@/lib/store";
+import { ladeFremdesProfil, listBenutzer } from "@/lib/store";
 import { useStoreVersion } from "@/lib/useStoreVersion";
 import { aendereAngebot, type TauschAngebot } from "@/lib/tausch";
 import { cn } from "@/lib/utils";
@@ -39,6 +39,23 @@ export function TauschBearbeitenDialog({ angebot, ich, aufSchliessen }: Props) {
     ? { id: angebot.interessentId, name: angebot.interessentName }
     : ich;
 
+  /* Tausch-Pools beider Parteien einzeln nachladen (Lean-Boot-Cache kennt
+     nur Verzeichnis-Spalten) – mit Thread-Listen als Fallback. */
+  const [frisch, setFrisch] = useState(0);
+  useEffect(() => {
+    let aktiv = true;
+    void Promise.all([
+      ladeFremdesProfil(anbieter.id),
+      ladeFremdesProfil(interessent.id),
+    ]).then((ergs) => {
+      if (aktiv && ergs.some(Boolean)) setFrisch((v) => v + 1);
+    });
+    return () => {
+      aktiv = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [angebot.id]);
+
   /* Wunsch-Pool: die Tauschblätter des Anbieters. */
   const wunschPool = useMemo(() => {
     const daten = listBenutzer().find((u) => u.id === anbieter.id);
@@ -46,7 +63,8 @@ export function TauschBearbeitenDialog({ angebot, ich, aufSchliessen }: Props) {
     return blattListe(
       Object.keys(daten.statuses).filter((id) => daten.statuses[id]?.includes("offer")),
     );
-  }, [anbieter.id, angebot.wunschBlatter]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [anbieter.id, angebot.wunschBlatter, frisch]);
 
   /* Gebe-Pool: die Tauschblätter des Interessenten. */
   const gebePool = useMemo(() => {
@@ -55,7 +73,8 @@ export function TauschBearbeitenDialog({ angebot, ich, aufSchliessen }: Props) {
     return blattListe(
       Object.keys(daten.statuses).filter((id) => daten.statuses[id]?.includes("offer")),
     );
-  }, [interessent.id, angebot.angebotBlaetter]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [interessent.id, angebot.angebotBlaetter, frisch]);
 
   const betragZahl = betrag.trim() === "" ? null : Number(betrag.replace(",", "."));
   const istSichtbar = (pool: Blatt[], ids: string[]) => ids.length === pool.length;

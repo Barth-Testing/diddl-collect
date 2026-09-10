@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { BadgeCheck, Megaphone, Plus, ShieldCheck, Sparkles, Users } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
-import { listBenutzer, zaehle } from "@/lib/store";
-import { NEWS_BUCKET, bildUrl, istDatenUrl, versucheNewsMigration } from "@/lib/bilder";
+import { ladeRanglisteRpc, listBenutzer, zaehle } from "@/lib/store";
+import { NEWS_BUCKET, bildUrl, istDatenUrl, istHttpUrl, versucheNewsMigration } from "@/lib/bilder";
 import { useStoreVersion } from "@/lib/useStoreVersion";
 
 type NewsReihe = {
@@ -145,16 +145,17 @@ export function Neuigkeiten() {
     void ladeBilder(supabase, ids).then((liste) => {
       if (aktiv && Object.keys(liste).length > 0) {
         setBilder((vorher) => ({ ...vorher, ...liste }));
-        /* Lazy-Migration: alte Data-URL-Bilder still auf Storage umziehen
-           (nur Admin-Geräte lösen aus, max. 2 je Ladung, Server prüft erneut).
-           Anzeige läuft über bildUrl – beide Formate, ohne Neuanmeldung. */
+        /* Lazy-Migration: alte Data-URL-Bilder UND übergroße Storage-Bilder
+           still auf schlanke Storage-URLs umziehen (nur Admin-Geräte lösen
+           aus, max. 2 je Ladung, Server prüft erneut). Anzeige läuft über
+           bildUrl – beide Formate, ohne Neuanmeldung. */
         let migriert = 0;
         for (const [id, paar] of Object.entries(liste)) {
           if (migriert >= 2) break;
           const nid = Number(id);
           for (const feld of ["bild", "bild2"] as const) {
             const wert = paar[feld];
-            if (!istDatenUrl(wert)) continue;
+            if (!istDatenUrl(wert) && !istHttpUrl(wert)) continue;
             if (migriert >= 2) break;
             migriert++;
             versucheNewsMigration(nid, feld, wert, (url) => {
@@ -174,10 +175,21 @@ export function Neuigkeiten() {
     };
   }, [news, sichtbar, bilder]);
 
-  /* Blatt-Zähler aus dem bereits synchronisierten Cache (derselbe Stand wie
-     Rangliste) – kein Full-Table-Download der statuses-Spalte mehr. Re-Render
-     bei Sync kommt über storeVersion (useStoreVersion oben). */
-  const blaetterGesamt = listBenutzer().reduce((s, u) => s + zaehle(u).own, 0);
+  /* Blatt-Zähler aus der Lean-RPC (derselbe Stand wie Rangliste) – kein
+     Full-Table-Download der statuses-Spalte mehr, auch nicht aus dem Cache
+     (der seit dem Lean-Boot nur noch Verzeichnis-Spalten enthält). Fallback:
+     Summe über den lokalen Cache. */
+  const [rangSumme, setRangSumme] = useState<number | null>(null);
+  useEffect(() => {
+    let aktiv = true;
+    void ladeRanglisteRpc().then((zeilen) => {
+      if (aktiv && zeilen) setRangSumme(zeilen.reduce((s, z) => s + z.own, 0));
+    });
+    return () => {
+      aktiv = false;
+    };
+  }, [storeVersion]);
+  const blaetterGesamt = rangSumme ?? listBenutzer().reduce((s, u) => s + zaehle(u).own, 0);
 
   return (
     <div className="card-soft p-6">

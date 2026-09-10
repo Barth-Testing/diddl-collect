@@ -21,6 +21,11 @@ export function SammlerKarussell({ benutzer, titel }: { benutzer: Benutzer; tite
   const [fotoGewuenscht, setFotoGewuenscht] = useState(24);
   const [alleAnzeigen, setAlleAnzeigen] = useState(false);
 
+  /* Egress- + Privatsphären-Regel: BeweisFOTOS sieht nur das eigene Konto.
+     Fremde Profile bekommen einen einheitlichen, gecachten Platzhalter plus
+     Anzahl – ihre Fotos werden nie vom Server geladen. */
+  const istEigen = getSession()?.id === benutzer.id;
+  const BLUR_PLATZHALTER = "/blur-beweis.jpg";
   const eigeneIds = Object.keys(benutzer.statuses)
     .filter((id) => benutzer.statuses[id]?.includes("own"))
     .sort((a, b) => a.localeCompare(b));
@@ -37,8 +42,9 @@ export function SammlerKarussell({ benutzer, titel }: { benutzer: Benutzer; tite
 
   /* Beweisfotos nur bei Bedarf (Tab „Beweisfotos“) und in 24er-Schritten laden –
      nicht beim Öffnen des Profils, sonst lädt z. B. ein Profil mit vielen Fotos
-     mehrere MB auf einmal. */
+     mehrere MB auf einmal. Fremde Profile laden gar nichts (Blur-Regel). */
   const ladeFotos = (bis: number) => {
+    if (!istEigen) return;
     const idsJetzt = Object.keys(benutzer.beweise ?? {})
       .filter((id) => benutzer.statuses[id]?.includes("own"))
       .sort((a, b) => a.localeCompare(b));
@@ -162,6 +168,12 @@ export function SammlerKarussell({ benutzer, titel }: { benutzer: Benutzer; tite
         </p>
       ) : (
         <div className="relative mt-4">
+          {quelle === "beweis" && !istEigen && (
+            <p className="mb-3 rounded-2xl bg-cream-100 px-3.5 py-2 text-xs font-bold text-ink-600">
+              {beweisIds.length} Beweisfotos – aus Privatsphäre siehst du hier nur Platzhalter.
+              Deine eigenen Fotos bleiben für dich voll sichtbar.
+            </p>
+          )}
           <div
             ref={bahnRef}
             onScroll={aktualisierePfeile}
@@ -171,7 +183,9 @@ export function SammlerKarussell({ benutzer, titel }: { benutzer: Benutzer; tite
               const blatt = BLAETTER_NACH_ID.get(id);
               if (!blatt) return null;
               const roh = benutzer.beweise[id];
-              const beweisBild = bildUrl(typeof roh === "string" ? roh : fotos[id], BEWEIS_BUCKET);
+              const beweisBild = !istEigen
+                ? BLUR_PLATZHALTER
+                : bildUrl(typeof roh === "string" ? roh : fotos[id], BEWEIS_BUCKET);
               return (
                 <figure key={id} data-karte className="w-32 shrink-0 snap-start sm:w-40">
                   <div className="overflow-hidden rounded-2xl bg-white ring-1 ring-candy-100">
@@ -203,7 +217,7 @@ export function SammlerKarussell({ benutzer, titel }: { benutzer: Benutzer; tite
             </button>
           )}
 
-          {quelle === "beweis" && fehlendeFotos > 0 && (
+          {quelle === "beweis" && istEigen && fehlendeFotos > 0 && (
             <button
               type="button"
               onClick={() => {

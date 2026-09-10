@@ -1,17 +1,16 @@
 /* Knuddelblätter Service Worker – Version wird beim Build automatisch generiert */
-const VERSION = "v4948aa2d";
+const VERSION = "v74d93f00";
 const PRECACHE = "knuddel-pre-" + VERSION;
 const RUNTIME = "knuddel-run-" + VERSION;
 const PRECACHE_URLS = [
-  "/_next/static/X05an9i-Kx0ir0cUxdUEB/_buildManifest.js",
-  "/_next/static/X05an9i-Kx0ir0cUxdUEB/_clientMiddlewareManifest.js",
-  "/_next/static/X05an9i-Kx0ir0cUxdUEB/_ssgManifest.js",
-  "/_next/static/chunks/04ittye2u-_86.js",
-  "/_next/static/chunks/0citqnm140ty1.js",
+  "/_next/static/VUbwG2E8sZ10_TCMUrPXK/_buildManifest.js",
+  "/_next/static/VUbwG2E8sZ10_TCMUrPXK/_clientMiddlewareManifest.js",
+  "/_next/static/VUbwG2E8sZ10_TCMUrPXK/_ssgManifest.js",
   "/_next/static/chunks/0cz1d0mv5g_q7.js",
+  "/_next/static/chunks/0f0nuzxei-yku.js",
+  "/_next/static/chunks/0j1c6969ckeuz.js",
   "/_next/static/chunks/0jvhpaew_uadu.js",
-  "/_next/static/chunks/0mcx-4u6tl5xb.js",
-  "/_next/static/chunks/12pvsoyy3_f97.js",
+  "/_next/static/chunks/17de4xh3rxzls.js",
   "/_next/static/chunks/19mx3mg6lkumu.js",
   "/_next/static/chunks/1rbfb8wwj5b-8.js",
   "/_next/static/chunks/1y9ulk0oo3wwt.js",
@@ -19,13 +18,14 @@ const PRECACHE_URLS = [
   "/_next/static/chunks/20a0w82oovf5o.js",
   "/_next/static/chunks/21b3aprw7mfte.js",
   "/_next/static/chunks/2b8m0froc9y7h.js",
-  "/_next/static/chunks/2nufqbkri6exo.js",
   "/_next/static/chunks/2osv-gnrgzp4c.js",
   "/_next/static/chunks/2v2sekfzyol6f.js",
+  "/_next/static/chunks/2v67dqdvudbat.js",
   "/_next/static/chunks/2yhihbi1hu6op.js",
   "/_next/static/chunks/36lm--m0zwqtj.js",
   "/_next/static/chunks/3gxp0qj-25k-8.js",
   "/_next/static/chunks/3lo78_e30kbdc.js",
+  "/_next/static/chunks/3q90u4enmkv0m.js",
   "/_next/static/chunks/3tcog6nkeugog.js",
   "/_next/static/chunks/3zgd8ube1f6b9.js",
   "/_next/static/chunks/turbopack-22-s-9frl7x1b.js",

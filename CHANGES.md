@@ -3,6 +3,45 @@
 > Dieses Log wird bei jeder Änderung gepflegt (neuen Eintrag oben einfügen).
 > Beim initialen Laden durchlesen, um den aktuellen Stand zu verstehen.
 
+## 2026-09-10 — Egress-Runde 2: Lean-Boot-Sync + Beweis-Blur (330 MB/Tag)
+
+**Befund (`still_too_much.csv`, 1000 Zeilen, 04:57–06:05 Uhr, Tageswert 330 MB):**
+- Erfolge: `lese_ungelesene` 114× 200 (Fix wirkt), Tausch-Sturm tot (nur noch
+  2 scoped Loads), Sync-Seiten `limit=250` ohne `passwort`.
+- Offen: **15 volle Syncs** (~3 MB, 3×250er-Seiten) in 68 Min + **81 Warp-
+  Timeouts** („Thread killed“) – DB unter Last, Indexe existieren bereits
+  (kein Index-Defizit). `beweis_fotos`: nur OPTIONS/HEAD, 0 Daten-GETs.
+- **Kaputte News-Bilder:** `news-bilder/surprise_delivery.jpeg` +
+  `diddl_french_delivery.jpeg` → 13× 400 (Objekte fehlen im Bucket, Startseite
+  zeigt defekte Bilder; als MB-Dateien wären sie die nächste Bombe).
+
+**Fixes (Code, abwärtskompatibel, Cross-Device unberührt):**
+- **Lean-Boot-Sync (`store.ts`):** Boot lädt nur `id,name,created_at,supporter`
+  (~50 KB statt ~3 MB). Merge erhält schwere Felder (nie mit Leere
+  überschreiben); neue Zeilen = Skelette, gemerkt in `diddlcollect:light-ids`.
+  Voll-Sync nur noch via `syncBeiBedarf` (RPC-Fallbacks). `ladeFremdesProfil`
+  umgeht die 30-Min-Sperre für Skelette; Eigen-Cache/Login löschen die Markierung.
+- **Nachlader für Skelette:** `TauschBearbeitenDialog` (beide Parteien),
+  `SammlerProfilApp` (jetzt auch für Gäste), `TauschDialog` hatte ihn schon.
+  `Neuigkeiten`-Gemeindezähler per `lese_rangliste`-Summe statt Vollscan.
+- **Beweis-Blur (`SammlerKarussell.tsx` + `public/blur-beweis.jpg`, 2 KB):**
+  Fremde Profile laden KEINE Fotos mehr (einheitlicher gecachter Platzhalter
+  + Anzahl + Hinweis); eigene Fotos unverändert inkl. Migration.
+- **Cross-Tab-Mutex (`diddlcollect:synclock`, 90 s):** keine parallelen Syncs
+  aus mehreren Tabs (Mehrfach-Feuer im Log).
+- **News-Downsize (`bilder.ts` + `scripts/news-migration-https.sql` – ausführen!):**
+  `news_bild_migrieren` ersetzt jetzt auch übergroße eigene Storage-URLs
+  (>250 KB, nur Admin-Geräte lösen aus, Fremd-Hotlinks tabu). Alte Datei
+  verwaist (Dashboard-löschbar).
+- **`_bucket-upload/` (NICHT committen, nach Upload löschen):** beide defekten
+  JPEGs komprimiert unter GLEICHEM Namen (50/66 KB) – per Dashboard in den
+  `news-bilder`-Bucket überschreiben → URLs funktionieren ohne SQL.
+
+**Verifikation:** `tsc` sauber, Build OK; Lint nur vorbestehender
+`SpendeButton.tsx`-Error. Bundle enthält Light/Mutex/Blur (geprüft),
+`out/blur-beweis.jpg` liegt bei. Im nächsten Log: Sync-Seiten nur noch
+`id,name,created_at,supporter`, keine 400 auf Storage, Warp-Kills sinken.
+
 ## 2026-09-09 — Bilder nach Supabase Storage (News + Beweise, Egress-Diät)
 
 **Ziel:** base64-Data-URLs in `news.bild/bild2` + `beweis_fotos.bild` (+33 %

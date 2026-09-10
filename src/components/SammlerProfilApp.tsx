@@ -49,7 +49,7 @@ export function SammlerProfilApp() {
   const benutzerId = benutzer?.id;
   const ichId = ich?.id;
   useEffect(() => {
-    if (benutzerId && ichId && benutzerId !== ichId) void ladeFremdesProfil(benutzerId);
+    if (benutzerId && benutzerId !== ichId) void ladeFremdesProfil(benutzerId);
   }, [benutzerId, ichId]);
 
   useEffect(() => {

@@ -350,17 +350,98 @@ function profilSpalten(): string {
   return spalten.join(", ");
 }
 
+/** Schlanke Spalten für den Boot-Sync (Namen/Verzeichnis, ~50 KB statt ~3 MB).
+ *  Schwere Felder (statuses/…) kommen nur noch einzeln (Fremdprofil) oder über
+ *  die Lean-RPCs – darum merkt sich der Cache, welche Zeilen nur leicht sind. */
+function profilSpaltenLeicht(): string {
+  return "id, name, created_at, supporter";
+}
+
+const LIGHT_KEY = "diddlcollect:light-ids";
+
+function lightLesen(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const roh = JSON.parse(window.localStorage.getItem(LIGHT_KEY) ?? "[]") as unknown;
+    return new Set(Array.isArray(roh) ? roh.filter((x): x is string => typeof x === "string") : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function lightSchreiben(ids: Set<string>) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(LIGHT_KEY, JSON.stringify([...ids].slice(-2000)));
+  } catch {
+    /* Quota voll – harmlos, dann gelten Zeilen als voll (einzelnes Nachladen). */
+  }
+}
+
+/** True, wenn von diesem Konto nur die leichten Spalten im Cache liegen
+ *  (Boot-Sync) – wer Details braucht, lädt die Zeile einzeln nach. */
+export function istNurLeicht(id: string): boolean {
+  return lightLesen().has(id);
+}
+
+function merkeLeicht(ids: Iterable<string>) {
+  const set = lightLesen();
+  for (const id of ids) set.add(id);
+  lightSchreiben(set);
+}
+
+function vergissLeicht(id: string) {
+  const set = lightLesen();
+  if (!set.delete(id)) return;
+  lightSchreiben(set);
+}
+
+function vergissLeichtAlle() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(LIGHT_KEY);
+}
+
+/* Cross-Tab-Mutex: Zwei Tabs beim Kaltstart würden sonst beide den Voll-Sync
+   laden (im Log als Mehrfach-Feuer sichtbar). Marke mit Ablaufzeit – ein
+   abgestürzter Tab blockiert nie (Ablauf statt Freigabe). */
+const SYNC_LOCK_KEY = "diddlcollect:synclock";
+const SYNC_LOCK_MS = 90 * 1000;
+
+function syncLockBelegen(): boolean {
+  if (typeof window === "undefined") return true;
+  try {
+    const roh = window.localStorage.getItem(SYNC_LOCK_KEY);
+    if (roh && Date.now() - Number(roh) < SYNC_LOCK_MS) return false;
+    window.localStorage.setItem(SYNC_LOCK_KEY, String(Date.now()));
+    return true;
+  } catch {
+    return true;
+  }
+}
+
+function syncLockFreigeben() {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(SYNC_LOCK_KEY);
+  } catch {
+    /* Harmlos – Ablaufzeit räumt auf. */
+  }
+}
+
 /* Kleine Seiten: Ein 1000er-Block (~2,6 MB) läuft in PostgREST in Timeouts
    („Thread killed by timeout manager“, Log 09.09.2026) – danach wiederholt
    jeder Besuch den Voll-Sync. 250er-Seiten sind einzeln harmlos (Bytes gleich). */
 const SEITEN_GROESSE = 250;
 
-async function ladeProfilSeite(start: number): Promise<{ zeilen: ProfileRow[] } | { schemaFehler: true } | null> {
+async function ladeProfilSeite(
+  start: number,
+  spalten: string,
+): Promise<{ zeilen: ProfileRow[] } | { schemaFehler: true } | null> {
   const supabase = getSupabase<ProfileDb>();
   if (!supabase) return null;
   const ergebnis = await supabase
     .from("profile")
-    .select(profilSpalten())
+    .select(spalten)
     .order("id", { ascending: true })
     .range(start, start + SEITEN_GROESSE - 1);
   if (!ergebnis.error && ergebnis.data) {
@@ -394,21 +475,40 @@ function wendeSchemaFallbackAn(): boolean {
   return false;
 }
 
-async function ladeProfileZeilen(): Promise<ProfileRow[] | null> {
+async function ladeSeiten(spalten: string): Promise<ProfileRow[] | { schemaFehler: true } | null> {
   const alle: ProfileRow[] = [];
   let start = 0;
   for (;;) {
-    const seite = await ladeProfilSeite(start);
+    const seite = await ladeProfilSeite(start, spalten);
     if (!seite) return null;
-    if ("schemaFehler" in seite) {
-      if (!wendeSchemaFallbackAn()) return null;
-      return ladeProfileZeilen();
-    }
+    if ("schemaFehler" in seite) return seite;
     alle.push(...seite.zeilen);
     if (seite.zeilen.length < SEITEN_GROESSE) break;
     start += SEITEN_GROESSE;
   }
   return alle;
+}
+
+async function ladeProfileZeilen(leicht: boolean): Promise<ProfileRow[] | null> {
+  if (!leicht) {
+    for (;;) {
+      const r = await ladeSeiten(profilSpalten());
+      if (r && "schemaFehler" in r) {
+        if (!wendeSchemaFallbackAn()) return null;
+        continue;
+      }
+      return r;
+    }
+  }
+  /* Leicht-Modus ohne optionale Spalten (supporter fehlt ggf. noch) – ein
+     Schema-Fehler dort heißt einfach: ohne supporter erneut versuchen. */
+  const voll = await ladeSeiten(profilSpaltenLeicht());
+  if (voll && "schemaFehler" in voll) {
+    const reduziert = await ladeSeiten("id, name, created_at");
+    if (reduziert && "schemaFehler" in reduziert) return null;
+    return reduziert;
+  }
+  return voll;
 }
 
 function syncFehlerFrisch(): boolean {
@@ -442,11 +542,18 @@ function starteSync() {
     synchronisiert = true;
     return;
   }
+  /* Cross-Tab-Mutex: kein paralleler Sync aus einem zweiten Tab. Ohne
+     Memo – der nächste Aufrufer versucht es erneut (Daten kommen ggf. auch
+     per Storage-Event vom anderen Tab). */
+  if (!syncLockBelegen()) return;
   syncLaeuft = true;
-  syncMitServer()
+  /* Boot-Sync ist LEICHT (nur Verzeichnis-Spalten, ~50 KB): Schwere Felder
+     kommen einzeln (Fremdprofil) oder per Lean-RPC – siehe syncMitServer. */
+  syncMitServer(true)
     .catch(() => {})
     .finally(() => {
       syncLaeuft = false;
+      syncLockFreigeben();
       if (syncErneut) {
         syncErneut = false;
         starteSync();
@@ -464,11 +571,13 @@ export function syncBeiBedarf() {
   if (!supabaseKonfiguriert() || syncLaeuft || syncFehlerFrisch()) return;
   const letzte = Number(window.localStorage.getItem(SYNCZEIT_KEY) ?? "0");
   if (Date.now() - letzte < VOLL_SYNC_MS) return;
+  if (!syncLockBelegen()) return;
   syncLaeuft = true;
-  syncMitServer()
+  syncMitServer(false)
     .catch(() => {})
     .finally(() => {
       syncLaeuft = false;
+      syncLockFreigeben();
       if (syncErneut) {
         syncErneut = false;
         starteSync();
@@ -514,9 +623,12 @@ function richteFocusSyncEin() {
 richteFocusSyncEin();
 void syncEigenesKonto(true);
 
-/** Server-Konten in den Cache laden, lokale Änderungen hochladen. */
-async function syncMitServer() {
-  const data = await ladeProfileZeilen();
+/** Server-Konten in den Cache laden, lokale Änderungen hochladen.
+ *  leicht=true (Boot): nur Verzeichnis-Spalten (~50 KB). Schwere Felder
+ *  bleiben unangetastet – vorhandene Details werden NIE mit Leere
+ *  überschrieben, fehlende kommen einzeln (Fremdprofil) oder per Lean-RPC. */
+async function syncMitServer(leicht: boolean) {
+  const data = await ladeProfileZeilen(leicht);
   if (!data) {
     merkeSyncFehler();
     return;
@@ -532,8 +644,49 @@ async function syncMitServer() {
 
   for (const zeile of data) {
     serverIds.add(zeile.id);
-    const server = zeileZuBenutzer(zeile);
     const lok = lokalById.get(zeile.id);
+    if (leicht) {
+      if (!lok) {
+        /* Neu: leichtes Skelett (Details kommen bei Bedarf einzeln). Nur
+           neue Skelette als leicht merken – volle Bestandszeilen (z. B.
+           eigenes Konto, einzeln nachgeladene Profile) bleiben voll. */
+        ergebnis.set(zeile.id, {
+          id: zeile.id,
+          name: zeile.name,
+          passwort: "",
+          createdAt: new Date(zeile.created_at).getTime(),
+          statuses: {},
+          beweise: {},
+          favoriten: {},
+          tausch: {},
+          blocks: {},
+          anzahl: {},
+          supporter: zeile.supporter === true,
+        });
+        geaendert = true;
+        merkeLeicht([zeile.id]);
+        continue;
+      }
+      /* Bestand: nur leichte Felder auffrischen, Schwere behalten. */
+      const frisch = { ...lok };
+      if (frisch.name !== zeile.name) {
+        frisch.name = zeile.name;
+        geaendert = true;
+      }
+      const supporterNeu = zeile.supporter === true;
+      if ((frisch.supporter === true) !== supporterNeu) {
+        frisch.supporter = supporterNeu;
+        geaendert = true;
+      }
+      const createdNeu = new Date(zeile.created_at).getTime();
+      if (frisch.createdAt !== createdNeu) {
+        frisch.createdAt = createdNeu;
+        geaendert = true;
+      }
+      ergebnis.set(zeile.id, frisch);
+      continue;
+    }
+    const server = zeileZuBenutzer(zeile);
     if (!lok) {
       ergebnis.set(zeile.id, server);
       geaendert = true;
@@ -564,6 +717,7 @@ async function syncMitServer() {
   }
 
   if (geaendert) saveUsers([...ergebnis.values()]);
+  if (!leicht) vergissLeichtAlle();
   window.localStorage.setItem(SYNCZEIT_KEY, String(Date.now()));
 }
 
@@ -653,7 +807,10 @@ export async function ladeFremdesProfil(id: string): Promise<boolean> {
   if (typeof window === "undefined" || !supabaseKonfiguriert()) return false;
   if (!id || id === sessionNutzerId()) return false;
   if (fremdeProfileLaden.has(id)) return false;
-  if (Date.now() - (leseProfilFrisch()[id] ?? 0) < PROFIL_FRISCH_MS) return false;
+  /* Leicht-Skelette immer auffüllen (keine 30-Min-Sperre) – sonst blieben
+     frisch per Boot-Sync angelegte Zeilen dauerhaft leer. */
+  const nurLeicht = istNurLeicht(id);
+  if (!nurLeicht && Date.now() - (leseProfilFrisch()[id] ?? 0) < PROFIL_FRISCH_MS) return false;
   const supabase = getSupabase<ProfileDb>();
   if (!supabase) return false;
   fremdeProfileLaden.add(id);
@@ -665,6 +822,7 @@ export async function ladeFremdesProfil(id: string): Promise<boolean> {
       .maybeSingle();
     if (error || !data) return false;
     const benutzer = zeileZuBenutzer(data as unknown as ProfileRow);
+    vergissLeicht(id);
     const users = loadUsers();
     const idx = users.findIndex((u) => u.id === id);
     if (idx >= 0) {
@@ -706,6 +864,7 @@ function teileFeld<T>(lokFeld: Record<string, T> | null | undefined, schluessel:
  *  Änderung, damit Polling keine Render-Schleifen auslöst. */
 function schreibeEigenesKontoInCache(server: Benutzer) {
   if (typeof window === "undefined") return;
+  vergissLeicht(server.id);
   const users = loadUsers();
   const idx = users.findIndex((u) => u.id === server.id);
   const lokNeu = idx >= 0 ? users[idx] : undefined;
@@ -941,6 +1100,7 @@ function uebernimmAnmeldung(ergebnis: KontoAntwort): { ok: boolean; fehler?: str
   if (lok?.supporter) benutzer.supporter = true;
   const rest = loadUsers().filter((u) => u.id !== benutzer.id);
   saveUsers([...rest, benutzer]);
+  vergissLeicht(benutzer.id);
   setzeSession(ergebnis.token, benutzer.id);
   letzterEigenerUpdatedAt = null;
   /* Nur hochladen, wenn es wirklich lokale (dirty) Änderungen nachzuziehen

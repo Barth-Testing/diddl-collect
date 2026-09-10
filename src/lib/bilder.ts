@@ -154,15 +154,21 @@ function migrationVergessen(schluessel: string) {
   }
 }
 
-/** News-Alt-Bild (data:) still auf Storage umziehen. Lösen nur Admin-Geräte
- *  aus (Server prüft erneut); pro Bild ein Versuch je Gerät. */
+/** News-Bild still auf eine schlanke Storage-URL umziehen. Lösen nur
+ *  Admin-Geräte aus (Server prüft erneut); pro Bild ein Versuch je Gerät.
+ *  Erfasst alte Data-URLs (nie browser-cachebar) UND übergroße eigene
+ *  Storage-Dateien (z. B. manuell in Originalgröße hochgeladen, >250 KB).
+ *  Fremde Hotlinks werden nie angefasst. */
 export function versucheNewsMigration(
   newsId: number,
   feld: "bild" | "bild2",
-  datenUrl: string,
+  bildQuelle: string,
   beiUrl?: (url: string) => void,
 ): void {
-  if (!istDatenUrl(datenUrl)) return;
+  const istAlt = istDatenUrl(bildQuelle);
+  const istEigeneDatei =
+    istHttpUrl(bildQuelle) && bildQuelle.includes("/storage/v1/object/public/news-bilder/");
+  if (!istAlt && !istEigeneDatei) return;
   const schluessel = `news:${newsId}:${feld}`;
   if (migrationVersucht(schluessel)) return;
   const ich = getSession();
@@ -170,8 +176,10 @@ export function versucheNewsMigration(
   if (!ich || !token || !istAdmin(ich.name)) return;
   migrationMerken(schluessel);
   void (async () => {
-    const roh = await datenUrlZuBlob(datenUrl);
+    const roh = await datenUrlZuBlob(bildQuelle);
     if (!roh) return;
+    /* Eigene Datei, aber schon klein genug – nichts zu holen. */
+    if (!istAlt && roh.size < 250 * 1024) return;
     const komprimat = await komprimiereBild(roh, 640, 0.7);
     const blob = komprimat?.blob ?? roh;
     const endung = komprimat?.endung ?? "jpg";

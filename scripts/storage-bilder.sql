@@ -103,10 +103,12 @@ end $$;
 
 grant execute on function public.news_schreiben(text, text, text, text, text) to anon;
 
--- 4. news_bild_migrieren: Alt-Bild (data:) still auf Storage-URL umziehen.
---    Nur Admin-Kreis; betrifft NUR Zeilen, deren Wert noch data: ist (niemals
---    eine URL überschreiben – Race-sicher). Neue Funktion: drop zuerst, damit
---    keine stille Überladung entstehen kann. -----------------------------------
+-- 4. news_bild_migrieren: Alt-Bild (data:) ODER übergroße eigene Storage-URL
+--    still auf schlanke Storage-URL umziehen. Nur Admin-Kreis; betrifft NUR
+--    Zeilen, deren Wert noch data: oder eine eigene Bucket-URL ist (niemals
+--    fremde Hotlinks überschreiben – Race-sicher). Neue Funktion: drop zuerst,
+--    damit keine stille Überladung entstehen kann. Stand: news-migration-https.sql
+drop function if exists public.news_bild_migrieren(text, bigint, text, text);
 drop function if exists public.news_bild_migrieren(text, bigint, text, text);
 create function public.news_bild_migrieren(
   p_token text,
@@ -139,8 +141,8 @@ begin
     raise exception 'Ungültiges Bildformat.' using errcode = '23514';
   end if;
   execute format(
-    'update public.news set %I = $1 where id = $2 and %I like ''data:%%''',
-    p_feld, p_feld
+    'update public.news set %I = $1 where id = $2 and (%I like ''data:%%'' or %I like ''%%/storage/v1/object/public/news-bilder/%%'')',
+    p_feld, p_feld, p_feld
   ) using v_url, p_news_id;
 end $$;
 
